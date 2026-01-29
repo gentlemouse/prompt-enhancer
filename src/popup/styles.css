@@ -13,14 +13,14 @@
   --text-muted: #71717a;
   --border-color: #e4e4e7;
   --border-light: #f4f4f5;
-  --brand-color: #6366f1;
-  --brand-color-hover: #4f46e5;
-  --brand-color-active: #4338ca;
-  --btn-bg: #6366f1;
-  --btn-bg-hover: #4f46e5;
-  --btn-bg-active: #4338ca;
+  --brand-color: #3b82f6;
+  --brand-color-hover: #2563eb;
+  --brand-color-active: #1d4ed8;
+  --btn-bg: #3b82f6;
+  --btn-bg-hover: #2563eb;
+  --btn-bg-active: #1d4ed8;
   --btn-text: #fff;
-  --input-border-focus: #6366f1;
+  --input-border-focus: #3b82f6;
   --success-bg: #f0fdf4;
   --success-text: #16a34a;
   --error-bg: #fef2f2;
@@ -49,14 +49,14 @@
     --text-muted: #71717a;
     --border-color: #3f3f46;
     --border-light: #27272a;
-    --brand-color: #818cf8;
-    --brand-color-hover: #6366f1;
-    --brand-color-active: #4f46e5;
-    --btn-bg: #6366f1;
-    --btn-bg-hover: #818cf8;
-    --btn-bg-active: #4f46e5;
+    --brand-color: #60a5fa;
+    --brand-color-hover: #3b82f6;
+    --brand-color-active: #2563eb;
+    --btn-bg: #3b82f6;
+    --btn-bg-hover: #60a5fa;
+    --btn-bg-active: #2563eb;
     --btn-text: #fff;
-    --input-border-focus: #818cf8;
+    --input-border-focus: #60a5fa;
     --success-bg: #052e16;
     --success-text: #4ade80;
     --error-bg: #450a0a;
@@ -151,7 +151,7 @@ select:focus,
 input:focus {
   outline: none;
   border-color: var(--input-border-focus);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 input[type='password'] {
@@ -181,7 +181,7 @@ input.error {
 
 .btn:hover {
   background: var(--btn-bg-hover);
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
 }
 
 .btn:active {
@@ -191,7 +191,7 @@ input.error {
 
 .btn:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
 }
 
 .status {

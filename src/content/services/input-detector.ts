@@ -8,12 +8,131 @@ import { AI_CHAT_DOMAINS, VALID_INPUT_TYPES } from '@shared/constants';
 /** 可编辑元素类型 */
 export type EditableElement = HTMLTextAreaElement | HTMLInputElement | HTMLElement;
 
+/** 排除的输入框特征（name、id、placeholder、class 中包含这些关键词则排除） */
+const EXCLUDED_INPUT_PATTERNS = [
+  // 数字相关
+  'number',
+  'num',
+  'amount',
+  'price',
+  'cost',
+  'quantity',
+  'qty',
+  'count',
+  'size',
+  'width',
+  'height',
+  'pixel',
+  'px',
+  'percent',
+  'ratio',
+  'scale',
+  'zoom',
+  'opacity',
+  'weight',
+  'age',
+  'year',
+  'month',
+  'day',
+  'hour',
+  'minute',
+  'second',
+  'duration',
+  'length',
+  'limit',
+  'max',
+  'min',
+  'step',
+  'range',
+  'slider',
+  'rating',
+  'score',
+  'level',
+  'index',
+  'page',
+  'offset',
+  // 金融相关
+  'currency',
+  'money',
+  'budget',
+  'balance',
+  'fee',
+  'tax',
+  'discount',
+  // 技术参数
+  'port',
+  'timeout',
+  'interval',
+  'threshold',
+  'radius',
+  'margin',
+  'padding',
+  'spacing',
+  'gap',
+  'border',
+  'font-size',
+  'line-height',
+  // 其他控件
+  'color',
+  'picker',
+  'date',
+  'time',
+  'phone',
+  'zip',
+  'postal',
+  'code',
+  'pin',
+  'otp',
+  'verification',
+  'captcha',
+];
+
+/** 最小输入框尺寸要求 */
+const MIN_INPUT_WIDTH = 120;
+const MIN_INPUT_HEIGHT = 28;
+const MIN_TEXTAREA_WIDTH = 150;
+const MIN_TEXTAREA_HEIGHT = 50;
+
 /**
  * 检查是否在 AI 聊天网站
  */
 export const isAIChatSite = (): boolean => {
   const hostname = window.location.hostname;
   return AI_CHAT_DOMAINS.some(domain => hostname.includes(domain));
+};
+
+/**
+ * 检查输入框是否应该被排除（数字输入框、小型控件等）
+ * @param el 输入框元素
+ */
+const shouldExcludeInput = (el: HTMLInputElement): boolean => {
+  // 检查 inputmode 属性
+  const inputMode = el.inputMode?.toLowerCase() || '';
+  if (inputMode === 'numeric' || inputMode === 'decimal' || inputMode === 'tel') {
+    return true;
+  }
+
+  // 检查 pattern 属性（数字模式）
+  const pattern = el.pattern || '';
+  if (/^\[?\\?d|^\d|\{\d/.test(pattern)) {
+    return true;
+  }
+
+  // 获取所有可检查的属性值
+  const checkValues = [
+    el.name,
+    el.id,
+    el.placeholder,
+    el.className,
+    el.getAttribute('aria-label'),
+    el.getAttribute('data-testid'),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  // 检查是否匹配排除模式
+  return EXCLUDED_INPUT_PATTERNS.some(pattern => checkValues.includes(pattern));
 };
 
 /**
@@ -25,25 +144,42 @@ export const isValidInput = (el: Element | null): el is EditableElement => {
 
   const tag = el.tagName;
 
-  // TEXTAREA 直接通过
+  // TEXTAREA - 需要足够大的尺寸
   if (tag === 'TEXTAREA') {
     const rect = el.getBoundingClientRect();
-    return rect.width >= 30 && rect.height >= 15;
+    // AI 聊天站点放宽尺寸要求
+    if (isAIChatSite()) {
+      return rect.width >= 100 && rect.height >= 30;
+    }
+    return rect.width >= MIN_TEXTAREA_WIDTH && rect.height >= MIN_TEXTAREA_HEIGHT;
   }
 
-  // INPUT 检查类型
+  // INPUT 检查类型和尺寸
   if (tag === 'INPUT') {
     const input = el as HTMLInputElement;
     const inputType = input.type?.toLowerCase() || '';
+
+    // 类型必须在白名单中
     if (!VALID_INPUT_TYPES.includes(inputType)) return false;
+
+    // 检查是否应该排除（数字输入框等）
+    if (shouldExcludeInput(input)) return false;
+
     const rect = el.getBoundingClientRect();
-    return rect.width >= 30 && rect.height >= 15;
+
+    // AI 聊天站点放宽尺寸要求
+    if (isAIChatSite()) {
+      return rect.width >= 80 && rect.height >= 20;
+    }
+
+    // 非 AI 站点要求更大的输入框
+    return rect.width >= MIN_INPUT_WIDTH && rect.height >= MIN_INPUT_HEIGHT;
   }
 
   // contenteditable 只在 AI 聊天网站上检测
   if ((el as HTMLElement).isContentEditable && isAIChatSite()) {
     const rect = el.getBoundingClientRect();
-    if (rect.width < 30 || rect.height < 15) return false;
+    if (rect.width < 100 || rect.height < 30) return false;
     // 排除太大的区域
     if (rect.height > window.innerHeight * 0.5) return false;
     return true;
@@ -59,16 +195,14 @@ export const isValidInput = (el: Element | null): el is EditableElement => {
 export const findEditableElement = (el: Element | null): EditableElement | null => {
   if (!el) return null;
 
-  // 直接是 TEXTAREA
-  if (el.tagName === 'TEXTAREA') return el as HTMLTextAreaElement;
+  // 直接是 TEXTAREA，需要通过 isValidInput 验证尺寸
+  if (el.tagName === 'TEXTAREA') {
+    return isValidInput(el) ? (el as HTMLTextAreaElement) : null;
+  }
 
-  // 是 INPUT 且类型有效
+  // 是 INPUT，需要通过完整验证（类型、尺寸、排除规则）
   if (el.tagName === 'INPUT') {
-    const input = el as HTMLInputElement;
-    const inputType = input.type?.toLowerCase() || '';
-    if (VALID_INPUT_TYPES.includes(inputType)) {
-      return input;
-    }
+    return isValidInput(el) ? (el as HTMLInputElement) : null;
   }
 
   // 只在 AI 聊天网站上检测 contenteditable
