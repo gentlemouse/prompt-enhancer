@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prompt Enhancer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <img src="/icons/icon24.png" alt="" />
+        <h1>Prompt Enhancer</h1>
+      </div>
+
+      <div class="form-group">
+        <label for="provider">提供商</label>
+        <select id="provider" aria-describedby="provider-warning">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="custom">自定义 API</option>
+        </select>
+      </div>
+
+      <!-- P0-1.3: Anthropic 安全警告 -->
+      <div class="warning-box" id="anthropicWarning" style="display: none">
+        <div class="warning-icon">⚠️</div>
+        <div class="warning-text">
+          Anthropic API 在浏览器中直接调用需要启用特殊访问模式，这可能带来安全风险。建议仅在信任的网络环境下使用。
+        </div>
+        <label class="warning-checkbox">
+          <input type="checkbox" id="anthropicAck" />
+          <span>我已了解并接受风险</span>
+        </label>
+      </div>
+
+      <div class="form-group custom-endpoint" id="customEndpointGroup">
+        <label for="customEndpoint">API 地址</label>
+        <input
+          type="text"
+          id="customEndpoint"
+          placeholder="https://api.example.com/v1/chat/completions"
+        />
+        <div class="hint" id="endpointHint"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="model">模型</label>
+        <select id="model">
+          <option value="gpt-4o-mini">gpt-4o-mini</option>
+        </select>
+      </div>
+
+      <div class="form-group custom-endpoint" id="customModelGroup">
+        <label for="customModel">自定义模型</label>
+        <input type="text" id="customModel" placeholder="模型名称" />
+      </div>
+
+      <div class="form-group">
+        <label for="apiKey" class="label-with-tooltip">
+          API Key
+          <span class="tooltip-trigger" tabindex="0">
+            ?
+            <span class="tooltip">仅存储在本地，不会同步或上传</span>
+          </span>
+        </label>
+        <input type="password" id="apiKey" placeholder="sk-..." />
+      </div>
+
+      <button class="btn" id="saveBtn">保存</button>
+
+      <div class="status" id="status" role="alert" aria-live="polite"></div>
+
+      <div class="footer">
+        <div class="hint">
+          <div class="hint-row">
+            <span>润色</span>
+            <span class="hint-key" id="shortcutEnhance">
+              <kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd>
+            </span>
+          </div>
+          <div class="hint-row">
+            <span>撤回</span>
+            <span class="hint-key" id="shortcutUndo">
+              <kbd>⌘</kbd><kbd>Z</kbd>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>

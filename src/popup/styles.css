@@ -1,0 +1,388 @@
+/**
+ * Popup 样式
+ */
+
+/* 颜色变量 - 亮色主题 */
+:root {
+  --bg-primary: #fff;
+  --bg-secondary: #f5f5f7;
+  --bg-hover: #fff;
+  --bg-footer: #fafafa;
+  --text-primary: #1a1a1a;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+  --border-color: #e4e4e7;
+  --border-light: #f4f4f5;
+  --brand-color: #6366f1;
+  --brand-color-hover: #4f46e5;
+  --brand-color-active: #4338ca;
+  --btn-bg: #6366f1;
+  --btn-bg-hover: #4f46e5;
+  --btn-bg-active: #4338ca;
+  --btn-text: #fff;
+  --input-border-focus: #6366f1;
+  --success-bg: #f0fdf4;
+  --success-text: #16a34a;
+  --error-bg: #fef2f2;
+  --error-text: #dc2626;
+  --warning-bg: #fffbeb;
+  --warning-border: #f59e0b;
+  --warning-text: #b45309;
+  --tooltip-trigger-bg: #f4f4f5;
+  --tooltip-trigger-bg-hover: #e4e4e7;
+  --tooltip-bg: #27272a;
+  --tooltip-text: #fff;
+  --kbd-bg: #f4f4f5;
+  --kbd-border: #d4d4d8;
+  --kbd-text: #3f3f46;
+}
+
+/* 颜色变量 - 暗色主题 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #18181b;
+    --bg-secondary: #27272a;
+    --bg-hover: #3f3f46;
+    --bg-footer: #1f1f23;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --border-color: #3f3f46;
+    --border-light: #27272a;
+    --brand-color: #818cf8;
+    --brand-color-hover: #6366f1;
+    --brand-color-active: #4f46e5;
+    --btn-bg: #6366f1;
+    --btn-bg-hover: #818cf8;
+    --btn-bg-active: #4f46e5;
+    --btn-text: #fff;
+    --input-border-focus: #818cf8;
+    --success-bg: #052e16;
+    --success-text: #4ade80;
+    --error-bg: #450a0a;
+    --error-text: #f87171;
+    --warning-bg: #422006;
+    --warning-border: #d97706;
+    --warning-text: #fbbf24;
+    --tooltip-trigger-bg: #3f3f46;
+    --tooltip-trigger-bg-hover: #52525b;
+    --tooltip-bg: #fafafa;
+    --tooltip-text: #18181b;
+    --kbd-bg: #27272a;
+    --kbd-border: #3f3f46;
+    --kbd-text: #d4d4d8;
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.container {
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.header img {
+  width: 28px;
+  height: 28px;
+}
+
+.header h1 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+select,
+input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+select:hover,
+input:hover {
+  border-color: var(--text-muted);
+}
+
+select:focus,
+input:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+input[type='password'] {
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+
+input.error {
+  border-color: var(--error-text);
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.1s ease,
+    box-shadow 0.2s ease;
+}
+
+.btn:hover {
+  background: var(--btn-bg-hover);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+}
+
+.btn:active {
+  background: var(--btn-bg-active);
+  transform: scale(0.98);
+}
+
+.btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+}
+
+.status {
+  text-align: center;
+  font-size: 12px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  display: none;
+}
+
+.status.success {
+  display: block;
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.status.error {
+  display: block;
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+/* 底部快捷键区域 */
+.footer {
+  background: var(--bg-footer);
+  margin: 24px -24px -24px;
+  padding: 16px 24px;
+  border-radius: 0 0 0 0;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.hint-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.hint-row span:first-child {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* 键盘按键样式 */
+.hint-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hint-key kbd {
+  display: inline-block;
+  padding: 3px 6px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--kbd-text);
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 var(--kbd-border);
+}
+
+.custom-endpoint {
+  display: none;
+}
+
+.custom-endpoint.show {
+  display: block;
+}
+
+/* Label with tooltip */
+.label-with-tooltip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tooltip-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--tooltip-trigger-bg);
+  border-radius: 50%;
+  cursor: default;
+  text-transform: none;
+  letter-spacing: 0;
+  vertical-align: middle;
+  margin-top: -1px;
+}
+
+.tooltip-trigger:hover,
+.tooltip-trigger:focus {
+  color: var(--text-secondary);
+  background: var(--tooltip-trigger-bg-hover);
+}
+
+.tooltip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  width: max-content;
+  max-width: 180px;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--tooltip-text);
+  background: var(--tooltip-bg);
+  border-radius: 4px;
+  white-space: normal;
+  line-height: 1.4;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 100%;
+  border: 5px solid transparent;
+  border-top-color: var(--tooltip-bg);
+}
+
+.tooltip-trigger:hover .tooltip,
+.tooltip-trigger:focus .tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* P0-1.3: 警告框样式 */
+.warning-box {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.warning-icon {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.warning-text {
+  font-size: 12px;
+  color: var(--warning-text);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.warning-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--warning-text);
+  cursor: pointer;
+}
+
+.warning-checkbox input {
+  width: auto;
+  margin: 0;
+}
+
+/* P0-1.4: Endpoint 验证提示 */
+.form-group .hint {
+  font-size: 11px;
+  margin-top: 4px;
+  min-height: 16px;
+}
+
+.form-group .hint.error {
+  color: var(--error-text);
+}
+
+.form-group .hint.success {
+  color: var(--success-text);
+}
