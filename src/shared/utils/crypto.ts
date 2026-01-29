@@ -15,17 +15,58 @@ const getEncryptionKey = (): string => {
 };
 
 /**
+ * 将字符串转为 UTF-8 字节数组
+ */
+const stringToBytes = (str: string): Uint8Array => {
+  return new TextEncoder().encode(str);
+};
+
+/**
+ * 将 UTF-8 字节数组转为字符串
+ */
+const bytesToString = (bytes: Uint8Array): string => {
+  return new TextDecoder().decode(bytes);
+};
+
+/**
+ * 将字节数组转为 Base64 字符串
+ */
+const bytesToBase64 = (bytes: Uint8Array): string => {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+};
+
+/**
+ * 将 Base64 字符串转为字节数组
+ */
+const base64ToBytes = (base64: string): Uint8Array => {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+};
+
+/**
  * 简单的异或加密
  * @param text 要加密的文本
  * @param key 密钥
  * @returns 加密后的 Base64 字符串
  */
 const xorEncrypt = (text: string, key: string): string => {
-  const result: number[] = [];
-  for (let i = 0; i < text.length; i++) {
-    result.push(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  const textBytes = stringToBytes(text);
+  const keyBytes = stringToBytes(key);
+  const result = new Uint8Array(textBytes.length);
+
+  for (let i = 0; i < textBytes.length; i++) {
+    result[i] = textBytes[i] ^ keyBytes[i % keyBytes.length];
   }
-  return btoa(String.fromCharCode(...result));
+
+  return bytesToBase64(result);
 };
 
 /**
@@ -36,14 +77,15 @@ const xorEncrypt = (text: string, key: string): string => {
  */
 const xorDecrypt = (encrypted: string, key: string): string => {
   try {
-    const decoded = atob(encrypted);
-    const result: string[] = [];
-    for (let i = 0; i < decoded.length; i++) {
-      result.push(
-        String.fromCharCode(decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length))
-      );
+    const encryptedBytes = base64ToBytes(encrypted);
+    const keyBytes = stringToBytes(key);
+    const result = new Uint8Array(encryptedBytes.length);
+
+    for (let i = 0; i < encryptedBytes.length; i++) {
+      result[i] = encryptedBytes[i] ^ keyBytes[i % keyBytes.length];
     }
-    return result.join('');
+
+    return bytesToString(result);
   } catch {
     return '';
   }
