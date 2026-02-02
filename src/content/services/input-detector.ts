@@ -176,13 +176,20 @@ export const isValidInput = (el: Element | null): el is EditableElement => {
     return rect.width >= MIN_INPUT_WIDTH && rect.height >= MIN_INPUT_HEIGHT;
   }
 
-  // contenteditable 只在 AI 聊天网站上检测
-  if ((el as HTMLElement).isContentEditable && isAIChatSite()) {
-    const rect = el.getBoundingClientRect();
-    if (rect.width < 100 || rect.height < 30) return false;
-    // 排除太大的区域
-    if (rect.height > window.innerHeight * 0.5) return false;
-    return true;
+  // contenteditable 或 role="textbox" 只在 AI 聊天网站上检测
+  if (isAIChatSite()) {
+    const htmlEl = el as HTMLElement;
+    const isEditable = htmlEl.isContentEditable;
+    const hasTextboxRole = el.getAttribute('role') === 'textbox';
+
+    if (isEditable || hasTextboxRole) {
+      const rect = el.getBoundingClientRect();
+      // 最小尺寸要求（放宽以支持更多富文本编辑器）
+      if (rect.width < 80 || rect.height < 24) return false;
+      // 放宽最大高度限制，允许更大的编辑区域
+      if (rect.height > window.innerHeight * 0.8) return false;
+      return true;
+    }
   }
 
   return false;
@@ -205,12 +212,13 @@ export const findEditableElement = (el: Element | null): EditableElement | null 
     return isValidInput(el) ? (el as HTMLInputElement) : null;
   }
 
-  // 只在 AI 聊天网站上检测 contenteditable
+  // 只在 AI 聊天网站上检测 contenteditable 和 role="textbox"
   if (!isAIChatSite()) return null;
 
-  // 自身是 contenteditable
-  if ((el as HTMLElement).isContentEditable && isValidInput(el)) {
-    return el as HTMLElement;
+  // 自身是 contenteditable 或有 role="textbox"
+  const htmlEl = el as HTMLElement;
+  if ((htmlEl.isContentEditable || el.getAttribute('role') === 'textbox') && isValidInput(el)) {
+    return htmlEl;
   }
 
   // 向上查找 contenteditable 祖先
