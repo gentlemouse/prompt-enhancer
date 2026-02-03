@@ -275,7 +275,7 @@ export const createInputDetector = (config: InputDetectorConfig): (() => void) =
   // 处理焦点获取
   const handleFocusIn = (e: FocusEvent): void => {
     const target = findEditableElement(e.target as Element);
-    if (target && isValidInput(target)) {
+    if (target && isValidInput(target) && target !== activeInput) {
       activeInput = target;
       onFocus(target);
     }
@@ -295,7 +295,7 @@ export const createInputDetector = (config: InputDetectorConfig): (() => void) =
   // 处理点击
   const handleClick = (e: MouseEvent): void => {
     const target = findEditableElement(e.target as Element);
-    if (target && isValidInput(target)) {
+    if (target && isValidInput(target) && target !== activeInput) {
       activeInput = target;
       onFocus(target);
     }
