@@ -125,12 +125,12 @@ export const setButtonStreaming = (state: ButtonState, streaming: boolean): void
     if (iconImg) iconImg.style.display = 'block';
     loader.style.display = 'none';
     button.classList.remove('loading');
-    button.classList.add('streaming');
+    button.classList.add('streaming', 'generating'); // 添加 generating 类以触发发光动画
     button.style.pointerEvents = 'none';
     button.setAttribute('aria-busy', 'true');
     button.setAttribute('aria-label', '正在生成...');
   } else {
-    button.classList.remove('streaming');
+    button.classList.remove('streaming', 'generating');
     button.style.pointerEvents = 'auto';
     button.removeAttribute('aria-busy');
     button.setAttribute('aria-label', '润色 Prompt (Cmd/Ctrl+Shift+E)');

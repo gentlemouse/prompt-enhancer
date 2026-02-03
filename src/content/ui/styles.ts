@@ -30,25 +30,65 @@ export const getStyles = (): string => `
   justify-content: center;
   font-size: 18px;
   box-shadow: none;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   user-select: none;
   opacity: 0.7;
 }
 
+/* Hover 时发光效果 */
 .prompt-enhancer-btn:hover {
   opacity: 1;
   transform: scale(1.15);
   background: rgba(0, 0, 0, 0.05);
 }
 
+.prompt-enhancer-btn:hover img {
+  filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.8)) drop-shadow(0 0 12px rgba(255, 165, 0, 0.6));
+}
+
 .prompt-enhancer-btn:active {
   transform: scale(0.9);
 }
 
-/* 暗色模式下反转图标颜色 */
+/* 生成中的脉冲发光动画 */
+@keyframes magic-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6)) drop-shadow(0 0 8px rgba(255, 165, 0, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(255, 215, 0, 1)) drop-shadow(0 0 20px rgba(255, 165, 0, 0.8));
+  }
+}
+
+.prompt-enhancer-btn.generating {
+  opacity: 1;
+}
+
+.prompt-enhancer-btn.generating img {
+  animation: magic-glow 1s ease-in-out infinite;
+}
+
+/* 暗色模式下反转图标颜色，同时保留发光效果 */
 @media (prefers-color-scheme: dark) {
   .prompt-enhancer-btn img {
     filter: invert(1);
+  }
+  
+  .prompt-enhancer-btn:hover img {
+    filter: invert(1) drop-shadow(0 0 6px rgba(255, 215, 0, 0.8)) drop-shadow(0 0 12px rgba(255, 165, 0, 0.6));
+  }
+  
+  .prompt-enhancer-btn.generating img {
+    animation: magic-glow-dark 1s ease-in-out infinite;
+  }
+}
+
+@keyframes magic-glow-dark {
+  0%, 100% {
+    filter: invert(1) drop-shadow(0 0 4px rgba(255, 215, 0, 0.6)) drop-shadow(0 0 8px rgba(255, 165, 0, 0.4));
+  }
+  50% {
+    filter: invert(1) drop-shadow(0 0 10px rgba(255, 215, 0, 1)) drop-shadow(0 0 20px rgba(255, 165, 0, 0.8));
   }
 }
 
