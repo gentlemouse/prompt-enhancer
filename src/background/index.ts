@@ -7,9 +7,12 @@ import { enhancePrompt, enhancePromptStreaming } from './enhancer';
 import { API_PROVIDERS } from '@shared/constants';
 import type { ExtensionMessage, MessageResponse } from '@shared/types';
 
+/** 颜色方案存储键 */
+const COLOR_SCHEME_KEY = 'prompt_enhancer_color_scheme';
+
 /**
  * 暗色模式图标切换
- * Service Worker 无法直接访问 matchMedia，需要通过 offscreenDocument 或消息传递
+ * 同时保存状态到 storage，以便 Service Worker 重启时恢复
  */
 const setIconForColorScheme = (isDark: boolean): void => {
   const iconPath = isDark ? 'icons/dark' : 'icons';
@@ -20,7 +23,23 @@ const setIconForColorScheme = (isDark: boolean): void => {
       '128': `${iconPath}/icon128.png`,
     },
   });
+  // 保存状态
+  chrome.storage.local.set({ [COLOR_SCHEME_KEY]: isDark });
 };
+
+/**
+ * 初始化颜色方案
+ * 从 storage 读取上次保存的状态
+ */
+const initColorScheme = async (): Promise<void> => {
+  const result = await chrome.storage.local.get(COLOR_SCHEME_KEY);
+  if (result[COLOR_SCHEME_KEY] !== undefined) {
+    setIconForColorScheme(result[COLOR_SCHEME_KEY]);
+  }
+};
+
+// Service Worker 启动时初始化颜色方案
+initColorScheme();
 
 /**
  * 动态注入 Content Script
