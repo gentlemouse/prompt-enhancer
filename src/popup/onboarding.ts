@@ -344,4 +344,65 @@ const getOnboardingStyles = (): string => `
     outline: 2px solid #4a90d9;
     outline-offset: 2px;
   }
+
+  /* 暗色模式适配 */
+  @media (prefers-color-scheme: dark) {
+    .onboarding-modal {
+      background: #1f1f1f;
+      color: #e0e0e0;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .onboarding-header {
+      border-bottom: 1px solid #333;
+    }
+
+    .onboarding-header h2 {
+      color: #fff;
+    }
+
+    .step-indicator {
+      background: #333;
+    }
+
+    .step-indicator.active {
+      background: #fff;
+    }
+
+    .onboarding-step p {
+      color: #aaa;
+    }
+
+    .step-hint {
+      color: #666 !important;
+    }
+
+    .onboarding-step kbd {
+      background: #2d2d2d;
+      border: 1px solid #444;
+      color: #ccc;
+    }
+
+    .onboarding-footer {
+      border-top: 1px solid #333;
+    }
+
+    .onboarding-btn.primary {
+      background: #fff;
+      color: #000;
+    }
+
+    .onboarding-btn.primary:hover {
+      background: #e0e0e0;
+    }
+
+    .onboarding-btn.secondary {
+      background: #2d2d2d;
+      color: #ccc;
+    }
+
+    .onboarding-btn.secondary:hover {
+      background: #3a3a3a;
+    }
+  }
 `;
