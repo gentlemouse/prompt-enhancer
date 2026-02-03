@@ -287,6 +287,7 @@ export const createInputDetector = (config: InputDetectorConfig): (() => void) =
       const newFocus = document.activeElement;
       const newTarget = findEditableElement(newFocus);
       if (!newTarget || !isValidInput(newTarget)) {
+        activeInput = null; // 清空活跃输入框
         onBlur();
       }
     }, 200);

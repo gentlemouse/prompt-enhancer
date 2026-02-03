@@ -30,9 +30,6 @@ const ICON_URL = chrome.runtime.getURL('icons/icon24.png');
 /** 当前活跃的输入框 */
 let activeInput: EditableElement | null = null;
 
-/** 已定位的输入框（用于避免重复定位） */
-let positionedInput: EditableElement | null = null;
-
 /** 按钮状态 */
 let buttonState: ButtonState | null = null;
 
@@ -44,6 +41,25 @@ let streamingInput: EditableElement | null = null;
 
 /** 流式累积文本 */
 let streamingText = '';
+
+/** 用于标识元素的数据属性 */
+const ELEMENT_ID_ATTR = 'data-prompt-enhancer-id';
+let nextElementId = 1;
+
+/**
+ * 获取或创建元素的唯一标识
+ */
+const getElementId = (el: HTMLElement): string => {
+  let id = el.getAttribute(ELEMENT_ID_ATTR);
+  if (!id) {
+    id = `pe-${nextElementId++}`;
+    el.setAttribute(ELEMENT_ID_ATTR, id);
+  }
+  return id;
+};
+
+/** 已定位的输入框 ID */
+let positionedInputId: string | null = null;
 
 /**
  * 显示按钮
@@ -57,11 +73,12 @@ const showButton = (target: EditableElement): void => {
 
   activeInput = target;
 
-  // 只有当输入框真正改变时才重新定位
-  // 使用元素引用比较，避免同一输入框多次触发导致的位置抖动
-  if (target !== positionedInput) {
+  // 使用元素 ID 比较，而不是引用比较
+  // 这样即使 DOM 更新导致元素引用变化，只要是同一个 DOM 节点就不会重新定位
+  const targetId = getElementId(target as HTMLElement);
+  if (targetId !== positionedInputId) {
     positionButton(buttonState.container, target);
-    positionedInput = target;
+    positionedInputId = targetId;
   }
 
   buttonState.container.style.display = 'flex';
