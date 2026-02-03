@@ -106,7 +106,8 @@ export type MessageAction =
   | 'streamError'
   | 'streamEnd'
   | 'checkOnboarding'
-  | 'completeOnboarding';
+  | 'completeOnboarding'
+  | 'colorSchemeChange';
 
 /** 消息接口 */
 export interface ExtensionMessage {
@@ -117,6 +118,8 @@ export interface ExtensionMessage {
   requestId?: string;
   chunk?: string;
   error?: string;
+  /** 是否为暗色模式 */
+  isDark?: boolean;
 }
 
 /** 消息响应接口 */

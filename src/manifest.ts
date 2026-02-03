@@ -51,7 +51,7 @@ export default defineManifest({
 
   web_accessible_resources: [
     {
-      resources: ['icons/*.png', 'src/content/*'],
+      resources: ['icons/*.png', 'icons/dark/*.png', 'src/content/*'],
       matches: ['<all_urls>'],
     },
   ],

@@ -282,9 +282,34 @@ const init = (): void => {
   });
 };
 
+/**
+ * 检测并通知颜色方案变化
+ * 用于切换工具栏图标的暗色/亮色版本
+ */
+const setupColorSchemeDetection = (): void => {
+  const notifyColorScheme = (isDark: boolean): void => {
+    chrome.runtime.sendMessage({ action: 'colorSchemeChange', isDark }).catch(() => {
+      // 忽略错误（扩展可能已重新加载）
+    });
+  };
+
+  // 检测当前颜色方案
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  notifyColorScheme(mediaQuery.matches);
+
+  // 监听颜色方案变化
+  mediaQuery.addEventListener('change', e => {
+    notifyColorScheme(e.matches);
+  });
+};
+
 // 初始化
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => {
+    init();
+    setupColorSchemeDetection();
+  });
 } else {
   init();
+  setupColorSchemeDetection();
 }

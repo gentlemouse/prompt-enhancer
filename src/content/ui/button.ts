@@ -155,8 +155,9 @@ export const positionButton = (
   const padding = 4;
 
   // 计算按钮位置：在输入框的右下角
-  let top = rect.bottom - btnHeight - padding;
-  let left = rect.right - btnWidth - padding;
+  // 使用 Math.round 避免浮点数导致的位置抖动
+  let top = Math.round(rect.bottom - btnHeight - padding);
+  let left = Math.round(rect.right - btnWidth - padding);
 
   // 确保不超出视口
   top = Math.max(padding, Math.min(top, viewportHeight - btnHeight - padding));

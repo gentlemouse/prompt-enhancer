@@ -8,6 +8,21 @@ import { API_PROVIDERS } from '@shared/constants';
 import type { ExtensionMessage, MessageResponse } from '@shared/types';
 
 /**
+ * 暗色模式图标切换
+ * Service Worker 无法直接访问 matchMedia，需要通过 offscreenDocument 或消息传递
+ */
+const setIconForColorScheme = (isDark: boolean): void => {
+  const iconPath = isDark ? 'icons/dark' : 'icons';
+  chrome.action.setIcon({
+    path: {
+      '16': `${iconPath}/icon16.png`,
+      '48': `${iconPath}/icon48.png`,
+      '128': `${iconPath}/icon128.png`,
+    },
+  });
+};
+
+/**
  * 动态注入 Content Script
  * P0-1.1: 按需注入而非全站默认注入
  */
@@ -171,6 +186,12 @@ chrome.runtime.onMessage.addListener(
 
         case 'completeOnboarding': {
           await completeOnboarding();
+          return { success: true };
+        }
+
+        // 暗色模式切换
+        case 'colorSchemeChange': {
+          setIconForColorScheme(request.isDark === true);
           return { success: true };
         }
 
