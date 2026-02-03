@@ -197,7 +197,7 @@ export const isValidInput = (el: Element | null): el is EditableElement => {
 
 /**
  * 查找可编辑元素
- * 返回最内层的可编辑元素（实际的输入区域）
+ * 始终返回包含点击位置的最内层有效的可编辑容器
  * @param el 起始元素
  */
 export const findEditableElement = (el: Element | null): EditableElement | null => {
@@ -216,17 +216,13 @@ export const findEditableElement = (el: Element | null): EditableElement | null 
   // 只在 AI 聊天网站上检测 contenteditable 和 role="textbox"
   if (!isAIChatSite()) return null;
 
-  // 自身是 contenteditable 或有 role="textbox"
-  const htmlEl = el as HTMLElement;
-  if ((htmlEl.isContentEditable || el.getAttribute('role') === 'textbox') && isValidInput(el)) {
-    return htmlEl;
-  }
-
-  // 向上查找最近的 contenteditable 祖先
-  let current = el.parentElement;
+  // 从当前元素开始向上查找第一个有效的可编辑容器
+  // 这样无论点击在编辑器的哪个子元素上，都会返回同一个容器
+  let current: Element | null = el;
   while (current && current !== document.body) {
-    if ((current.isContentEditable || current.getAttribute('role') === 'textbox') && isValidInput(current)) {
-      return current;
+    const htmlEl = current as HTMLElement;
+    if ((htmlEl.isContentEditable || current.getAttribute('role') === 'textbox') && isValidInput(current)) {
+      return htmlEl;
     }
     current = current.parentElement;
   }
