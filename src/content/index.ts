@@ -30,8 +30,8 @@ const ICON_URL = chrome.runtime.getURL('icons/icon24.png');
 /** 当前活跃的输入框 */
 let activeInput: EditableElement | null = null;
 
-/** 位置锁定标志 */
-let positionLocked = false;
+/** 已定位的输入框（用于避免重复定位） */
+let positionedInput: EditableElement | null = null;
 
 /** 按钮状态 */
 let buttonState: ButtonState | null = null;
@@ -55,16 +55,13 @@ const showButton = (target: EditableElement): void => {
   // 如果正在流式输出，不处理
   if (currentRequestId) return;
 
-  // 如果切换到新的输入框，解锁位置
-  if (target !== activeInput) {
-    positionLocked = false;
-  }
-
   activeInput = target;
 
-  if (!positionLocked) {
+  // 只有当输入框真正改变时才重新定位
+  // 使用元素引用比较，避免同一输入框多次触发导致的位置抖动
+  if (target !== positionedInput) {
     positionButton(buttonState.container, target);
-    positionLocked = true;
+    positionedInput = target;
   }
 
   buttonState.container.style.display = 'flex';
@@ -180,9 +177,8 @@ const init = (): void => {
   // 窗口大小变化时更新位置
   window.addEventListener('resize', () => {
     if (activeInput && buttonState && buttonState.container.style.display !== 'none') {
-      positionLocked = false;
+      // 窗口大小变化时强制重新定位
       positionButton(buttonState.container, activeInput);
-      positionLocked = true;
     }
   });
 
