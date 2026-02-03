@@ -45,6 +45,13 @@ export const getStyles = (): string => `
   transform: scale(0.9);
 }
 
+/* 暗色模式下反转图标颜色 */
+@media (prefers-color-scheme: dark) {
+  .prompt-enhancer-btn img {
+    filter: invert(1);
+  }
+}
+
 /* P2-3.6: 焦点样式（无障碍） */
 .prompt-enhancer-btn:focus {
   outline: 2px solid #4a90d9;
