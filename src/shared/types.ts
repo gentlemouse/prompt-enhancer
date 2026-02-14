@@ -25,6 +25,33 @@ export enum TaskType {
   RESEARCH = 'RESEARCH',
 }
 
+/**
+ * 优化策略枚举
+ * 根据输入特征和上下文动态选择
+ */
+export enum OptimizationStrategy {
+  /** 轻润色：简短指令，只补充缺失信息 */
+  LIGHT_POLISH = 'LIGHT_POLISH',
+  /** 结构化重写：首轮复杂请求，搭建完整框架 */
+  STRUCTURAL_REWRITE = 'STRUCTURAL_REWRITE',
+  /** 意图澄清：多轮追问，使追问更具体 */
+  INTENT_CLARIFY = 'INTENT_CLARIFY',
+  /** 微调锐化：已写得不错的 prompt，只做措辞优化 */
+  SHARPEN = 'SHARPEN',
+  /** 约束追加：补充/修正类指令，在原 prompt 上追加 */
+  CONSTRAINT_APPEND = 'CONSTRAINT_APPEND',
+}
+
+/** 会话历史记录项 */
+export interface HistoryItem {
+  /** 用户输入的原始文本 */
+  text: string;
+  /** 时间戳 */
+  timestamp: number;
+  /** 优化后的文本（如有） */
+  enhanced?: string;
+}
+
 /** API 提供商类型 */
 export type APIProvider = 'openai' | 'anthropic' | 'deepseek' | 'custom';
 
@@ -42,6 +69,8 @@ export interface APIProviderConfig {
 export interface PromptAnalysis {
   taskType: TaskType;
   reasoningMode: ReasoningMode;
+  /** 动态优化策略 */
+  strategy: OptimizationStrategy;
   language: 'zh' | 'en';
   length: number;
   hasCode: boolean;
@@ -52,6 +81,14 @@ export interface PromptAnalysis {
   needsChainOfThought: boolean;
   needsReflection: boolean;
   originalPrompt: string;
+  /** 是否为追问（基于会话历史判断） */
+  isFollowUp: boolean;
+  /** 是否为修正/补充指令 */
+  isCorrection: boolean;
+  /** 是否已有良好结构 */
+  hasGoodStructure: boolean;
+  /** 会话历史摘要（如有） */
+  historySummary?: string;
 }
 
 /** 存储配置接口 */

@@ -18,11 +18,12 @@ import {
   findEditableElement,
   isValidInput,
   getActiveInput,
-  setInputValue,
+  setInputValueDirect,
   getInputValue,
   type EditableElement,
 } from './services/input-detector';
 import { tryUndo, saveOriginalContent } from './services/enhance-handler';
+import { initSessionMemory, pushHistory, updateLastEnhanced, getHistory } from './services/session-memory';
 
 /** 获取图标 URL */
 const ICON_URL = chrome.runtime.getURL('icons/icon24.png');
@@ -106,6 +107,9 @@ const handleStreamingEnhance = async (input: EditableElement): Promise<void> => 
   // 保存原始内容用于撤回
   saveOriginalContent(input, originalText);
 
+  // 记录到会话历史
+  pushHistory(originalText);
+
   // 生成请求 ID
   currentRequestId = Date.now().toString();
   streamingInput = input;
@@ -114,29 +118,30 @@ const handleStreamingEnhance = async (input: EditableElement): Promise<void> => 
   // 设置按钮流式状态
   setButtonStreaming(buttonState, true);
 
-  // 清空输入框，准备接收流式内容
-  setInputValue(input, '');
+  // 清空输入框，准备接收流式内容（静默写入，不创建 undo 记录）
+  setInputValueDirect(input, '');
   showToast('润色中...');
 
-  // 发送流式请求
+  // 发送流式请求（附带会话历史）
   try {
     const response = await chrome.runtime.sendMessage({
       action: 'enhancePromptStreaming',
       prompt: originalText,
-      tabId: 0, // background 会从 sender.tab.id 获取
+      tabId: 0,
       requestId: currentRequestId,
+      history: getHistory(),
     });
 
     if (!response?.success) {
-      // 恢复原始内容
-      setInputValue(input, originalText);
+      // 恢复原始内容（静默写入，无需 undo 记录）
+      setInputValueDirect(input, originalText);
       showToast('✗ ' + (response?.error || '请求失败'));
       resetStreamingState();
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : '未知错误';
-    // 恢复原始内容
-    setInputValue(input, originalText);
+    // 恢复原始内容（静默写入，无需 undo 记录）
+    setInputValueDirect(input, originalText);
     if (errorMessage.includes('Extension context invalidated')) {
       showToast('扩展已更新，请刷新页面');
     } else {
@@ -171,6 +176,9 @@ const handleButtonClick = (): void => {
  * 初始化
  */
 const init = (): void => {
+  // 初始化会话记忆
+  initSessionMemory();
+
   // 创建按钮
   buttonState = createEnhanceButton(ICON_URL, handleButtonClick);
   buttonState.container.style.display = 'none';
@@ -251,16 +259,20 @@ const init = (): void => {
 
   // 监听来自 background 的流式消息
   chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
-    // 流式数据块 - 直接更新输入框
+    // 流式数据块 - 静默写入输入框（不创建 undo 记录）
     if (req.action === 'streamChunk' && req.requestId === currentRequestId && streamingInput) {
       streamingText += req.chunk;
-      setInputValue(streamingInput, streamingText);
+      setInputValueDirect(streamingInput, streamingText);
       sendResponse({ success: true });
       return;
     }
 
     // 流式完成
     if (req.action === 'streamEnd' && req.requestId === currentRequestId) {
+      // 更新会话历史中的增强结果
+      if (streamingText) {
+        updateLastEnhanced(streamingText);
+      }
       showToast('✓ 完成 (Ctrl+Z 可撤回)');
       resetStreamingState();
       sendResponse({ success: true });

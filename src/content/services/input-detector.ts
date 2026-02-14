@@ -1,142 +1,246 @@
 /**
  * 输入框检测服务
- * P1-2.5: 优化 MutationObserver，改为白名单站点检测
+ *
+ * 检测策略（三层过滤）：
+ *
+ * Layer 1 - 站点分类：
+ *   AI 聊天站点（白名单）→ 放宽检测
+ *   其他站点 → 严格检测
+ *
+ * Layer 2 - 元素类型分流：
+ *   contenteditable → 通过特征检测（role、富文本框架、aria 属性）判断
+ *   textarea → 尺寸过滤
+ *   input[text] → 仅 AI 站点检测，排除数字/控件型
+ *
+ * Layer 3 - 智能排除：
+ *   使用 HTML 语义属性（type、inputMode、min/max/step、role）排除
+ *   而非脆弱的子串匹配
  */
 
-import { AI_CHAT_DOMAINS, VALID_INPUT_TYPES } from '@shared/constants';
+import { AI_CHAT_DOMAINS } from '@shared/constants';
 
 /** 可编辑元素类型 */
 export type EditableElement = HTMLTextAreaElement | HTMLInputElement | HTMLElement;
 
-/** 排除的输入框特征（name、id、placeholder、class 中包含这些关键词则排除） */
-const EXCLUDED_INPUT_PATTERNS = [
-  // 数字相关
-  'number',
-  'num',
-  'amount',
-  'price',
-  'cost',
-  'quantity',
-  'qty',
-  'count',
-  'size',
-  'width',
-  'height',
-  'pixel',
-  'px',
-  'percent',
-  'ratio',
-  'scale',
-  'zoom',
-  'opacity',
-  'weight',
-  'age',
-  'year',
-  'month',
-  'day',
-  'hour',
-  'minute',
-  'second',
-  'duration',
-  'length',
-  'limit',
-  'max',
-  'min',
-  'step',
-  'range',
-  'slider',
-  'rating',
-  'score',
-  'level',
-  'index',
-  'page',
-  'offset',
-  // 金融相关
-  'currency',
-  'money',
-  'budget',
-  'balance',
-  'fee',
-  'tax',
-  'discount',
-  // 技术参数
-  'port',
-  'timeout',
-  'interval',
-  'threshold',
-  'radius',
-  'margin',
-  'padding',
-  'spacing',
-  'gap',
-  'border',
-  'font-size',
-  'line-height',
-  // 其他控件
-  'color',
-  'picker',
-  'date',
-  'time',
-  'phone',
-  'zip',
-  'postal',
-  'code',
-  'pin',
-  'otp',
-  'verification',
-  'captcha',
-];
-
-/** 最小输入框尺寸要求 */
-const MIN_INPUT_WIDTH = 120;
-const MIN_INPUT_HEIGHT = 28;
-const MIN_TEXTAREA_WIDTH = 150;
-const MIN_TEXTAREA_HEIGHT = 50;
+// ==========================================================
+//  站点分类
+// ==========================================================
 
 /**
- * 检查是否在 AI 聊天网站
+ * 检查是否在 AI 聊天网站（白名单）
+ * 白名单站点享受放宽的检测规则
  */
 export const isAIChatSite = (): boolean => {
   const hostname = window.location.hostname;
   return AI_CHAT_DOMAINS.some(domain => hostname.includes(domain));
 };
 
+// ==========================================================
+//  contenteditable 检测
+// ==========================================================
+
+/** 已知富文本编辑器框架的选择器 */
+const RICH_EDITOR_SELECTORS = [
+  '.ProseMirror',
+  '.DraftEditor-root',
+  '[data-slate-editor]',
+  '.ql-editor',
+  '.tiptap',
+  '.cm-content',
+  '.CodeMirror-code',
+];
+
+/** 表示"文本输入区"的 role 值 */
+const TEXTBOX_ROLES = ['textbox', 'combobox'];
+
+/** aria-label / data-placeholder 中的正向关键词 */
+const TEXT_INPUT_KEYWORDS = [
+  'message',
+  'prompt',
+  'chat',
+  'ask',
+  'query',
+  'input',
+  'type',
+  'send',
+  'write',
+  'compose',
+  'reply',
+  'comment',
+  '消息',
+  '输入',
+  '提问',
+  '对话',
+  '发送',
+  '回复',
+  '评论',
+  '搜索',
+];
+
+/** 容器级别的正向 CSS 类名片段（用于检测父级上下文） */
+const CHAT_CONTAINER_PATTERNS = [
+  'chat',
+  'message',
+  'prompt',
+  'editor',
+  'compose',
+  'conversation',
+  'dialog',
+];
+
 /**
- * 检查输入框是否应该被排除（数字输入框、小型控件等）
- * @param el 输入框元素
+ * 查找 contenteditable 根元素
+ * 与 isContentEditable（继承属性）不同，
+ * 这里查找真正设置了 contenteditable="true" 的最近祖先
+ *
+ * 策略：取最内层（最接近焦点的）有效根元素，
+ * 避免选中覆盖大面积区域的外层容器导致按钮错位
+ * @param el 起始元素
  */
-const shouldExcludeInput = (el: HTMLInputElement): boolean => {
-  // 检查 inputmode 属性
-  const inputMode = el.inputMode?.toLowerCase() || '';
-  if (inputMode === 'numeric' || inputMode === 'decimal' || inputMode === 'tel') {
-    return true;
+const findContentEditableRoot = (el: Element): HTMLElement | null => {
+  let current: Element | null = el;
+
+  // 先检查自身
+  if (
+    current instanceof HTMLElement &&
+    (current.getAttribute('contenteditable') === 'true' ||
+      current.getAttribute('contenteditable') === '')
+  ) {
+    return current;
   }
 
-  // 检查 pattern 属性（数字模式）
-  const pattern = el.pattern || '';
-  if (/^\[?\\?d|^\d|\{\d/.test(pattern)) {
-    return true;
+  // 向上查找最近的 contenteditable="true" 祖先
+  current = el.parentElement;
+  while (current && current !== document.body) {
+    if (current instanceof HTMLElement) {
+      const attr = current.getAttribute('contenteditable');
+      if (attr === 'false') break;
+      if (attr === 'true' || attr === '') {
+        return current;
+      }
+    }
+    current = current.parentElement;
   }
 
-  // 获取所有可检查的属性值
-  const checkValues = [
-    el.name,
-    el.id,
-    el.placeholder,
-    el.className,
+  return null;
+};
+
+/**
+ * 检测 contenteditable 元素是否为有效的文本输入区
+ * @param el contenteditable 根元素
+ */
+const isValidContentEditable = (el: HTMLElement): boolean => {
+  const rect = el.getBoundingClientRect();
+
+  // 基本尺寸检查
+  if (rect.width < 80 || rect.height < 24) return false;
+  // 排除覆盖整个视口的区域（可能是整个页面的 contenteditable）
+  if (rect.height > window.innerHeight * 0.7) return false;
+
+  // AI 聊天站点：尺寸通过就接受
+  if (isAIChatSite()) return true;
+
+  // --- 非 AI 站点：需要更强的正向信号 ---
+
+  // 信号 1：role 属性
+  const role = el.getAttribute('role')?.toLowerCase() || '';
+  if (TEXTBOX_ROLES.includes(role)) return true;
+
+  // 信号 2：匹配已知富文本编辑器框架
+  for (const selector of RICH_EDITOR_SELECTORS) {
+    if (el.matches(selector) || el.querySelector(selector)) return true;
+  }
+
+  // 信号 3：aria-label / data-placeholder 包含文本输入关键词
+  const hintText = [
     el.getAttribute('aria-label'),
-    el.getAttribute('data-testid'),
+    el.getAttribute('aria-placeholder'),
+    el.getAttribute('data-placeholder'),
+    el.getAttribute('placeholder'),
   ]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
 
-  // 检查是否匹配排除模式
-  return EXCLUDED_INPUT_PATTERNS.some(pattern => checkValues.includes(pattern));
+  if (hintText && TEXT_INPUT_KEYWORDS.some(kw => hintText.includes(kw))) {
+    return true;
+  }
+
+  // 信号 4：父级有聊天/消息相关的容器类名
+  const parentClasses = (el.parentElement?.className || '').toLowerCase();
+  if (CHAT_CONTAINER_PATTERNS.some(p => parentClasses.includes(p))) {
+    return true;
+  }
+
+  // 没有足够信号，拒绝
+  return false;
 };
 
+// ==========================================================
+//  textarea 检测
+// ==========================================================
+
 /**
- * 验证输入框是否有效
+ * 检测 textarea 是否有效
+ * @param el textarea 元素
+ */
+const isValidTextarea = (el: HTMLTextAreaElement): boolean => {
+  const rect = el.getBoundingClientRect();
+
+  if (isAIChatSite()) {
+    // AI 站点：放宽尺寸
+    return rect.width >= 80 && rect.height >= 20;
+  }
+
+  // 非 AI 站点：要求较大的 textarea（过滤掉表单中的小备注框）
+  return rect.width >= 200 && rect.height >= 50;
+};
+
+// ==========================================================
+//  input 检测
+// ==========================================================
+
+/** 接受的 input type 白名单 */
+const VALID_INPUT_TYPES = ['text', 'search', ''];
+
+/**
+ * 检测 input 是否为有效的文本输入框
+ * 非 AI 站点直接拒绝所有 input（单行输入框几乎不用于输入 prompt）
+ * @param el input 元素
+ */
+const isValidTextInput = (el: HTMLInputElement): boolean => {
+  // 非 AI 站点不检测 input 元素
+  if (!isAIChatSite()) return false;
+
+  const inputType = el.type?.toLowerCase() || '';
+  if (!VALID_INPUT_TYPES.includes(inputType)) return false;
+
+  // 排除：inputMode 为数字类型
+  const inputMode = el.inputMode?.toLowerCase() || '';
+  if (['numeric', 'decimal', 'tel'].includes(inputMode)) return false;
+
+  // 排除：有 min/max/step 属性（数字滑块/计数器）
+  if (el.hasAttribute('min') || el.hasAttribute('max') || el.hasAttribute('step')) {
+    return false;
+  }
+
+  // 排除：role 为数字控件
+  const role = el.getAttribute('role')?.toLowerCase() || '';
+  if (['spinbutton', 'slider', 'progressbar', 'meter'].includes(role)) {
+    return false;
+  }
+
+  // 尺寸检查
+  const rect = el.getBoundingClientRect();
+  return rect.width >= 100 && rect.height >= 20;
+};
+
+// ==========================================================
+//  统一校验接口
+// ==========================================================
+
+/**
+ * 验证元素是否为有效的可编辑输入区
  * @param el 要验证的元素
  */
 export const isValidInput = (el: Element | null): el is EditableElement => {
@@ -144,91 +248,57 @@ export const isValidInput = (el: Element | null): el is EditableElement => {
 
   const tag = el.tagName;
 
-  // TEXTAREA - 需要足够大的尺寸
   if (tag === 'TEXTAREA') {
-    const rect = el.getBoundingClientRect();
-    // AI 聊天站点放宽尺寸要求
-    if (isAIChatSite()) {
-      return rect.width >= 100 && rect.height >= 30;
-    }
-    return rect.width >= MIN_TEXTAREA_WIDTH && rect.height >= MIN_TEXTAREA_HEIGHT;
+    return isValidTextarea(el as HTMLTextAreaElement);
   }
 
-  // INPUT 检查类型和尺寸
   if (tag === 'INPUT') {
-    const input = el as HTMLInputElement;
-    const inputType = input.type?.toLowerCase() || '';
-
-    // 类型必须在白名单中
-    if (!VALID_INPUT_TYPES.includes(inputType)) return false;
-
-    // 检查是否应该排除（数字输入框等）
-    if (shouldExcludeInput(input)) return false;
-
-    const rect = el.getBoundingClientRect();
-
-    // AI 聊天站点放宽尺寸要求
-    if (isAIChatSite()) {
-      return rect.width >= 80 && rect.height >= 20;
-    }
-
-    // 非 AI 站点要求更大的输入框
-    return rect.width >= MIN_INPUT_WIDTH && rect.height >= MIN_INPUT_HEIGHT;
+    return isValidTextInput(el as HTMLInputElement);
   }
 
-  // contenteditable 或 role="textbox" 只在 AI 聊天网站上检测
-  if (isAIChatSite()) {
-    const htmlEl = el as HTMLElement;
-    const isEditable = htmlEl.isContentEditable;
-    const hasTextboxRole = el.getAttribute('role') === 'textbox';
-
-    if (isEditable || hasTextboxRole) {
-      const rect = el.getBoundingClientRect();
-      // 最小尺寸要求（放宽以支持更多富文本编辑器）
-      if (rect.width < 80 || rect.height < 24) return false;
-      // 放宽最大高度限制，允许更大的编辑区域
-      if (rect.height > window.innerHeight * 0.8) return false;
-      return true;
-    }
+  // contenteditable 元素
+  if ((el as HTMLElement).isContentEditable) {
+    return isValidContentEditable(el as HTMLElement);
   }
 
   return false;
 };
 
+// ==========================================================
+//  查找可编辑元素
+// ==========================================================
+
 /**
- * 查找可编辑元素
- * 始终返回包含点击位置的最内层有效的可编辑容器
- * @param el 起始元素
+ * 从事件目标查找可编辑元素
+ * @param el 起始元素（通常是事件目标）
  */
 export const findEditableElement = (el: Element | null): EditableElement | null => {
   if (!el) return null;
 
-  // 直接是 TEXTAREA，需要通过 isValidInput 验证尺寸
+  // textarea：直接验证
   if (el.tagName === 'TEXTAREA') {
-    return isValidInput(el) ? (el as HTMLTextAreaElement) : null;
+    return isValidTextarea(el as HTMLTextAreaElement) ? (el as HTMLTextAreaElement) : null;
   }
 
-  // 是 INPUT，需要通过完整验证（类型、尺寸、排除规则）
+  // input：直接验证
   if (el.tagName === 'INPUT') {
-    return isValidInput(el) ? (el as HTMLInputElement) : null;
+    return isValidTextInput(el as HTMLInputElement) ? (el as HTMLInputElement) : null;
   }
 
-  // 只在 AI 聊天网站上检测 contenteditable 和 role="textbox"
-  if (!isAIChatSite()) return null;
-
-  // 从当前元素开始向上查找第一个有效的可编辑容器
-  // 这样无论点击在编辑器的哪个子元素上，都会返回同一个容器
-  let current: Element | null = el;
-  while (current && current !== document.body) {
-    const htmlEl = current as HTMLElement;
-    if ((htmlEl.isContentEditable || current.getAttribute('role') === 'textbox') && isValidInput(current)) {
-      return htmlEl;
+  // contenteditable：查找根元素再验证
+  if ((el as HTMLElement).isContentEditable) {
+    const root = findContentEditableRoot(el);
+    if (root && isValidContentEditable(root)) {
+      return root;
     }
-    current = current.parentElement;
   }
 
   return null;
 };
+
+// ==========================================================
+//  值读写
+// ==========================================================
 
 /**
  * 获取输入框的值
@@ -242,20 +312,65 @@ export const getInputValue = (el: EditableElement): string => {
 };
 
 /**
- * 设置输入框的值
+ * 静默设置输入框的值（不创建浏览器 undo 记录）
+ * 用于流式输出等频繁更新场景
+ * @param el 输入框元素
+ * @param value 要设置的值
+ */
+export const setInputValueDirect = (el: EditableElement, value: string): void => {
+  if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+    const input = el as HTMLTextAreaElement | HTMLInputElement;
+    const proto =
+      el.tagName === 'TEXTAREA'
+        ? HTMLTextAreaElement.prototype
+        : HTMLInputElement.prototype;
+    const nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+    if (nativeSetter) {
+      nativeSetter.call(input, value);
+    } else {
+      input.value = value;
+    }
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  } else {
+    el.textContent = value;
+    el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+  }
+};
+
+/**
+ * 设置输入框的值（支持浏览器原生单步 undo）
+ * 通过 execCommand 实现，Ctrl+Z 可一次撤回全部更改
  * @param el 输入框元素
  * @param value 要设置的值
  */
 export const setInputValue = (el: EditableElement, value: string): void => {
   if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
-    (el as HTMLTextAreaElement | HTMLInputElement).value = value;
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+    const input = el as HTMLTextAreaElement | HTMLInputElement;
+    input.focus();
+    input.select();
+    if (!document.execCommand('insertText', false, value)) {
+      input.value = value;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   } else {
-    el.innerText = value;
-    el.dispatchEvent(new InputEvent('input', { bubbles: true, data: value }));
+    el.focus();
+    const selection = window.getSelection();
+    if (selection) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    if (!document.execCommand('insertText', false, value)) {
+      el.innerText = value;
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, data: value }));
+    }
   }
 };
+
+// ==========================================================
+//  输入框检测器（事件监听）
+// ==========================================================
 
 /** 输入框检测器配置 */
 interface InputDetectorConfig {
@@ -265,47 +380,46 @@ interface InputDetectorConfig {
 
 /**
  * 创建输入框检测器
- * P1-2.5: 优化检测策略，减少不必要的 Observer
+ * 监听页面焦点事件，自动发现可编辑元素
  */
 export const createInputDetector = (config: InputDetectorConfig): (() => void) => {
   const { onFocus, onBlur } = config;
   let activeInput: EditableElement | null = null;
   let observer: MutationObserver | null = null;
 
-  // 处理焦点获取
+  /** 处理焦点获取 */
   const handleFocusIn = (e: FocusEvent): void => {
     const target = findEditableElement(e.target as Element);
-    if (target && isValidInput(target) && target !== activeInput) {
+    if (target) {
       activeInput = target;
       onFocus(target);
     }
   };
 
-  // 处理焦点丢失
+  /** 处理焦点丢失 */
   const handleFocusOut = (): void => {
     setTimeout(() => {
       const newFocus = document.activeElement;
-      const newTarget = findEditableElement(newFocus);
-      if (!newTarget || !isValidInput(newTarget)) {
-        activeInput = null; // 清空活跃输入框
+      const newTarget = newFocus ? findEditableElement(newFocus) : null;
+      if (!newTarget) {
         onBlur();
       }
     }, 200);
   };
 
-  // 处理点击
+  /** 处理点击（补充 focusin 的不足） */
   const handleClick = (e: MouseEvent): void => {
     const target = findEditableElement(e.target as Element);
-    if (target && isValidInput(target) && target !== activeInput) {
+    if (target) {
       activeInput = target;
       onFocus(target);
     }
   };
 
-  // 处理输入
+  /** 处理输入事件（捕获新出现的输入框） */
   const handleInput = (e: Event): void => {
     const target = findEditableElement(e.target as Element);
-    if (target && isValidInput(target) && target !== activeInput) {
+    if (target && target !== activeInput) {
       activeInput = target;
       onFocus(target);
     }
@@ -317,26 +431,25 @@ export const createInputDetector = (config: InputDetectorConfig): (() => void) =
   document.addEventListener('click', handleClick, true);
   document.addEventListener('input', handleInput, true);
 
-  // P1-2.5: 仅在 AI 聊天网站启用 MutationObserver
-  if (isAIChatSite()) {
-    observer = new MutationObserver(() => {
-      const focused = document.activeElement;
-      if (focused && focused !== document.body) {
-        const target = findEditableElement(focused);
-        if (target && isValidInput(target) && target !== activeInput) {
-          activeInput = target;
-          onFocus(target);
-        }
+  // MutationObserver：监听动态 DOM 变化（SPA 路由切换等）
+  // 仅在检测到 contenteditable 时有意义
+  observer = new MutationObserver(() => {
+    const focused = document.activeElement;
+    if (focused && focused !== document.body) {
+      const target = findEditableElement(focused);
+      if (target && target !== activeInput) {
+        activeInput = target;
+        onFocus(target);
       }
-    });
+    }
+  });
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['contenteditable', 'style', 'class'],
-    });
-  }
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['contenteditable'],
+  });
 
   // 返回清理函数
   return (): void => {

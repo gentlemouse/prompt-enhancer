@@ -160,11 +160,12 @@ chrome.runtime.onMessage.addListener(
           if (!tabId) {
             return { success: false, error: '无法获取 tab ID' };
           }
-          // 流式处理在单独的函数中进行
+          // 流式处理（传递会话历史）
           enhancePromptStreaming(
             request.prompt,
             tabId,
-            request.requestId || Date.now().toString()
+            request.requestId || Date.now().toString(),
+            ((request as unknown as Record<string, unknown>).history as import('@shared/types').HistoryItem[]) || []
           );
           return { success: true };
         }

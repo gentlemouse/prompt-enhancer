@@ -236,29 +236,10 @@ apiKeyInput.addEventListener('keypress', e => {
 import { showOnboarding, checkNeedsOnboarding } from './onboarding';
 
 /**
- * 检测并通知颜色方案，用于切换工具栏图标
- */
-const setupColorSchemeDetection = (): void => {
-  const notifyColorScheme = (isDark: boolean): void => {
-    chrome.runtime.sendMessage({ action: 'colorSchemeChange', isDark }).catch(() => {
-      // 忽略错误
-    });
-  };
-
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  notifyColorScheme(mediaQuery.matches);
-
-  mediaQuery.addEventListener('change', e => {
-    notifyColorScheme(e.matches);
-  });
-};
-
-/**
  * 初始化
  */
 const initialize = async (): Promise<void> => {
   updateShortcutDisplay();
-  setupColorSchemeDetection();
 
   // 检查是否需要 Onboarding
   const needsOnboarding = await checkNeedsOnboarding();

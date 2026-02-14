@@ -264,38 +264,61 @@ export const COMPLEXITY_SIGNALS = {
   ],
 };
 
-/** AI 聊天网站白名单 - 只在这些网站上检测 contenteditable */
+/**
+ * AI 聊天网站白名单
+ * 这些站点上放宽检测规则：
+ * - contenteditable 仅需尺寸通过即可
+ * - textarea 尺寸要求更低
+ * - input[text] 也会被检测
+ */
 export const AI_CHAT_DOMAINS: string[] = [
+  // OpenAI
   'chat.openai.com',
   'chatgpt.com',
+  // Anthropic
   'claude.ai',
+  // Google
   'gemini.google.com',
-  'bard.google.com',
-  'poe.com',
-  'perplexity.ai',
+  'aistudio.google.com',
+  // Microsoft
+  'copilot.microsoft.com',
+  // DeepSeek
+  'chat.deepseek.com',
+  // Mistral
   'chat.mistral.ai',
+  // Meta
+  'meta.ai',
+  // xAI
+  'grok.com',
+  // Perplexity
+  'perplexity.ai',
+  // Poe
+  'poe.com',
+  // HuggingFace
   'huggingface.co',
+  // 其他海外
   'you.com',
   'phind.com',
-  'copilot.microsoft.com',
-  'chat.deepseek.com',
+  'character.ai',
+  'pi.ai',
+  'chat.lmsys.org',
+  'arena.lmsys.org',
+  // 国内 AI
   'kimi.moonshot.cn',
   'tongyi.aliyun.com',
   'yiyan.baidu.com',
   'xinghuo.xfyun.cn',
   'chat.zhipu.ai',
-  'character.ai',
-  'pi.ai',
-];
-
-/** 支持的 INPUT 类型 */
-export const VALID_INPUT_TYPES: string[] = [
-  'text',
-  'search',
-  'url',
-  'email',
-  'tel',
-  '',
+  'doubao.com',
+  'yuanbao.tencent.com',
+  'tiangong.cn',
+  // 第三方客户端 / 自部署
+  'lobechat.com',
+  'open-webui.com',
+  'chatbox.ai',
+  'typingmind.com',
+  'nextchat.dev',
+  'chat.vercel.ai',
 ];
 
 /** 重试配置 */

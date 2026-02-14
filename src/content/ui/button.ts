@@ -139,6 +139,9 @@ export const setButtonStreaming = (state: ButtonState, streaming: boolean): void
 
 /**
  * 定位按钮
+ * 始终右对齐，垂直位置根据输入框类型自适应：
+ * - 单行输入框（input）：垂直居中
+ * - 多行输入框（textarea / contenteditable）：右下角
  * @param container 容器元素
  * @param input 输入框元素
  */
@@ -150,22 +153,117 @@ export const positionButton = (
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
-  const btnWidth = 32;
-  const btnHeight = 32;
-  const padding = 4;
+  const btnSize = 32;
+  const margin = 6;
 
-  // 计算按钮位置：在输入框的右下角
-  // 使用 Math.round 避免浮点数导致的位置抖动
-  let top = Math.round(rect.bottom - btnHeight - padding);
-  let left = Math.round(rect.right - btnWidth - padding);
+  // 安全检查：输入框必须在视口中可见且尺寸合理
+  if (
+    rect.width < 50 ||
+    rect.height < 10 ||
+    rect.bottom < 0 ||
+    rect.top > viewportHeight ||
+    rect.right < 0 ||
+    rect.left > viewportWidth ||
+    // 输入框面积超过视口 50% → 大概率是选错了元素
+    rect.width * rect.height > viewportWidth * viewportHeight * 0.5
+  ) {
+    container.style.display = 'none';
+    return;
+  }
+
+  // 水平：始终右对齐，贴在输入框右侧内边缘
+  let left = Math.round(rect.right - btnSize - margin);
+
+  // 垂直：根据输入框高度决定
+  let top: number;
+  const isMultiline =
+    input.tagName === 'TEXTAREA' ||
+    (input.tagName !== 'INPUT' && rect.height > 60);
+
+  if (isMultiline) {
+    // 多行：右下角
+    top = Math.round(rect.bottom - btnSize - margin);
+  } else {
+    // 单行：垂直居中
+    top = Math.round(rect.top + (rect.height - btnSize) / 2);
+  }
 
   // 确保不超出视口
-  top = Math.max(padding, Math.min(top, viewportHeight - btnHeight - padding));
-  left = Math.max(padding, Math.min(left, viewportWidth - btnWidth - padding));
+  top = Math.max(2, Math.min(top, viewportHeight - btnSize - 2));
+  left = Math.max(2, Math.min(left, viewportWidth - btnSize - 2));
 
   container.style.top = `${top}px`;
   container.style.left = `${left}px`;
   container.style.display = 'flex';
+
+  // 检测输入框背景亮度，自动切换图标颜色
+  const btn = container.querySelector('.prompt-enhancer-btn') as HTMLElement;
+  if (btn) {
+    updateButtonTheme(btn, input);
+  }
+};
+
+/**
+ * 检测元素附近的实际背景亮度
+ * 向上遍历 DOM 找到第一个有效背景色，计算相对亮度
+ * @param el 目标元素
+ * @returns 是否为暗色背景
+ */
+const detectDarkBackground = (el: HTMLElement): boolean => {
+  let current: HTMLElement | null = el;
+
+  while (current) {
+    const style = getComputedStyle(current);
+    const bg = style.backgroundColor;
+
+    // 跳过透明背景
+    if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') {
+      // 解析 rgb/rgba
+      const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        // 相对亮度公式 (ITU-R BT.709)
+        const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        return luminance < 0.5;
+      }
+    }
+
+    current = current.parentElement;
+  }
+
+  // 回退：检查 body 背景色
+  const bodyBg = getComputedStyle(document.body).backgroundColor;
+  const bodyMatch = bodyBg?.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (bodyMatch) {
+    const lum =
+      (0.2126 * parseInt(bodyMatch[1]) +
+        0.7152 * parseInt(bodyMatch[2]) +
+        0.0722 * parseInt(bodyMatch[3])) /
+      255;
+    return lum < 0.5;
+  }
+
+  return false;
+};
+
+/**
+ * 更新按钮的暗色/亮色样式
+ * 根据输入框附近的实际背景色决定是否反色
+ * @param button 按钮元素
+ * @param input 输入框元素
+ */
+export const updateButtonTheme = (
+  button: HTMLElement,
+  input: HTMLElement
+): void => {
+  const isDark = detectDarkBackground(input);
+  if (isDark) {
+    button.classList.add('on-dark');
+  } else {
+    button.classList.remove('on-dark');
+  }
 };
 
 /**

@@ -33,18 +33,16 @@
 
 .prompt-enhancer-btn:hover {
   opacity: 1;
-  transform: scale(1.15);
+  transform: scale(1.05);
 }
 
 .prompt-enhancer-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.92);
 }
 
-/* 暗色模式下反转图标颜色 */
-@media (prefers-color-scheme: dark) {
-  .prompt-enhancer-btn img {
-    filter: invert(1);
-  }
+/* 暗色页面：通过 JS 检测实际背景色后添加 .on-dark 类 */
+.prompt-enhancer-btn.on-dark img {
+  filter: invert(1);
 }
 
 /* 焦点样式（无障碍） */

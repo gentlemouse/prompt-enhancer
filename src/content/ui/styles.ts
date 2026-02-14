@@ -35,60 +35,109 @@ export const getStyles = (): string => `
   opacity: 0.7;
 }
 
-/* Hover 时发光效果 */
+/* Hover：克制地提亮 */
 .prompt-enhancer-btn:hover {
   opacity: 1;
-  transform: scale(1.15);
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.prompt-enhancer-btn:hover img {
-  filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.8)) drop-shadow(0 0 12px rgba(255, 165, 0, 0.6));
+  transform: scale(1.05);
 }
 
 .prompt-enhancer-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.92);
 }
 
-/* 生成中的脉冲发光动画 */
-@keyframes magic-glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6)) drop-shadow(0 0 8px rgba(255, 165, 0, 0.4));
-  }
-  50% {
-    filter: drop-shadow(0 0 10px rgba(255, 215, 0, 1)) drop-shadow(0 0 20px rgba(255, 165, 0, 0.8));
-  }
-}
-
+/* 生成中：魔法棒施法效果 */
 .prompt-enhancer-btn.generating {
   opacity: 1;
+  pointer-events: none;
+  position: relative;
 }
 
+/* 图标微浮动 + 多层金色光晕 */
 .prompt-enhancer-btn.generating img {
-  animation: magic-glow 1s ease-in-out infinite;
+  animation: wand-float 2.4s ease-in-out infinite, wand-glow 1.6s ease-in-out infinite;
 }
 
-/* 暗色模式下反转图标颜色，同时保留发光效果 */
-@media (prefers-color-scheme: dark) {
-  .prompt-enhancer-btn img {
-    filter: invert(1);
-  }
-  
-  .prompt-enhancer-btn:hover img {
-    filter: invert(1) drop-shadow(0 0 6px rgba(255, 215, 0, 0.8)) drop-shadow(0 0 12px rgba(255, 165, 0, 0.6));
-  }
-  
-  .prompt-enhancer-btn.generating img {
-    animation: magic-glow-dark 1s ease-in-out infinite;
-  }
+/* 轻微浮动：营造"悬浮施法"感 */
+@keyframes wand-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
 }
 
-@keyframes magic-glow-dark {
+/* 金色光晕脉冲：从内层暖金到外层柔光 */
+@keyframes wand-glow {
   0%, 100% {
-    filter: invert(1) drop-shadow(0 0 4px rgba(255, 215, 0, 0.6)) drop-shadow(0 0 8px rgba(255, 165, 0, 0.4));
+    filter:
+      drop-shadow(0 0 3px rgba(255, 200, 60, 0.5))
+      drop-shadow(0 0 6px rgba(255, 170, 30, 0.3));
   }
   50% {
-    filter: invert(1) drop-shadow(0 0 10px rgba(255, 215, 0, 1)) drop-shadow(0 0 20px rgba(255, 165, 0, 0.8));
+    filter:
+      drop-shadow(0 0 5px rgba(255, 215, 80, 0.85))
+      drop-shadow(0 0 12px rgba(255, 180, 40, 0.55))
+      drop-shadow(0 0 22px rgba(255, 150, 20, 0.25));
+  }
+}
+
+/* 星尘粒子：按钮伪元素 */
+.prompt-enhancer-btn.generating::before,
+.prompt-enhancer-btn.generating::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 220, 100, 0.9), rgba(255, 180, 50, 0) 70%);
+  pointer-events: none;
+}
+
+.prompt-enhancer-btn.generating::before {
+  top: 2px;
+  right: 0px;
+  animation: sparkle-a 1.8s ease-in-out infinite;
+}
+
+.prompt-enhancer-btn.generating::after {
+  top: 6px;
+  right: -2px;
+  animation: sparkle-b 2.2s ease-in-out infinite 0.4s;
+}
+
+@keyframes sparkle-a {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  20% { opacity: 1; transform: translate(-4px, -6px) scale(1); }
+  60% { opacity: 0.6; transform: translate(-8px, -10px) scale(0.8); }
+  100% { opacity: 0; transform: translate(-12px, -14px) scale(0.3); }
+}
+
+@keyframes sparkle-b {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  25% { opacity: 0.9; transform: translate(3px, -7px) scale(1.1); }
+  65% { opacity: 0.4; transform: translate(5px, -12px) scale(0.7); }
+  100% { opacity: 0; transform: translate(6px, -16px) scale(0.2); }
+}
+
+/* 暗色页面：通过 JS 检测实际背景色后添加 .on-dark 类 */
+.prompt-enhancer-btn.on-dark img {
+  filter: invert(1);
+}
+
+.prompt-enhancer-btn.on-dark.generating img {
+  animation: wand-float 2.4s ease-in-out infinite, wand-glow-dark 1.6s ease-in-out infinite;
+}
+
+@keyframes wand-glow-dark {
+  0%, 100% {
+    filter:
+      invert(1)
+      drop-shadow(0 0 3px rgba(255, 200, 60, 0.5))
+      drop-shadow(0 0 6px rgba(255, 170, 30, 0.3));
+  }
+  50% {
+    filter:
+      invert(1)
+      drop-shadow(0 0 5px rgba(255, 215, 80, 0.85))
+      drop-shadow(0 0 12px rgba(255, 180, 40, 0.55))
+      drop-shadow(0 0 22px rgba(255, 150, 20, 0.25));
   }
 }
 
