@@ -94,7 +94,16 @@ export default {
       const body = (await request.json()) as {
         messages: Array<{ role: string; content: string }>;
         model?: string;
+        stream?: boolean;
+        temperature?: number;
+        max_tokens?: number;
       };
+
+      const wantStream = body.stream === true;
+
+      await env.RATE_LIMITER.put(dailyKey, String(currentCount + 1), {
+        expirationTtl: 86400,
+      });
 
       const apiResponse = await fetch(
         'https://api.deepseek.com/v1/chat/completions',
@@ -107,8 +116,9 @@ export default {
           body: JSON.stringify({
             model: body.model || 'deepseek-chat',
             messages: body.messages,
-            max_tokens: 2048,
-            temperature: 0.7,
+            max_tokens: body.max_tokens || 2048,
+            temperature: body.temperature ?? 0.7,
+            stream: wantStream,
           }),
         }
       );
@@ -124,9 +134,17 @@ export default {
         );
       }
 
-      await env.RATE_LIMITER.put(dailyKey, String(currentCount + 1), {
-        expirationTtl: 86400,
-      });
+      if (wantStream) {
+        return new Response(apiResponse.body, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            Connection: 'keep-alive',
+            'X-Daily-Remaining': String(dailyLimit - currentCount - 1),
+          },
+        });
+      }
 
       const result = await apiResponse.json();
 
