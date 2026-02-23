@@ -25,9 +25,9 @@ const createOnboardingUI = (onComplete: () => void): HTMLElement => {
       </div>
       <div class="onboarding-content">
         <div class="onboarding-step active" data-step="0">
-          <div class="step-icon">🔑</div>
-          <h3>配置 API Key</h3>
-          <p>选择你的 AI 服务提供商，并输入 API Key。你的密钥将被加密存储在本地，不会上传或同步。</p>
+          <div class="step-icon">🎁</div>
+          <h3 data-i18n="trialWelcome">免费体验，即刻开始</h3>
+          <p data-i18n="trialWelcomeDesc">您有 10 次免费试用额度，无需配置即可体验 Prompt 润色功能。试用结束后，配置您自己的 API Key 即可无限制使用。</p>
         </div>
         <div class="onboarding-step" data-step="1">
           <div class="step-icon">⌨️</div>

@@ -28,6 +28,9 @@ npm-debug.log*
 # Husky
 .husky/_
 
+# Test coverage
+coverage/
+
 # Cache
 .cache/
 .parcel-cache/

@@ -7,6 +7,13 @@ import type { APIProvider, APIProviderConfig } from '@shared/types';
 import { getStorageConfig, saveStorageConfig } from '@shared/storage';
 import { validateEndpoint, validateApiKey } from '@shared/utils/validation';
 import { API_PROVIDERS } from '@shared/constants';
+import { t, applyI18n } from '@shared/i18n';
+
+// 试用横幅 DOM 元素
+const trialBanner = document.getElementById('trialBanner') as HTMLElement;
+const trialLabel = document.getElementById('trialLabel') as HTMLElement;
+const trialCount = document.getElementById('trialCount') as HTMLElement;
+const trialFill = document.getElementById('trialFill') as HTMLElement;
 
 // DOM 元素
 const providerSelect = document.getElementById('provider') as HTMLSelectElement;
@@ -91,13 +98,13 @@ const validateCustomEndpoint = (): boolean => {
   const result = validateEndpoint(endpoint);
 
   if (!result.valid) {
-    endpointHint.textContent = result.error || '无效的地址';
+    endpointHint.textContent = result.error || t('statusInvalidEndpoint');
     endpointHint.className = 'hint error';
     customEndpointInput.classList.add('error');
     return false;
   }
 
-  endpointHint.textContent = '✓ 地址格式正确';
+  endpointHint.textContent = t('statusEndpointOk');
   endpointHint.className = 'hint success';
   customEndpointInput.classList.remove('error');
   return true;
@@ -136,7 +143,7 @@ const loadSettings = async (): Promise<void> => {
       anthropicAck.checked = true;
     }
   } catch {
-    showStatus('加载设置失败，请刷新', 'error');
+    showStatus(t('statusLoadFailed'), 'error');
   }
 };
 
@@ -153,21 +160,19 @@ const saveSettings = async (): Promise<void> => {
   // 验证 API Key
   const keyValidation = validateApiKey(apiKey, apiProvider);
   if (!keyValidation.valid) {
-    showStatus(keyValidation.error || '请输入 API Key', 'error');
+    showStatus(keyValidation.error || t('statusEnterApiKey'), 'error');
     return;
   }
 
-  // P0-1.4: 验证自定义 Endpoint
   if (apiProvider === 'custom') {
     if (!validateCustomEndpoint()) {
-      showStatus('请检查 API 地址', 'error');
+      showStatus(t('statusCheckEndpoint'), 'error');
       return;
     }
   }
 
-  // P0-1.3: 检查 Anthropic 警告确认
   if (apiProvider === 'anthropic' && !anthropicAck.checked) {
-    showStatus('请先确认 Anthropic 安全警告', 'error');
+    showStatus(t('statusConfirmAnthropic'), 'error');
     return;
   }
 
@@ -185,10 +190,10 @@ const saveSettings = async (): Promise<void> => {
       anthropicWarningAcknowledged:
         apiProvider === 'anthropic' ? anthropicAck.checked : undefined,
     });
-    showStatus('设置已保存', 'success');
+    showStatus(t('statusSaved'), 'success');
   } catch (error) {
     showStatus(
-      '保存失败: ' + (error instanceof Error ? error.message : '未知错误'),
+      t('statusSaveFailed', error instanceof Error ? error.message : t('statusUnknownError')),
       'error'
     );
   }
@@ -236,19 +241,96 @@ apiKeyInput.addEventListener('keypress', e => {
 import { showOnboarding, checkNeedsOnboarding } from './onboarding';
 
 /**
+ * 更新试用横幅显示
+ */
+const updateTrialBanner = async (): Promise<void> => {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'getTrialStatus' });
+    if (!response?.success) return;
+
+    const { trialState, trialRemaining, trialTotal } = response;
+
+    if (trialState === 'API_CONFIGURED') {
+      trialBanner.style.display = 'none';
+      return;
+    }
+
+    trialBanner.style.display = 'block';
+
+    const remaining = trialRemaining ?? 0;
+    const total = trialTotal ?? 10;
+    const pct = Math.round((remaining / total) * 100);
+
+    trialLabel.textContent = remaining > 0 ? t('trialBannerActive') : t('trialBannerExpired');
+    trialCount.textContent = t('trialRemaining', String(remaining), String(total));
+
+    trialFill.style.width = `${pct}%`;
+    trialFill.className = 'trial-banner-fill';
+    if (remaining <= 0) {
+      trialFill.classList.add('expired');
+    } else if (remaining <= 3) {
+      trialFill.classList.add('warning');
+    } else {
+      trialFill.classList.add('good');
+    }
+
+    if (trialState === 'TRIAL_EXPIRED') {
+      showTrialExpiredOverlay();
+    }
+  } catch {
+    // 试用状态查询失败不影响主流程
+  }
+};
+
+/**
+ * 显示试用结束引导覆盖层
+ */
+const showTrialExpiredOverlay = (): void => {
+  if (document.getElementById('trialExpiredOverlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'trialExpiredOverlay';
+  overlay.className = 'trial-expired-overlay';
+  overlay.innerHTML = `
+    <div class="trial-expired-icon">🔓</div>
+    <div class="trial-expired-title" data-i18n="trialUnlock"></div>
+    <div class="trial-expired-desc" data-i18n="trialExpiredOverlayDesc"></div>
+    <div class="trial-expired-steps">
+      <div class="trial-expired-steps-title" data-i18n="trialHowToGetKey"></div>
+      <ol>
+        <li data-i18n="trialStep1"></li>
+        <li data-i18n="trialStep2"></li>
+        <li data-i18n="trialStep3"></li>
+      </ol>
+    </div>
+    <button class="trial-expired-btn" data-i18n="trialStartConfig"></button>
+  `;
+
+  document.body.appendChild(overlay);
+  applyI18n(overlay);
+
+  const btn = overlay.querySelector('.trial-expired-btn') as HTMLButtonElement;
+  btn.addEventListener('click', () => {
+    overlay.remove();
+  });
+};
+
+/**
  * 初始化
  */
 const initialize = async (): Promise<void> => {
+  applyI18n();
   updateShortcutDisplay();
 
-  // 检查是否需要 Onboarding
   const needsOnboarding = await checkNeedsOnboarding();
   if (needsOnboarding) {
     showOnboarding(document.body, () => {
       loadSettings();
+      updateTrialBanner();
     });
   } else {
     loadSettings();
+    updateTrialBanner();
   }
 };
 

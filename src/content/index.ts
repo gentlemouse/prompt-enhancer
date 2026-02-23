@@ -13,6 +13,8 @@ import {
   type ButtonState,
 } from './ui/button';
 import { showToast } from './ui/toast';
+import { showTrialExpiredPrompt } from './ui/trial-prompt';
+import { t } from '@shared/i18n';
 import {
   createInputDetector,
   findEditableElement,
@@ -94,13 +96,13 @@ const handleStreamingEnhance = async (input: EditableElement): Promise<void> => 
 
   // 如果已经在流式输出中，忽略
   if (currentRequestId) {
-    showToast('正在处理中...');
+    showToast(t('toastProcessing'));
     return;
   }
 
   const originalText = getInputValue(input);
   if (!originalText.trim()) {
-    showToast('输入框为空');
+    showToast(t('toastEmpty'));
     return;
   }
 
@@ -120,7 +122,7 @@ const handleStreamingEnhance = async (input: EditableElement): Promise<void> => 
 
   // 清空输入框，准备接收流式内容（静默写入，不创建 undo 记录）
   setInputValueDirect(input, '');
-  showToast('润色中...');
+  showToast(t('toastEnhancing'));
 
   // 发送流式请求（附带会话历史）
   try {
@@ -133,17 +135,21 @@ const handleStreamingEnhance = async (input: EditableElement): Promise<void> => 
     });
 
     if (!response?.success) {
-      // 恢复原始内容（静默写入，无需 undo 记录）
       setInputValueDirect(input, originalText);
-      showToast('✗ ' + (response?.error || '请求失败'));
+      if (response?.error === 'TRIAL_EXPIRED') {
+        showTrialExpiredPrompt();
+      } else {
+        showToast('✗ ' + (response?.error || t('toastRequestFailed')));
+      }
       resetStreamingState();
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : '未知错误';
-    // 恢复原始内容（静默写入，无需 undo 记录）
     setInputValueDirect(input, originalText);
-    if (errorMessage.includes('Extension context invalidated')) {
-      showToast('扩展已更新，请刷新页面');
+    if (errorMessage.includes('TRIAL_EXPIRED')) {
+      showTrialExpiredPrompt();
+    } else if (errorMessage.includes('Extension context invalidated')) {
+      showToast(t('toastRefreshPage'));
     } else {
       showToast('✗ ' + errorMessage);
     }
@@ -169,6 +175,35 @@ const resetStreamingState = (): void => {
 const handleButtonClick = (): void => {
   if (activeInput) {
     handleStreamingEnhance(activeInput);
+  }
+};
+
+/**
+ * 根据剩余试用次数展示分级 Toast 提示
+ */
+const showTrialToast = (remaining: number, total: number, isMac: boolean): void => {
+  const undoHint = isMac ? '⌘Z' : 'Ctrl+Z';
+
+  if (remaining > 5) {
+    showToast({
+      message: `✓ ${t('toastDone').replace(/\(.*\)/, '').trim()}  ·  ${t('trialRemaining', String(remaining), String(total))}`,
+      duration: 3000,
+    });
+  } else if (remaining > 3) {
+    showToast({
+      message: `✓ ${t('toastDone').replace(/\(.*\)/, '').trim()}  ·  ${t('trialRemaining', String(remaining), String(total))}\n${t('trialConfigHint')}`,
+      duration: 4000,
+    });
+  } else if (remaining > 0) {
+    showToast({
+      message: `⚠ ${t('trialLow', String(remaining))}  (${undoHint} ${t('popupUndo')})`,
+      duration: 5000,
+    });
+  } else {
+    showToast({
+      message: `✓ ${t('toastDone').replace(/\(.*\)/, '').trim()}  ·  ${t('trialExpired')}`,
+      duration: 4000,
+    });
   }
 };
 
@@ -231,7 +266,7 @@ const init = (): void => {
       if (e.key === 'Escape' && currentRequestId) {
         e.preventDefault();
         // 取消流式，但保留已生成的内容
-        showToast('已停止生成');
+        showToast(t('toastStopped'));
         resetStreamingState();
         return;
       }
@@ -250,7 +285,7 @@ const init = (): void => {
         if (target) {
           handleStreamingEnhance(target);
         } else {
-          showToast('请先点击输入框');
+          showToast(t('toastClickInput'));
         }
       }
     },
@@ -269,11 +304,20 @@ const init = (): void => {
 
     // 流式完成
     if (req.action === 'streamEnd' && req.requestId === currentRequestId) {
-      // 更新会话历史中的增强结果
       if (streamingText) {
         updateLastEnhanced(streamingText);
       }
-      showToast('✓ 完成 (Ctrl+Z 可撤回)');
+
+      const isMac = navigator.platform.toUpperCase().includes('MAC');
+      const remaining = req.trialRemaining as number | undefined;
+      const total = req.trialTotal as number | undefined;
+
+      if (remaining !== undefined && total !== undefined) {
+        showTrialToast(remaining, total, isMac);
+      } else {
+        showToast(t(isMac ? 'toastDoneMac' : 'toastDone'));
+      }
+
       resetStreamingState();
       sendResponse({ success: true });
       return;
@@ -283,7 +327,7 @@ const init = (): void => {
     if (req.action === 'streamError' && req.requestId === currentRequestId) {
       // 如果已有部分内容，保留它
       if (streamingText) {
-        showToast('⚠ 生成中断，已保留部分内容');
+        showToast(t('toastPartialKept'));
       } else if (streamingInput) {
         // 没有内容时，尝试恢复原始内容
         tryUndo(streamingInput);

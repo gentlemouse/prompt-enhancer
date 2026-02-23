@@ -1,0 +1,242 @@
+{
+  "extName": {
+    "message": "Prompt Enhancer"
+  },
+  "extDescription": {
+    "message": "一键润色优化你的 Prompt，让 AI 更好地理解你的意图"
+  },
+  "commandEnhance": {
+    "message": "润色当前输入框的 Prompt"
+  },
+  "contextMenuEnhance": {
+    "message": "✨ 润色选中的 Prompt"
+  },
+
+  "popupProvider": {
+    "message": "提供商"
+  },
+  "popupCustomApi": {
+    "message": "自定义 API"
+  },
+  "popupApiEndpoint": {
+    "message": "API 地址"
+  },
+  "popupModel": {
+    "message": "模型"
+  },
+  "popupCustomModel": {
+    "message": "自定义模型"
+  },
+  "popupCustomModelPlaceholder": {
+    "message": "模型名称"
+  },
+  "popupApiKey": {
+    "message": "API Key"
+  },
+  "popupApiKeyTooltip": {
+    "message": "仅存储在本地，不会同步或上传"
+  },
+  "popupSave": {
+    "message": "保存"
+  },
+  "popupEnhance": {
+    "message": "润色"
+  },
+  "popupUndo": {
+    "message": "撤回"
+  },
+
+  "popupAnthropicWarning": {
+    "message": "Anthropic API 在浏览器中直接调用需要启用特殊访问模式，这可能带来安全风险。建议仅在信任的网络环境下使用。"
+  },
+  "popupAnthropicAck": {
+    "message": "我已了解并接受风险"
+  },
+
+  "statusSaved": {
+    "message": "设置已保存"
+  },
+  "statusSaveFailed": {
+    "message": "保存失败: $ERROR$",
+    "placeholders": {
+      "error": { "content": "$1" }
+    }
+  },
+  "statusLoadFailed": {
+    "message": "加载设置失败，请刷新"
+  },
+  "statusInvalidEndpoint": {
+    "message": "无效的地址"
+  },
+  "statusEndpointOk": {
+    "message": "✓ 地址格式正确"
+  },
+  "statusCheckEndpoint": {
+    "message": "请检查 API 地址"
+  },
+  "statusEnterApiKey": {
+    "message": "请输入 API Key"
+  },
+  "statusConfirmAnthropic": {
+    "message": "请先确认 Anthropic 安全警告"
+  },
+  "statusUnknownError": {
+    "message": "未知错误"
+  },
+
+  "onboardingTitle": {
+    "message": "欢迎使用 Prompt Enhancer"
+  },
+  "onboardingStep1Title": {
+    "message": "配置 API Key"
+  },
+  "onboardingStep1Desc": {
+    "message": "选择你的 AI 服务提供商，并输入 API Key。你的密钥将被加密存储在本地，不会上传或同步。"
+  },
+  "onboardingStep2Title": {
+    "message": "快捷键"
+  },
+  "onboardingStep2Desc": {
+    "message": "使用 <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> 一键润色当前输入框的内容。"
+  },
+  "onboardingStep2Hint": {
+    "message": "提示：也可以点击输入框旁边的 ✨ 按钮"
+  },
+  "onboardingStep3Title": {
+    "message": "开始使用"
+  },
+  "onboardingStep3Desc": {
+    "message": "一切准备就绪！在任意输入框中输入你的 Prompt，然后点击润色按钮或使用快捷键即可。"
+  },
+  "onboardingStep3Desc2": {
+    "message": "优化后的结果会实时预览，你可以选择应用或取消。"
+  },
+  "onboardingSkip": {
+    "message": "跳过"
+  },
+  "onboardingPrev": {
+    "message": "上一步"
+  },
+  "onboardingNext": {
+    "message": "下一步"
+  },
+  "onboardingStart": {
+    "message": "开始使用"
+  },
+
+  "toastProcessing": {
+    "message": "正在处理中..."
+  },
+  "toastEmpty": {
+    "message": "输入框为空"
+  },
+  "toastEnhancing": {
+    "message": "润色中..."
+  },
+  "toastDone": {
+    "message": "✓ 完成 (Ctrl+Z 可撤回)"
+  },
+  "toastDoneMac": {
+    "message": "✓ 完成 (⌘Z 可撤回)"
+  },
+  "toastStopped": {
+    "message": "已停止生成"
+  },
+  "toastPartialKept": {
+    "message": "⚠ 生成中断，已保留部分内容"
+  },
+  "toastClickInput": {
+    "message": "请先点击输入框"
+  },
+  "toastRefreshPage": {
+    "message": "扩展已更新，请刷新页面"
+  },
+  "toastRequestFailed": {
+    "message": "请求失败"
+  },
+  "toastUndone": {
+    "message": "已撤回"
+  },
+
+  "btnAriaLabel": {
+    "message": "润色 Prompt (Cmd/Ctrl+Shift+E)"
+  },
+  "btnAriaEnhancing": {
+    "message": "正在润色..."
+  },
+  "btnAriaGenerating": {
+    "message": "正在生成..."
+  },
+
+  "errorMissingPrompt": {
+    "message": "缺少 prompt 参数"
+  },
+  "errorMissingTabId": {
+    "message": "无法获取 tab ID"
+  },
+  "errorConfigModel": {
+    "message": "请配置模型名称"
+  },
+  "errorConfigApiKey": {
+    "message": "请先在插件设置中配置 API Key"
+  },
+
+  "trialWelcome": {
+    "message": "免费体验，即刻开始"
+  },
+  "trialWelcomeDesc": {
+    "message": "您有 10 次免费试用额度，无需配置即可体验 Prompt 润色功能。试用结束后，配置您自己的 API Key 即可无限制使用。"
+  },
+  "trialRemaining": {
+    "message": "剩余 $REMAINING$/$TOTAL$ 次",
+    "placeholders": {
+      "remaining": { "content": "$1" },
+      "total": { "content": "$2" }
+    }
+  },
+  "trialLow": {
+    "message": "免费试用仅剩 $COUNT$ 次",
+    "placeholders": {
+      "count": { "content": "$1" }
+    }
+  },
+  "trialConfigHint": {
+    "message": "配置 API Key 可无限使用"
+  },
+  "trialExpired": {
+    "message": "免费试用已用完"
+  },
+  "trialExpiredDesc": {
+    "message": "配置您自己的 API Key 即可继续使用"
+  },
+  "trialUnlock": {
+    "message": "解锁无限使用"
+  },
+  "trialExpiredOverlayDesc": {
+    "message": "您的 10 次免费试用已用完。配置 API Key 即可继续使用 Prompt Enhancer 的全部功能。支持 OpenAI / Anthropic / DeepSeek 等多个服务商。"
+  },
+  "trialHowToGetKey": {
+    "message": "如何获取 API Key？"
+  },
+  "trialStep1": {
+    "message": "注册 AI 服务商账号"
+  },
+  "trialStep2": {
+    "message": "在控制台创建 API Key"
+  },
+  "trialStep3": {
+    "message": "在下方输入并保存"
+  },
+  "trialOpenSettings": {
+    "message": "打开设置"
+  },
+  "trialStartConfig": {
+    "message": "开始配置"
+  },
+  "trialBannerActive": {
+    "message": "🎁 免费试用中"
+  },
+  "trialBannerExpired": {
+    "message": "试用已结束"
+  }
+}

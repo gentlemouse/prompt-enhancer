@@ -345,4 +345,105 @@ export const getStyles = (): string => `
 .prompt-enhancer-preview-btn:focus:not(:focus-visible) {
   outline: none;
 }
+
+/* 试用耗尽提示 */
+.prompt-enhancer-trial-expired {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: rgba(30, 30, 30, 0.96);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  z-index: 2147483647;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  max-width: 340px;
+  text-align: center;
+}
+
+.prompt-enhancer-trial-expired.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.prompt-enhancer-trial-expired-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.prompt-enhancer-trial-expired-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.prompt-enhancer-trial-expired-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+.prompt-enhancer-trial-expired-btn {
+  display: inline-block;
+  padding: 8px 20px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.prompt-enhancer-trial-expired-btn:hover {
+  background: #2563eb;
+}
+
+.prompt-enhancer-trial-expired-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.prompt-enhancer-trial-expired-close:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 试用计数 Toast（带次要信息的扩展样式） */
+.prompt-enhancer-toast-trial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.prompt-enhancer-toast-trial-hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.prompt-enhancer-toast-trial-hint.warning {
+  color: #fbbf24;
+}
+
+.prompt-enhancer-toast-trial-link {
+  color: #60a5fa;
+  cursor: pointer;
+  text-decoration: underline;
+}
 `;

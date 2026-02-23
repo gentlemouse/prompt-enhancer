@@ -53,7 +53,7 @@ export interface HistoryItem {
 }
 
 /** API 提供商类型 */
-export type APIProvider = 'openai' | 'anthropic' | 'deepseek' | 'custom';
+export type APIProvider = 'openai' | 'anthropic' | 'deepseek' | 'custom' | 'proxy';
 
 /** API 提供商配置接口 */
 export interface APIProviderConfig {
@@ -144,7 +144,8 @@ export type MessageAction =
   | 'streamEnd'
   | 'checkOnboarding'
   | 'completeOnboarding'
-  | 'colorSchemeChange';
+  | 'colorSchemeChange'
+  | 'getTrialStatus';
 
 /** 消息接口 */
 export interface ExtensionMessage {
@@ -159,6 +160,9 @@ export interface ExtensionMessage {
   isDark?: boolean;
 }
 
+/** 试用状态 */
+export type TrialState = 'TRIAL_ACTIVE' | 'TRIAL_EXPIRED' | 'API_CONFIGURED';
+
 /** 消息响应接口 */
 export interface MessageResponse {
   success: boolean;
@@ -167,4 +171,7 @@ export interface MessageResponse {
   providers?: Record<APIProvider, APIProviderConfig>;
   hasPermission?: boolean;
   needsOnboarding?: boolean;
+  trialState?: TrialState;
+  trialRemaining?: number;
+  trialTotal?: number;
 }

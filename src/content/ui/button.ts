@@ -4,6 +4,7 @@
  */
 
 import { getShadowHost } from './shadow-host';
+import { t } from '@shared/i18n';
 
 /** 按钮容器类名 */
 const CONTAINER_CLASS = 'prompt-enhancer-container';
@@ -36,7 +37,7 @@ export const createEnhanceButton = (
   button.className = BUTTON_CLASS;
   button.setAttribute('role', 'button');
   button.setAttribute('tabindex', '0');
-  button.setAttribute('aria-label', '润色 Prompt (Cmd/Ctrl+Shift+E)');
+  button.setAttribute('aria-label', t('btnAriaLabel'));
   button.setAttribute('aria-describedby', 'prompt-enhancer-tooltip');
 
   // 创建图标
@@ -49,7 +50,7 @@ export const createEnhanceButton = (
     button.textContent = '✨';
   };
   button.appendChild(img);
-  button.title = '润色 Prompt (Cmd/Ctrl+Shift+E)';
+  button.title = t('btnAriaLabel');
 
   // 创建加载动画元素
   const loader = document.createElement('span');
@@ -102,7 +103,7 @@ export const setButtonLoading = (state: ButtonState, loading: boolean): void => 
     button.classList.add('loading');
     button.style.pointerEvents = 'none';
     button.setAttribute('aria-busy', 'true');
-    button.setAttribute('aria-label', '正在润色...');
+    button.setAttribute('aria-label', t('btnAriaEnhancing'));
   } else {
     if (iconImg) iconImg.style.display = 'block';
     loader.style.display = 'none';
@@ -110,7 +111,7 @@ export const setButtonLoading = (state: ButtonState, loading: boolean): void => 
     button.classList.remove('streaming');
     button.style.pointerEvents = 'auto';
     button.removeAttribute('aria-busy');
-    button.setAttribute('aria-label', '润色 Prompt (Cmd/Ctrl+Shift+E)');
+    button.setAttribute('aria-label', t('btnAriaLabel'));
   }
 };
 
@@ -128,12 +129,12 @@ export const setButtonStreaming = (state: ButtonState, streaming: boolean): void
     button.classList.add('streaming', 'generating'); // 添加 generating 类以触发发光动画
     button.style.pointerEvents = 'none';
     button.setAttribute('aria-busy', 'true');
-    button.setAttribute('aria-label', '正在生成...');
+    button.setAttribute('aria-label', t('btnAriaGenerating'));
   } else {
     button.classList.remove('streaming', 'generating');
     button.style.pointerEvents = 'auto';
     button.removeAttribute('aria-busy');
-    button.setAttribute('aria-label', '润色 Prompt (Cmd/Ctrl+Shift+E)');
+    button.setAttribute('aria-label', t('btnAriaLabel'));
   }
 };
 

@@ -29,6 +29,12 @@ export const API_PROVIDERS: Record<APIProvider, APIProviderConfig> = {
     defaultModel: 'deepseek-chat',
     models: ['deepseek-chat', 'deepseek-reasoner'],
   },
+  proxy: {
+    name: '免费模式（无需 API Key）',
+    endpoint: 'https://prompt-enhancer-proxy.gentlemouse666.workers.dev/v1/enhance',
+    defaultModel: 'deepseek-chat',
+    models: ['deepseek-chat'],
+  },
   custom: {
     name: '自定义 API',
     endpoint: '',
@@ -336,9 +342,13 @@ export const RETRY_CONFIG = {
 /** 存储键名 */
 export const STORAGE_KEYS = {
   CONFIG: 'prompt_enhancer_config',
+  TRIAL_DATA: 'prompt_enhancer_trial',
   LEGACY_API_KEY: 'apiKey',
   LEGACY_PROVIDER: 'apiProvider',
   LEGACY_MODEL: 'model',
   LEGACY_CUSTOM_ENDPOINT: 'customEndpoint',
   LEGACY_CUSTOM_MODEL: 'customModel',
 } as const;
+
+/** 免费试用最大次数 */
+export const TRIAL_MAX_USES = 10;

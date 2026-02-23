@@ -11,11 +11,18 @@ import { API_PROVIDERS } from '@shared/constants';
 
 export type { APICallOptions, APIProviderAdapter, StreamCallback };
 
+/** 代理模式适配器（复用 OpenAI 兼容格式） */
+const proxyAdapter = createOpenAIAdapter(
+  'Proxy',
+  API_PROVIDERS.proxy.endpoint
+);
+
 /** 提供商适配器映射 */
 const adapters: Record<Exclude<APIProvider, 'custom'>, APIProviderAdapter> = {
   openai: openaiAdapter,
   anthropic: anthropicAdapter,
   deepseek: deepseekAdapter,
+  proxy: proxyAdapter,
 };
 
 /**

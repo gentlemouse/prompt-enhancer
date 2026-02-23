@@ -3,9 +3,11 @@
  * 处理扩展的后台逻辑
  */
 
-import { enhancePrompt, enhancePromptStreaming } from './enhancer';
-import { API_PROVIDERS } from '@shared/constants';
-import type { ExtensionMessage, MessageResponse } from '@shared/types';
+import { enhancePrompt, enhancePromptStreaming, updateTrialBadge } from './enhancer';
+import { API_PROVIDERS, TRIAL_MAX_USES } from '@shared/constants';
+import { getTrialData } from '@shared/trial';
+import { getStorageConfig } from '@shared/storage';
+import type { ExtensionMessage, MessageResponse, TrialState } from '@shared/types';
 
 /** 颜色方案存储键 */
 const COLOR_SCHEME_KEY = 'prompt_enhancer_color_scheme';
@@ -38,8 +40,9 @@ const initColorScheme = async (): Promise<void> => {
   }
 };
 
-// Service Worker 启动时初始化颜色方案
+// Service Worker 启动时初始化
 initColorScheme();
+updateTrialBadge();
 
 /**
  * 动态注入 Content Script
@@ -138,7 +141,7 @@ chrome.runtime.onMessage.addListener(
       switch (request.action) {
         case 'enhancePrompt': {
           if (!request.prompt) {
-            return { success: false, error: '缺少 prompt 参数' };
+            return { success: false, error: 'Missing prompt parameter' };
           }
           try {
             const enhanced = await enhancePrompt(request.prompt);
@@ -146,19 +149,19 @@ chrome.runtime.onMessage.addListener(
           } catch (error) {
             return {
               success: false,
-              error: error instanceof Error ? error.message : '未知错误',
+              error: error instanceof Error ? error.message : 'Unknown error',
             };
           }
         }
 
         case 'enhancePromptStreaming': {
           if (!request.prompt) {
-            return { success: false, error: '缺少 prompt 参数' };
+            return { success: false, error: 'Missing prompt parameter' };
           }
           // 从 sender 获取 tab ID
           const tabId = sender.tab?.id || request.tabId;
           if (!tabId) {
-            return { success: false, error: '无法获取 tab ID' };
+            return { success: false, error: 'Cannot get tab ID' };
           }
           // 流式处理（传递会话历史）
           enhancePromptStreaming(
@@ -176,7 +179,7 @@ chrome.runtime.onMessage.addListener(
 
         case 'injectContentScript': {
           if (!request.tabId) {
-            return { success: false, error: '缺少 tabId 参数' };
+            return { success: false, error: 'Missing tabId parameter' };
           }
           const injected = await injectContentScript(request.tabId);
           return { success: injected };
@@ -184,7 +187,7 @@ chrome.runtime.onMessage.addListener(
 
         case 'checkPermission': {
           if (!request.origin) {
-            return { success: false, error: '缺少 origin 参数' };
+            return { success: false, error: 'Missing origin parameter' };
           }
           const hasPermission = await checkHostPermission(request.origin);
           return { success: true, hasPermission };
@@ -192,7 +195,7 @@ chrome.runtime.onMessage.addListener(
 
         case 'requestPermission': {
           if (!request.origin) {
-            return { success: false, error: '缺少 origin 参数' };
+            return { success: false, error: 'Missing origin parameter' };
           }
           const granted = await requestHostPermission(request.origin);
           return { success: granted, hasPermission: granted };
@@ -209,6 +212,27 @@ chrome.runtime.onMessage.addListener(
           return { success: true };
         }
 
+        case 'getTrialStatus': {
+          const config = await getStorageConfig();
+          if (config?.apiKey) {
+            return {
+              success: true,
+              trialState: 'API_CONFIGURED' as TrialState,
+              trialRemaining: TRIAL_MAX_USES,
+              trialTotal: TRIAL_MAX_USES,
+            };
+          }
+          const trialData = await getTrialData();
+          const remaining = Math.max(0, trialData.maxUses - trialData.usedCount);
+          const state: TrialState = remaining > 0 ? 'TRIAL_ACTIVE' : 'TRIAL_EXPIRED';
+          return {
+            success: true,
+            trialState: state,
+            trialRemaining: remaining,
+            trialTotal: trialData.maxUses,
+          };
+        }
+
         // 暗色模式切换
         case 'colorSchemeChange': {
           setIconForColorScheme(request.isDark === true);
@@ -216,7 +240,7 @@ chrome.runtime.onMessage.addListener(
         }
 
         default:
-          return { success: false, error: '未知的操作类型' };
+          return { success: false, error: 'Unknown action type' };
       }
     };
 
@@ -231,9 +255,17 @@ chrome.runtime.onMessage.addListener(
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'enhancePrompt',
-    title: '✨ 润色选中的 Prompt',
+    title: chrome.i18n.getMessage('contextMenuEnhance'),
     contexts: ['selection'],
   });
+  updateTrialBadge();
+});
+
+/** 监听存储变化 — 用户保存 API Key 后立即清除 Badge */
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes['prompt_enhancer_config']) {
+    updateTrialBadge();
+  }
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {

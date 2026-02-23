@@ -6,6 +6,7 @@
 import type { EditableElement } from './input-detector';
 import { getInputValue, setInputValue } from './input-detector';
 import { showToast } from '../ui/toast';
+import { t } from '@shared/i18n';
 import type { ButtonState } from '../ui/button';
 import { setButtonLoading } from '../ui/button';
 
@@ -43,14 +44,14 @@ export const handleEnhance = async (
 ): Promise<void> => {
   // 检查扩展 context 是否有效
   if (!isExtensionContextValid()) {
-    showToast('请刷新页面后重试');
+    showToast(t('toastRefreshPage'));
     return;
   }
 
   const originalText = getInputValue(input);
 
   if (!originalText.trim()) {
-    showToast('输入框为空');
+    showToast(t('toastEmpty'));
     return;
   }
 
@@ -97,7 +98,7 @@ export const tryUndo = (input: EditableElement): boolean => {
     const original = originalContents.get(input)!;
     setInputValue(input, original);
     originalContents.delete(input);
-    showToast('已撤回');
+    showToast(t('toastUndone'));
     return true;
   }
   return false;

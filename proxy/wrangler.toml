@@ -1,0 +1,13 @@
+name = "prompt-enhancer-proxy"
+main = "worker.ts"
+compatibility_date = "2024-12-01"
+
+# KV namespace for rate limiting
+[[kv_namespaces]]
+binding = "RATE_LIMITER"
+id = "84f01a690bc24a018b6d6d27f3051106"
+
+[vars]
+DAILY_LIMIT = "10"
+
+# Secret: DEEPSEEK_API_KEY (set via wrangler secret put)

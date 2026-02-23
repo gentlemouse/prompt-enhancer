@@ -8,9 +8,10 @@ import { defineManifest } from '@crxjs/vite-plugin';
  */
 export default defineManifest({
   manifest_version: 3,
-  name: 'Prompt Enhancer',
-  version: '1.1.0',
-  description: '一键润色优化你的 Prompt，让 AI 更好地理解你的意图',
+  name: '__MSG_extName__',
+  version: '1.2.0',
+  description: '__MSG_extDescription__',
+  default_locale: 'en',
 
   // P0-1.1: 权限最小化 - 仅请求必要权限
   permissions: [
@@ -73,7 +74,7 @@ export default defineManifest({
         default: 'Ctrl+Shift+E',
         mac: 'Command+Shift+E',
       },
-      description: '润色当前输入框的 Prompt',
+      description: '__MSG_commandEnhance__',
     },
   },
 

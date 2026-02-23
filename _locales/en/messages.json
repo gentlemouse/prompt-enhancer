@@ -1,0 +1,242 @@
+{
+  "extName": {
+    "message": "Prompt Enhancer"
+  },
+  "extDescription": {
+    "message": "One-click prompt polishing to help AI better understand your intent"
+  },
+  "commandEnhance": {
+    "message": "Enhance current input prompt"
+  },
+  "contextMenuEnhance": {
+    "message": "✨ Enhance selected Prompt"
+  },
+
+  "popupProvider": {
+    "message": "Provider"
+  },
+  "popupCustomApi": {
+    "message": "Custom API"
+  },
+  "popupApiEndpoint": {
+    "message": "API Endpoint"
+  },
+  "popupModel": {
+    "message": "Model"
+  },
+  "popupCustomModel": {
+    "message": "Custom Model"
+  },
+  "popupCustomModelPlaceholder": {
+    "message": "Model name"
+  },
+  "popupApiKey": {
+    "message": "API Key"
+  },
+  "popupApiKeyTooltip": {
+    "message": "Stored locally only, never synced or uploaded"
+  },
+  "popupSave": {
+    "message": "Save"
+  },
+  "popupEnhance": {
+    "message": "Enhance"
+  },
+  "popupUndo": {
+    "message": "Undo"
+  },
+
+  "popupAnthropicWarning": {
+    "message": "Anthropic API requires special access mode when called directly from browsers, which may pose security risks. Use only in trusted network environments."
+  },
+  "popupAnthropicAck": {
+    "message": "I understand and accept the risks"
+  },
+
+  "statusSaved": {
+    "message": "Settings saved"
+  },
+  "statusSaveFailed": {
+    "message": "Save failed: $ERROR$",
+    "placeholders": {
+      "error": { "content": "$1" }
+    }
+  },
+  "statusLoadFailed": {
+    "message": "Failed to load settings, please refresh"
+  },
+  "statusInvalidEndpoint": {
+    "message": "Invalid endpoint"
+  },
+  "statusEndpointOk": {
+    "message": "✓ Endpoint format correct"
+  },
+  "statusCheckEndpoint": {
+    "message": "Please check the API endpoint"
+  },
+  "statusEnterApiKey": {
+    "message": "Please enter an API Key"
+  },
+  "statusConfirmAnthropic": {
+    "message": "Please confirm the Anthropic security warning first"
+  },
+  "statusUnknownError": {
+    "message": "Unknown error"
+  },
+
+  "onboardingTitle": {
+    "message": "Welcome to Prompt Enhancer"
+  },
+  "onboardingStep1Title": {
+    "message": "Configure API Key"
+  },
+  "onboardingStep1Desc": {
+    "message": "Choose your AI service provider and enter API Key. Your key will be encrypted and stored locally — never uploaded or synced."
+  },
+  "onboardingStep2Title": {
+    "message": "Shortcuts"
+  },
+  "onboardingStep2Desc": {
+    "message": "Press <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> to enhance the current input."
+  },
+  "onboardingStep2Hint": {
+    "message": "Tip: You can also click the ✨ button next to the input"
+  },
+  "onboardingStep3Title": {
+    "message": "Get Started"
+  },
+  "onboardingStep3Desc": {
+    "message": "All set! Type your prompt in any input field, then click the enhance button or use the shortcut."
+  },
+  "onboardingStep3Desc2": {
+    "message": "Enhanced results will preview in real-time — apply or cancel as you wish."
+  },
+  "onboardingSkip": {
+    "message": "Skip"
+  },
+  "onboardingPrev": {
+    "message": "Previous"
+  },
+  "onboardingNext": {
+    "message": "Next"
+  },
+  "onboardingStart": {
+    "message": "Get Started"
+  },
+
+  "toastProcessing": {
+    "message": "Processing..."
+  },
+  "toastEmpty": {
+    "message": "Input is empty"
+  },
+  "toastEnhancing": {
+    "message": "Enhancing..."
+  },
+  "toastDone": {
+    "message": "✓ Done (Ctrl+Z to undo)"
+  },
+  "toastDoneMac": {
+    "message": "✓ Done (⌘Z to undo)"
+  },
+  "toastStopped": {
+    "message": "Generation stopped"
+  },
+  "toastPartialKept": {
+    "message": "⚠ Interrupted, partial content kept"
+  },
+  "toastClickInput": {
+    "message": "Please click an input field first"
+  },
+  "toastRefreshPage": {
+    "message": "Extension updated, please refresh the page"
+  },
+  "toastRequestFailed": {
+    "message": "Request failed"
+  },
+  "toastUndone": {
+    "message": "Undone"
+  },
+
+  "btnAriaLabel": {
+    "message": "Enhance Prompt (Cmd/Ctrl+Shift+E)"
+  },
+  "btnAriaEnhancing": {
+    "message": "Enhancing..."
+  },
+  "btnAriaGenerating": {
+    "message": "Generating..."
+  },
+
+  "errorMissingPrompt": {
+    "message": "Missing prompt parameter"
+  },
+  "errorMissingTabId": {
+    "message": "Cannot get tab ID"
+  },
+  "errorConfigModel": {
+    "message": "Please configure a model name"
+  },
+  "errorConfigApiKey": {
+    "message": "Please configure an API Key in extension settings"
+  },
+
+  "trialWelcome": {
+    "message": "Try It Free, Start Now"
+  },
+  "trialWelcomeDesc": {
+    "message": "You have 10 free trials — no setup needed. After the trial, configure your own API Key for unlimited use."
+  },
+  "trialRemaining": {
+    "message": "$REMAINING$/$TOTAL$ remaining",
+    "placeholders": {
+      "remaining": { "content": "$1" },
+      "total": { "content": "$2" }
+    }
+  },
+  "trialLow": {
+    "message": "Only $COUNT$ free trial(s) left",
+    "placeholders": {
+      "count": { "content": "$1" }
+    }
+  },
+  "trialConfigHint": {
+    "message": "Configure API Key for unlimited use"
+  },
+  "trialExpired": {
+    "message": "Free trial expired"
+  },
+  "trialExpiredDesc": {
+    "message": "Configure your API Key to continue"
+  },
+  "trialUnlock": {
+    "message": "Unlock Unlimited Use"
+  },
+  "trialExpiredOverlayDesc": {
+    "message": "Your 10 free trials have been used. Configure an API Key to continue using all features of Prompt Enhancer. Supports OpenAI, Anthropic, DeepSeek and more."
+  },
+  "trialHowToGetKey": {
+    "message": "How to get an API Key?"
+  },
+  "trialStep1": {
+    "message": "Sign up for an AI service provider"
+  },
+  "trialStep2": {
+    "message": "Create an API Key in the console"
+  },
+  "trialStep3": {
+    "message": "Enter and save it below"
+  },
+  "trialOpenSettings": {
+    "message": "Open Settings"
+  },
+  "trialStartConfig": {
+    "message": "Start Configuration"
+  },
+  "trialBannerActive": {
+    "message": "🎁 Free Trial"
+  },
+  "trialBannerExpired": {
+    "message": "Trial Ended"
+  }
+}

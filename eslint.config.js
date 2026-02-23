@@ -56,8 +56,10 @@ export default [
         RequestInit: 'readonly',
         // Streaming & Shadow DOM
         TextDecoder: 'readonly',
+        TextEncoder: 'readonly',
         ShadowRoot: 'readonly',
         HTMLElementTagNameMap: 'readonly',
+        getComputedStyle: 'readonly',
       },
     },
     plugins: {
