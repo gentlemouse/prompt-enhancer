@@ -153,6 +153,7 @@ export const enhancePromptStreaming = async (
     const provider = config.apiProvider || 'openai';
 
     const analysis = analyzePrompt(originalPrompt, history);
+    let receivedContent = false;
 
     await streamingCall({
       provider,
@@ -166,11 +167,11 @@ export const enhancePromptStreaming = async (
             strategy: analysis.strategy,
             taskType: analysis.taskType,
             siteDomain: 'streaming',
-            success: true,
+            success: receivedContent,
             isFollowUp: analysis.isFollowUp,
           });
 
-          if (isProxyMode) {
+          if (isProxyMode && receivedContent) {
             const trialData = await incrementTrialUsage();
             const remaining = trialData.maxUses - trialData.usedCount;
             updateTrialBadge();
@@ -187,6 +188,7 @@ export const enhancePromptStreaming = async (
             });
           }
         } else {
+          receivedContent = true;
           chrome.tabs.sendMessage(tabId, {
             action: 'streamChunk',
             requestId,

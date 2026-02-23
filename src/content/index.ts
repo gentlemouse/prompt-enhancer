@@ -182,26 +182,27 @@ const handleButtonClick = (): void => {
  * 根据剩余试用次数展示分级 Toast 提示
  */
 const showTrialToast = (remaining: number, total: number, isMac: boolean): void => {
-  const undoHint = isMac ? '⌘Z' : 'Ctrl+Z';
+  const undoKey = isMac ? '⌘Z' : 'Ctrl+Z';
+  const doneBase = `✓ ${t('popupUndo')} ${undoKey}`;
 
   if (remaining > 5) {
     showToast({
-      message: `✓ ${t('toastDone').replace(/\(.*\)/, '').trim()}  ·  ${t('trialRemaining', String(remaining), String(total))}`,
+      message: `${doneBase}  ·  ${t('trialRemaining', String(remaining), String(total))}`,
       duration: 3000,
     });
   } else if (remaining > 3) {
     showToast({
-      message: `✓ ${t('toastDone').replace(/\(.*\)/, '').trim()}  ·  ${t('trialRemaining', String(remaining), String(total))}\n${t('trialConfigHint')}`,
+      message: `${doneBase}  ·  ${t('trialRemaining', String(remaining), String(total))}`,
       duration: 4000,
     });
   } else if (remaining > 0) {
     showToast({
-      message: `⚠ ${t('trialLow', String(remaining))}  (${undoHint} ${t('popupUndo')})`,
+      message: `⚠ ${t('trialLow', String(remaining))}  (${undoKey})`,
       duration: 5000,
     });
   } else {
     showToast({
-      message: `✓ ${t('toastDone').replace(/\(.*\)/, '').trim()}  ·  ${t('trialExpired')}`,
+      message: `✓ ${t('trialExpired')}`,
       duration: 4000,
     });
   }

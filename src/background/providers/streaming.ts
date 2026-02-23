@@ -45,7 +45,25 @@ const parseSSELine = (line: string): string | null => {
 };
 
 /**
+ * 尝试从非流式 JSON 响应中提取内容
+ * 代理等后端可能忽略 stream 参数，返回标准 OpenAI JSON
+ */
+const extractFromJSONResponse = (text: string): string | null => {
+  try {
+    const json = JSON.parse(text);
+    const content = json?.choices?.[0]?.message?.content;
+    if (typeof content === 'string' && content.length > 0) {
+      return content;
+    }
+  } catch {
+    // 不是合法 JSON，忽略
+  }
+  return null;
+};
+
+/**
  * OpenAI 兼容的流式调用
+ * 兼容非流式响应（代理模式可能返回标准 JSON）
  */
 export const streamOpenAI = async (options: StreamingOptions): Promise<void> => {
   const { apiKey, model, analysis, endpoint, onChunk, onError } = options;
@@ -80,6 +98,21 @@ export const streamOpenAI = async (options: StreamingOptions): Promise<void> => 
       throw new Error(error.error?.message || `API 调用失败: ${response.status}`);
     }
 
+    const contentType = response.headers.get('content-type') || '';
+    const isSSE = contentType.includes('text/event-stream');
+
+    if (!isSSE) {
+      const text = await response.text();
+      const content = extractFromJSONResponse(text);
+      if (content) {
+        onChunk(content, false);
+        onChunk('', true);
+      } else {
+        onError(new Error('API 返回了空内容'));
+      }
+      return;
+    }
+
     const reader = response.body?.getReader();
     if (!reader) {
       throw new Error('无法获取响应流');
@@ -87,6 +120,7 @@ export const streamOpenAI = async (options: StreamingOptions): Promise<void> => 
 
     const decoder = new TextDecoder();
     let buffer = '';
+    let hasContent = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -99,20 +133,25 @@ export const streamOpenAI = async (options: StreamingOptions): Promise<void> => 
       for (const line of lines) {
         const content = parseSSELine(line.trim());
         if (content) {
+          hasContent = true;
           onChunk(content, false);
         }
       }
     }
 
-    // 处理剩余缓冲区
     if (buffer.trim()) {
       const content = parseSSELine(buffer.trim());
       if (content) {
+        hasContent = true;
         onChunk(content, false);
       }
     }
 
-    onChunk('', true);
+    if (hasContent) {
+      onChunk('', true);
+    } else {
+      onError(new Error('API 未返回任何内容'));
+    }
   } catch (error) {
     onError(error instanceof Error ? error : new Error(String(error)));
   }
