@@ -1,7 +1,8 @@
 {
   "name": "prompt-enhancer",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "一键润色优化你的 Prompt，让 AI 更好地理解你的意图",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

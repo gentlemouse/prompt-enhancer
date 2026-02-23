@@ -8,14 +8,67 @@ import { openaiAdapter, deepseekAdapter, createOpenAIAdapter } from './openai';
 import { anthropicAdapter } from './anthropic';
 import { streamOpenAI, streamAnthropic, type StreamCallback } from './streaming';
 import { API_PROVIDERS } from '@shared/constants';
+import { getDeviceFingerprint } from '@shared/fingerprint';
+import { buildSystemPrompt, buildUserMessage } from '../prompt-builder';
+import { withRetry, fetchWithTimeout } from '@shared/utils/retry';
 
 export type { APICallOptions, APIProviderAdapter, StreamCallback };
 
-/** 代理模式适配器（复用 OpenAI 兼容格式） */
-const proxyAdapter = createOpenAIAdapter(
-  'Proxy',
-  API_PROVIDERS.proxy.endpoint
-);
+/** OpenAI 格式响应 */
+interface ProxyResponse {
+  choices: Array<{ message: { content: string } }>;
+  error?: { message: string };
+}
+
+/**
+ * 代理模式适配器
+ * 在请求中附带设备指纹，用于服务端限额
+ */
+const proxyAdapter: APIProviderAdapter = {
+  name: 'Proxy',
+
+  async call(options: APICallOptions): Promise<string> {
+    const { model, analysis } = options;
+    const systemPrompt = buildSystemPrompt(analysis);
+    const userMessage = buildUserMessage(analysis.originalPrompt, analysis);
+    const fp = await getDeviceFingerprint();
+
+    const response = await withRetry(
+      async () => {
+        const res = await fetchWithTimeout(
+          API_PROVIDERS.proxy.endpoint,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Device-FP': fp,
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userMessage },
+              ],
+              temperature: 0.5,
+              max_tokens: 2000,
+            }),
+          },
+          30000
+        );
+
+        if (!res.ok) {
+          const error = (await res.json()) as ProxyResponse;
+          throw new Error(error.error?.message || `API 调用失败: ${res.status}`);
+        }
+        return res;
+      },
+      { maxRetries: 2 }
+    );
+
+    const data = (await response.json()) as ProxyResponse;
+    return data.choices[0].message.content;
+  },
+};
 
 /** 提供商适配器映射 */
 const adapters: Record<Exclude<APIProvider, 'custom'>, APIProviderAdapter> = {
@@ -73,8 +126,18 @@ export const streamingCall = async (options: StreamingCallOptions): Promise<void
       onChunk,
       onError,
     });
+  } else if (provider === 'proxy') {
+    const fp = await getDeviceFingerprint();
+    await streamOpenAI({
+      apiKey,
+      model,
+      analysis,
+      endpoint,
+      onChunk,
+      onError,
+      extraHeaders: { 'X-Device-FP': fp },
+    });
   } else {
-    // OpenAI, DeepSeek, Custom 都使用 OpenAI 兼容格式
     await streamOpenAI({
       apiKey,
       model,

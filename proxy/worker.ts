@@ -3,14 +3,14 @@
  *
  * 功能：
  * - 为免费用户代理 AI API 调用（无需自备 API Key）
- * - 每用户每日限额控制（基于 IP hash）
- * - 速率限制防滥用
+ * - IP hash + 设备指纹双重限额控制
+ * - 流式/非流式响应透传
  * - CORS 支持 Chrome 扩展调用
  *
- * 部署：wrangler deploy proxy/worker.ts
+ * 部署：cd proxy && wrangler deploy
  *
  * 环境变量（wrangler.toml 或 Dashboard 设置）：
- * - DEEPSEEK_API_KEY: DeepSeek API Key
+ * - DEEPSEEK_API_KEY: DeepSeek API Key（secret）
  * - DAILY_LIMIT: 每用户每日限额（默认 10）
  */
 
@@ -20,10 +20,9 @@ interface Env {
   RATE_LIMITER: KVNamespace;
 }
 
-/** 默认每日限额 */
 const DEFAULT_DAILY_LIMIT = 10;
 
-/** IP hash 用于匿名限额计数 */
+/** 将 IP 哈希为匿名标识 */
 async function hashIP(ip: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(ip + '-prompt-enhancer-salt');
@@ -32,17 +31,16 @@ async function hashIP(ip: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 }
 
-/** 获取当日 key */
-function getDailyKey(ipHash: string): string {
+/** 生成当日限额 key */
+function getDailyKey(identifier: string): string {
   const today = new Date().toISOString().slice(0, 10);
-  return `limit:${today}:${ipHash}`;
+  return `limit:${today}:${identifier}`;
 }
 
-/** CORS 头 */
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Device-FP',
 };
 
 export default {
@@ -67,22 +65,30 @@ export default {
     }
 
     try {
+      // ---- 双重限额检查 ----
       const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+      const deviceFP = request.headers.get('X-Device-FP') || '';
       const ipHash = await hashIP(clientIP);
-      const dailyKey = getDailyKey(ipHash);
       const dailyLimit = parseInt(env.DAILY_LIMIT || '', 10) || DEFAULT_DAILY_LIMIT;
 
-      const currentCount = parseInt(
-        (await env.RATE_LIMITER.get(dailyKey)) || '0',
-        10
-      );
+      const ipKey = getDailyKey(ipHash);
+      const ipCount = parseInt((await env.RATE_LIMITER.get(ipKey)) || '0', 10);
 
-      if (currentCount >= dailyLimit) {
+      let fpCount = 0;
+      let fpKey = '';
+      if (deviceFP && deviceFP.startsWith('pe_')) {
+        fpKey = getDailyKey(deviceFP);
+        fpCount = parseInt((await env.RATE_LIMITER.get(fpKey)) || '0', 10);
+      }
+
+      const effectiveCount = Math.max(ipCount, fpCount);
+
+      if (effectiveCount >= dailyLimit) {
         return new Response(
           JSON.stringify({
             error: '今日免费额度已用完，请配置自己的 API Key 解锁无限使用',
             limit: dailyLimit,
-            used: currentCount,
+            used: effectiveCount,
           }),
           {
             status: 429,
@@ -91,6 +97,18 @@ export default {
         );
       }
 
+      // ---- 递增计数（先扣后调，防止并发超发） ----
+      const putOps = [
+        env.RATE_LIMITER.put(ipKey, String(ipCount + 1), { expirationTtl: 86400 }),
+      ];
+      if (fpKey) {
+        putOps.push(
+          env.RATE_LIMITER.put(fpKey, String(fpCount + 1), { expirationTtl: 86400 })
+        );
+      }
+      await Promise.all(putOps);
+
+      // ---- 解析请求 ----
       const body = (await request.json()) as {
         messages: Array<{ role: string; content: string }>;
         model?: string;
@@ -100,11 +118,9 @@ export default {
       };
 
       const wantStream = body.stream === true;
+      const remaining = dailyLimit - effectiveCount - 1;
 
-      await env.RATE_LIMITER.put(dailyKey, String(currentCount + 1), {
-        expirationTtl: 86400,
-      });
-
+      // ---- 调用 DeepSeek API ----
       const apiResponse = await fetch(
         'https://api.deepseek.com/v1/chat/completions',
         {
@@ -134,6 +150,7 @@ export default {
         );
       }
 
+      // ---- 流式响应透传 ----
       if (wantStream) {
         return new Response(apiResponse.body, {
           headers: {
@@ -141,18 +158,19 @@ export default {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             Connection: 'keep-alive',
-            'X-Daily-Remaining': String(dailyLimit - currentCount - 1),
+            'X-Daily-Remaining': String(remaining),
           },
         });
       }
 
+      // ---- 非流式响应 ----
       const result = await apiResponse.json();
 
       return new Response(JSON.stringify(result), {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
-          'X-Daily-Remaining': String(dailyLimit - currentCount - 1),
+          'X-Daily-Remaining': String(remaining),
         },
       });
     } catch (error) {

@@ -18,6 +18,8 @@ export interface StreamingOptions {
   endpoint: string;
   onChunk: StreamCallback;
   onError: (error: Error) => void;
+  /** 附加请求头（代理模式用于传递设备指纹） */
+  extraHeaders?: Record<string, string>;
 }
 
 /**
@@ -66,7 +68,7 @@ const extractFromJSONResponse = (text: string): string | null => {
  * 兼容非流式响应（代理模式可能返回标准 JSON）
  */
 export const streamOpenAI = async (options: StreamingOptions): Promise<void> => {
-  const { apiKey, model, analysis, endpoint, onChunk, onError } = options;
+  const { apiKey, model, analysis, endpoint, onChunk, onError, extraHeaders } = options;
   const systemPrompt = buildSystemPrompt(analysis);
   const userMessage = buildUserMessage(analysis.originalPrompt, analysis);
 
@@ -78,6 +80,7 @@ export const streamOpenAI = async (options: StreamingOptions): Promise<void> => 
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
+          ...extraHeaders,
         },
         body: JSON.stringify({
           model,
