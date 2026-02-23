@@ -13,31 +13,10 @@ import type { APIProvider, HistoryItem } from '@shared/types';
 
 /**
  * 更新扩展图标上的试用额度 Badge
+ * 当前已禁用 — 试用信息仅在 Popup 设置界面展示
  */
 export const updateTrialBadge = async (): Promise<void> => {
-  try {
-    const config = await getStorageConfig();
-    if (config?.apiKey) {
-      chrome.action.setBadgeText({ text: '' });
-      return;
-    }
-
-    const { getTrialRemaining } = await import('@shared/trial');
-    const remaining = await getTrialRemaining();
-
-    if (remaining <= 0) {
-      chrome.action.setBadgeText({ text: '!' });
-      chrome.action.setBadgeBackgroundColor({ color: '#dc2626' });
-    } else if (remaining <= 3) {
-      chrome.action.setBadgeText({ text: String(remaining) });
-      chrome.action.setBadgeBackgroundColor({ color: '#f59e0b' });
-    } else {
-      chrome.action.setBadgeText({ text: String(remaining) });
-      chrome.action.setBadgeBackgroundColor({ color: '#3b82f6' });
-    }
-  } catch {
-    // Badge 更新失败不影响主流程
-  }
+  chrome.action.setBadgeText({ text: '' });
 };
 
 /**
