@@ -60,6 +60,8 @@ export default [
         ShadowRoot: 'readonly',
         HTMLElementTagNameMap: 'readonly',
         getComputedStyle: 'readonly',
+        Document: 'readonly',
+        crypto: 'readonly',
       },
     },
     plugins: {
