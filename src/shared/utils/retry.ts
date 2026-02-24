@@ -50,7 +50,10 @@ const defaultShouldRetry = (error: Error, _attempt: number): boolean => {
  * @param options 重试选项
  * @returns 延迟时间（毫秒）
  */
-const calculateDelay = (attempt: number, options: Required<RetryOptions>): number => {
+const calculateDelay = (
+  attempt: number,
+  options: Required<RetryOptions>
+): number => {
   const { initialDelay, maxDelay, backoffMultiplier } = options;
   // 指数退避：delay = initialDelay * (multiplier ^ (attempt - 1))
   const delay = initialDelay * Math.pow(backoffMultiplier, attempt - 1);
@@ -82,9 +85,10 @@ export async function withRetry<T>(
     maxRetries: options.maxRetries ?? RETRY_CONFIG.maxRetries,
     initialDelay: options.initialDelay ?? RETRY_CONFIG.initialDelay,
     maxDelay: options.maxDelay ?? RETRY_CONFIG.maxDelay,
-    backoffMultiplier: options.backoffMultiplier ?? RETRY_CONFIG.backoffMultiplier,
+    backoffMultiplier:
+      options.backoffMultiplier ?? RETRY_CONFIG.backoffMultiplier,
     shouldRetry: options.shouldRetry ?? defaultShouldRetry,
-    onRetry: options.onRetry ?? (() => {}),
+    onRetry: options.onRetry ?? ((): void => {}),
   };
 
   let lastError: Error | null = null;

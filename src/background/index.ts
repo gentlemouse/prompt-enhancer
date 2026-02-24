@@ -3,11 +3,19 @@
  * 处理扩展的后台逻辑
  */
 
-import { enhancePrompt, enhancePromptStreaming, updateTrialBadge } from './enhancer';
+import {
+  enhancePrompt,
+  enhancePromptStreaming,
+  updateTrialBadge,
+} from './enhancer';
 import { API_PROVIDERS, TRIAL_MAX_USES } from '@shared/constants';
-import { getTrialData } from '@shared/trial';
+import { getTrialData, syncQuotaFromServer } from '@shared/trial';
 import { getStorageConfig } from '@shared/storage';
-import type { ExtensionMessage, MessageResponse, TrialState } from '@shared/types';
+import type {
+  ExtensionMessage,
+  MessageResponse,
+  TrialState,
+} from '@shared/types';
 
 /** 颜色方案存储键 */
 const COLOR_SCHEME_KEY = 'prompt_enhancer_color_scheme';
@@ -42,7 +50,7 @@ const initColorScheme = async (): Promise<void> => {
 
 // Service Worker 启动时初始化
 initColorScheme();
-updateTrialBadge();
+syncQuotaFromServer().then(() => updateTrialBadge());
 
 /**
  * 动态注入 Content Script
@@ -168,7 +176,8 @@ chrome.runtime.onMessage.addListener(
             request.prompt,
             tabId,
             request.requestId || Date.now().toString(),
-            ((request as unknown as Record<string, unknown>).history as import('@shared/types').HistoryItem[]) || []
+            ((request as unknown as Record<string, unknown>)
+              .history as import('@shared/types').HistoryItem[]) || []
           );
           return { success: true };
         }
@@ -222,9 +231,14 @@ chrome.runtime.onMessage.addListener(
               trialTotal: TRIAL_MAX_USES,
             };
           }
+          await syncQuotaFromServer();
           const trialData = await getTrialData();
-          const remaining = Math.max(0, trialData.maxUses - trialData.usedCount);
-          const state: TrialState = remaining > 0 ? 'TRIAL_ACTIVE' : 'TRIAL_EXPIRED';
+          const remaining = Math.max(
+            0,
+            trialData.maxUses - trialData.usedCount
+          );
+          const state: TrialState =
+            remaining > 0 ? 'TRIAL_ACTIVE' : 'TRIAL_EXPIRED';
           return {
             success: true,
             trialState: state,
@@ -258,7 +272,7 @@ chrome.runtime.onInstalled.addListener(() => {
     title: chrome.i18n.getMessage('contextMenuEnhance'),
     contexts: ['selection'],
   });
-  updateTrialBadge();
+  syncQuotaFromServer().then(() => updateTrialBadge());
 });
 
 /** 监听存储变化 — 用户保存 API Key 后立即清除 Badge */

@@ -45,10 +45,55 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, X-Device-FP',
 };
 
+/**
+ * 获取某个身份标识的已用额度
+ */
+async function getEffectiveCount(
+  env: Env,
+  clientIP: string,
+  deviceFP: string
+): Promise<{ ipCount: number; fpCount: number; effectiveCount: number; ipKey: string; fpKey: string }> {
+  const ipHash = await hashIP(clientIP);
+  const ipKey = getLimitKey(ipHash);
+  const ipCount = parseInt((await env.RATE_LIMITER.get(ipKey)) || '0', 10);
+
+  let fpCount = 0;
+  let fpKey = '';
+  if (deviceFP && deviceFP.startsWith('pe_')) {
+    fpKey = getLimitKey(deviceFP);
+    fpCount = parseInt((await env.RATE_LIMITER.get(fpKey)) || '0', 10);
+  }
+
+  return { ipCount, fpCount, effectiveCount: Math.max(ipCount, fpCount), ipKey, fpKey };
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
+    }
+
+    const url = new URL(request.url);
+
+    // ---- GET /v1/quota — 查询剩余额度 ----
+    if (request.method === 'GET' && url.pathname === '/v1/quota') {
+      try {
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const deviceFP = request.headers.get('X-Device-FP') || '';
+        const limit = parseInt(env.LIFETIME_LIMIT || '', 10) || DEFAULT_LIFETIME_LIMIT;
+        const { effectiveCount } = await getEffectiveCount(env, clientIP, deviceFP);
+        const remaining = Math.max(0, limit - effectiveCount);
+
+        return new Response(
+          JSON.stringify({ limit, used: effectiveCount, remaining }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        return new Response(
+          JSON.stringify({ error: error instanceof Error ? error.message : 'Internal error' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     if (request.method !== 'POST') {
@@ -58,7 +103,6 @@ export default {
       });
     }
 
-    const url = new URL(request.url);
     if (url.pathname !== '/v1/enhance') {
       return new Response(JSON.stringify({ error: 'Not found' }), {
         status: 404,
@@ -70,20 +114,9 @@ export default {
       // ---- 终身限额检查 ----
       const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
       const deviceFP = request.headers.get('X-Device-FP') || '';
-      const ipHash = await hashIP(clientIP);
       const limit = parseInt(env.LIFETIME_LIMIT || '', 10) || DEFAULT_LIFETIME_LIMIT;
-
-      const ipKey = getLimitKey(ipHash);
-      const ipCount = parseInt((await env.RATE_LIMITER.get(ipKey)) || '0', 10);
-
-      let fpCount = 0;
-      let fpKey = '';
-      if (deviceFP && deviceFP.startsWith('pe_')) {
-        fpKey = getLimitKey(deviceFP);
-        fpCount = parseInt((await env.RATE_LIMITER.get(fpKey)) || '0', 10);
-      }
-
-      const effectiveCount = Math.max(ipCount, fpCount);
+      const { ipCount, fpCount, effectiveCount, ipKey, fpKey } =
+        await getEffectiveCount(env, clientIP, deviceFP);
 
       if (effectiveCount >= limit) {
         return new Response(
@@ -172,7 +205,7 @@ export default {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
-          'X-Daily-Remaining': String(remaining),
+          'X-Remaining': String(remaining),
         },
       });
     } catch (error) {

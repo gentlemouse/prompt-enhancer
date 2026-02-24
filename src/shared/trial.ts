@@ -9,7 +9,8 @@
  * - 取两端的 max(usedCount) 防止回退
  */
 
-import { STORAGE_KEYS, TRIAL_MAX_USES } from './constants';
+import { STORAGE_KEYS, TRIAL_MAX_USES, API_PROVIDERS } from './constants';
+import { getDeviceFingerprint } from './fingerprint';
 
 /** 试用状态枚举 */
 export type TrialState = 'TRIAL_ACTIVE' | 'TRIAL_EXPIRED' | 'API_CONFIGURED';
@@ -42,16 +43,25 @@ export const getTrialData = async (): Promise<TrialData> => {
   try {
     const [localResult, syncResult] = await Promise.all([
       chrome.storage.local.get(STORAGE_KEYS.TRIAL_DATA),
-      chrome.storage.sync.get(STORAGE_KEYS.TRIAL_DATA).catch(
-        () => ({ [STORAGE_KEYS.TRIAL_DATA]: undefined } as Record<string, TrialData | undefined>)
-      ),
+      chrome.storage.sync
+        .get(STORAGE_KEYS.TRIAL_DATA)
+        .catch(
+          () =>
+            ({ [STORAGE_KEYS.TRIAL_DATA]: undefined }) as Record<
+              string,
+              TrialData | undefined
+            >
+        ),
     ]);
 
-    const localData: TrialData = localResult[STORAGE_KEYS.TRIAL_DATA] || defaultTrialData();
+    const localData: TrialData =
+      localResult[STORAGE_KEYS.TRIAL_DATA] || defaultTrialData();
     const syncData: TrialData | undefined = syncResult[STORAGE_KEYS.TRIAL_DATA];
 
     if (!syncData) {
-      chrome.storage.sync.set({ [STORAGE_KEYS.TRIAL_DATA]: localData }).catch(() => {});
+      chrome.storage.sync
+        .set({ [STORAGE_KEYS.TRIAL_DATA]: localData })
+        .catch(() => {});
       return localData;
     }
 
@@ -61,7 +71,9 @@ export const getTrialData = async (): Promise<TrialData> => {
     }
 
     if (localData.usedCount > syncData.usedCount) {
-      chrome.storage.sync.set({ [STORAGE_KEYS.TRIAL_DATA]: localData }).catch(() => {});
+      chrome.storage.sync
+        .set({ [STORAGE_KEYS.TRIAL_DATA]: localData })
+        .catch(() => {});
     }
 
     return localData;
@@ -91,7 +103,9 @@ export const incrementTrialUsage = async (): Promise<TrialData> => {
 
   await Promise.all([
     chrome.storage.local.set({ [STORAGE_KEYS.TRIAL_DATA]: data }),
-    chrome.storage.sync.set({ [STORAGE_KEYS.TRIAL_DATA]: data }).catch(() => {}),
+    chrome.storage.sync
+      .set({ [STORAGE_KEYS.TRIAL_DATA]: data })
+      .catch(() => {}),
   ]);
   return data;
 };
@@ -110,4 +124,54 @@ export const getTrialRemaining = async (): Promise<number> => {
 export const isTrialExpired = async (): Promise<boolean> => {
   const data = await getTrialData();
   return data.usedCount >= data.maxUses;
+};
+
+/**
+ * 从服务端同步真实已用额度
+ *
+ * 解决的问题：开发者模式下卸载重装会清空 chrome.storage，
+ * 导致客户端显示 0 已用。通过查询服务端 IP hash + 设备指纹
+ * 的实际计数来校准本地数据。
+ *
+ * 调用时机：Service Worker 启动时、Popup 打开时
+ */
+export const syncQuotaFromServer = async (): Promise<void> => {
+  try {
+    const proxyEndpoint = API_PROVIDERS.proxy.endpoint;
+    const quotaUrl = proxyEndpoint.replace('/v1/enhance', '/v1/quota');
+
+    const fp = await getDeviceFingerprint();
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(quotaUrl, {
+      method: 'GET',
+      headers: { 'X-Device-FP': fp },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) return;
+
+    const serverData = (await response.json()) as {
+      limit: number;
+      used: number;
+      remaining: number;
+    };
+
+    const localData = await getTrialData();
+
+    if (serverData.used > localData.usedCount) {
+      localData.usedCount = serverData.used;
+      await Promise.all([
+        chrome.storage.local.set({ [STORAGE_KEYS.TRIAL_DATA]: localData }),
+        chrome.storage.sync
+          .set({ [STORAGE_KEYS.TRIAL_DATA]: localData })
+          .catch(() => {}),
+      ]);
+    }
+  } catch {
+    // 网络不可用时静默失败，不影响正常使用
+  }
 };
