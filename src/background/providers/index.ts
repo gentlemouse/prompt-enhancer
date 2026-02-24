@@ -7,6 +7,7 @@ import type { APIProviderAdapter, APICallOptions } from './types';
 import {
   openaiAdapter,
   deepseekAdapter,
+  geminiAdapter,
   kimiAdapter,
   minimaxAdapter,
   qwenAdapter,
@@ -89,6 +90,7 @@ const adapters: Record<Exclude<APIProvider, 'custom'>, APIProviderAdapter> = {
   openai: openaiAdapter,
   anthropic: anthropicAdapter,
   deepseek: deepseekAdapter,
+  gemini: geminiAdapter,
   kimi: kimiAdapter,
   minimax: minimaxAdapter,
   qwen: qwenAdapter,

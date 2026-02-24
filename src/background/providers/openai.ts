@@ -98,6 +98,12 @@ export const deepseekAdapter = createOpenAIAdapter(
   API_PROVIDERS.deepseek.endpoint
 );
 
+/** Google Gemini 适配器 */
+export const geminiAdapter = createOpenAIAdapter(
+  'Gemini',
+  API_PROVIDERS.gemini.endpoint
+);
+
 /** Kimi 适配器 */
 export const kimiAdapter = createOpenAIAdapter(
   'Kimi',

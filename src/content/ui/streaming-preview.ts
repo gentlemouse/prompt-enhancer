@@ -4,6 +4,7 @@
  */
 
 import { getShadowHost } from './shadow-host';
+import { t } from '@shared/i18n';
 
 /** 预览面板状态 */
 interface PreviewState {
@@ -31,21 +32,21 @@ const createPreviewPanel = (): HTMLElement => {
   const container = document.createElement('div');
   container.className = 'prompt-enhancer-preview';
   container.setAttribute('role', 'dialog');
-  container.setAttribute('aria-label', '优化预览');
+  container.setAttribute('aria-label', t('previewTitle'));
   container.setAttribute('aria-live', 'polite');
 
   container.innerHTML = `
     <div class="prompt-enhancer-preview-header">
       <div class="prompt-enhancer-preview-status">
         <div class="prompt-enhancer-preview-dot"></div>
-        <span>正在优化...</span>
+        <span>${t('previewOptimizing')}</span>
       </div>
-      <button class="prompt-enhancer-preview-close" aria-label="关闭" tabindex="0">&times;</button>
+      <button class="prompt-enhancer-preview-close" aria-label="${t('previewClose')}" tabindex="0">&times;</button>
     </div>
     <div class="prompt-enhancer-preview-content" tabindex="0"></div>
     <div class="prompt-enhancer-preview-actions">
-      <button class="prompt-enhancer-preview-btn secondary" tabindex="0">取消</button>
-      <button class="prompt-enhancer-preview-btn primary" tabindex="0" disabled>应用</button>
+      <button class="prompt-enhancer-preview-btn secondary" tabindex="0">${t('previewCancel')}</button>
+      <button class="prompt-enhancer-preview-btn primary" tabindex="0" disabled>${t('previewApply')}</button>
     </div>
   `;
 
@@ -136,7 +137,7 @@ export const showPreview = (
   }
 
   const statusText = state.container.querySelector('.prompt-enhancer-preview-status span');
-  if (statusText) statusText.textContent = '正在优化...';
+  if (statusText) statusText.textContent = t('previewOptimizing');
 
   const dot = state.container.querySelector('.prompt-enhancer-preview-dot') as HTMLElement;
   if (dot) dot.style.display = 'block';
@@ -171,7 +172,7 @@ export const appendText = (chunk: string): void => {
 export const markComplete = (): void => {
   if (state.container) {
     const statusText = state.container.querySelector('.prompt-enhancer-preview-status span');
-    if (statusText) statusText.textContent = '优化完成';
+    if (statusText) statusText.textContent = t('previewComplete');
 
     const dot = state.container.querySelector('.prompt-enhancer-preview-dot') as HTMLElement;
     if (dot) dot.style.display = 'none';
@@ -195,7 +196,7 @@ export const showError = (error: string): void => {
   if (state.container) {
     const statusText = state.container.querySelector('.prompt-enhancer-preview-status span') as HTMLElement | null;
     if (statusText) {
-      statusText.textContent = `错误: ${error}`;
+      statusText.textContent = t('previewError', error);
       statusText.style.color = '#e53935';
     }
 

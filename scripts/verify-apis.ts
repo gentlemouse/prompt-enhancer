@@ -69,6 +69,10 @@ function printProviderConfigs(): void {
     openai: { model: 'gpt-4o-mini', endpoint: 'https://api.openai.com/v1/chat/completions' },
     anthropic: { model: 'claude-haiku-4-5-20251001', endpoint: 'https://api.anthropic.com/v1/messages' },
     deepseek: { model: 'deepseek-chat', endpoint: 'https://api.deepseek.com/v1/chat/completions' },
+    gemini: {
+      model: 'gemini-2.0-flash',
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    },
     kimi: { model: 'kimi-k2-turbo-preview', endpoint: 'https://api.moonshot.ai/v1/chat/completions' },
     minimax: { model: 'M2-her', endpoint: 'https://api.minimax.io/v1/text/chatcompletion_v2' },
     qwen: { model: 'qwen-plus', endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions' },

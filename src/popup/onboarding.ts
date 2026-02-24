@@ -3,6 +3,8 @@
  * P2-3.8: 首次安装引导流程
  */
 
+import { t, applyI18n } from '@shared/i18n';
+
 /** 向导状态 */
 let currentStep = 0;
 let container: HTMLElement | null = null;
@@ -31,22 +33,22 @@ const createOnboardingUI = (onComplete: () => void): HTMLElement => {
         </div>
         <div class="onboarding-step" data-step="1">
           <div class="step-icon">⌨️</div>
-          <h3>快捷键</h3>
-          <p>使用 <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> 一键润色当前输入框的内容。</p>
-          <p class="step-hint">提示：也可以点击输入框旁边的 ✨ 按钮</p>
+          <h3 data-i18n="onboardingStep2Title"></h3>
+          <p data-i18n-html="onboardingStep2Desc"></p>
+          <p class="step-hint" data-i18n="onboardingStep2Hint"></p>
         </div>
         <div class="onboarding-step" data-step="2">
           <div class="step-icon">✨</div>
-          <h3>开始使用</h3>
-          <p>一切准备就绪！在任意输入框中输入你的 Prompt，然后点击润色按钮或使用快捷键即可。</p>
-          <p class="step-hint">优化后的结果会实时预览，你可以选择应用或取消。</p>
+          <h3 data-i18n="onboardingStep3Title"></h3>
+          <p data-i18n="onboardingStep3Desc"></p>
+          <p class="step-hint" data-i18n="onboardingStep3Desc2"></p>
         </div>
       </div>
       <div class="onboarding-footer">
-        <button class="onboarding-btn secondary" id="onboarding-skip">跳过</button>
+        <button class="onboarding-btn secondary" id="onboarding-skip" data-i18n="onboardingSkip"></button>
         <div class="onboarding-nav">
-          <button class="onboarding-btn secondary" id="onboarding-prev" disabled>上一步</button>
-          <button class="onboarding-btn primary" id="onboarding-next">下一步</button>
+          <button class="onboarding-btn secondary" id="onboarding-prev" disabled data-i18n="onboardingPrev"></button>
+          <button class="onboarding-btn primary" id="onboarding-next" data-i18n="onboardingNext"></button>
         </div>
       </div>
     </div>
@@ -116,7 +118,7 @@ const goToStep = (step: number): void => {
   ) as HTMLButtonElement;
 
   prevBtn.disabled = step === 0;
-  nextBtn.textContent = step === 2 ? '开始使用' : '下一步';
+  nextBtn.textContent = step === 2 ? t('onboardingStart') : t('onboardingNext');
 
   // 聚焦到下一步按钮
   nextBtn.focus();
@@ -152,6 +154,7 @@ export const showOnboarding = (
 
   container = createOnboardingUI(onComplete);
   parent.appendChild(container);
+  applyI18n(container);
 
   // 聚焦到模态框
   const modal = container.querySelector('.onboarding-modal') as HTMLElement;

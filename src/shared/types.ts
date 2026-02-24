@@ -57,6 +57,7 @@ export type APIProvider =
   | 'openai'
   | 'anthropic'
   | 'deepseek'
+  | 'gemini'
   | 'kimi'
   | 'minimax'
   | 'qwen'
@@ -154,7 +155,9 @@ export type MessageAction =
   | 'checkOnboarding'
   | 'completeOnboarding'
   | 'colorSchemeChange'
-  | 'getTrialStatus';
+  | 'getTrialStatus'
+  | 'enhanceSelection'
+  | 'triggerEnhance';
 
 /** 消息接口 */
 export interface ExtensionMessage {

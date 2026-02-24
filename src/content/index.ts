@@ -14,6 +14,7 @@ import {
 } from './ui/button';
 import { showToast } from './ui/toast';
 import { showTrialExpiredPrompt } from './ui/trial-prompt';
+import { onShadowHostRebuild } from './ui/shadow-host';
 import { t } from '@shared/i18n';
 import {
   createInputDetector,
@@ -144,7 +145,7 @@ const handleStreamingEnhance = async (input: EditableElement): Promise<void> => 
       resetStreamingState();
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : '未知错误';
+    const errorMessage = error instanceof Error ? error.message : t('statusUnknownError');
     setInputValueDirect(input, originalText);
     if (errorMessage.includes('TRIAL_EXPIRED')) {
       showTrialExpiredPrompt();
@@ -218,6 +219,18 @@ const init = (): void => {
   // 创建按钮
   buttonState = createEnhanceButton(ICON_URL, handleButtonClick);
   buttonState.container.style.display = 'none';
+
+  // 注册 Shadow Host 重建回调
+  // 当 SPA 路由切换导致 Shadow Host 被移除后重建时，重新创建按钮
+  onShadowHostRebuild(() => {
+    buttonState = createEnhanceButton(ICON_URL, handleButtonClick);
+    buttonState.container.style.display = 'none';
+    positionedInputId = null; // 重置定位缓存
+    // 如果之前有活跃输入框，立即重新显示按钮
+    if (activeInput && isValidInput(activeInput)) {
+      showButton(activeInput);
+    }
+  });
 
   // 创建输入框检测器
   createInputDetector({
@@ -332,7 +345,7 @@ const init = (): void => {
       } else if (streamingInput) {
         // 没有内容时，尝试恢复原始内容
         tryUndo(streamingInput);
-        showToast('✗ ' + (req.error || '未知错误'));
+        showToast('✗ ' + (req.error || t('statusUnknownError')));
       }
       resetStreamingState();
       sendResponse({ success: true });

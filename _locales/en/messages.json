@@ -11,9 +11,32 @@
   "contextMenuEnhance": {
     "message": "✨ Enhance selected Prompt"
   },
-
   "popupProvider": {
     "message": "Provider"
+  },
+  "providerOpenai": {
+    "message": "OpenAI"
+  },
+  "providerAnthropic": {
+    "message": "Anthropic"
+  },
+  "providerDeepseek": {
+    "message": "DeepSeek"
+  },
+  "providerGemini": {
+    "message": "Google Gemini"
+  },
+  "providerKimi": {
+    "message": "Kimi (Moonshot)"
+  },
+  "providerMinimax": {
+    "message": "MiniMax"
+  },
+  "providerQwen": {
+    "message": "Qwen"
+  },
+  "providerZhipu": {
+    "message": "Zhipu GLM"
   },
   "popupCustomApi": {
     "message": "Custom API"
@@ -45,21 +68,21 @@
   "popupUndo": {
     "message": "Undo"
   },
-
   "popupAnthropicWarning": {
     "message": "Anthropic API requires special access mode when called directly from browsers, which may pose security risks. Use only in trusted network environments."
   },
   "popupAnthropicAck": {
     "message": "I understand and accept the risks"
   },
-
   "statusSaved": {
     "message": "Settings saved"
   },
   "statusSaveFailed": {
     "message": "Save failed: $ERROR$",
     "placeholders": {
-      "error": { "content": "$1" }
+      "error": {
+        "content": "$1"
+      }
     }
   },
   "statusLoadFailed": {
@@ -67,6 +90,36 @@
   },
   "statusInvalidEndpoint": {
     "message": "Invalid endpoint"
+  },
+  "validationEmptyEndpoint": {
+    "message": "Please enter API endpoint"
+  },
+  "validationInvalidUrl": {
+    "message": "Invalid URL format"
+  },
+  "validationHttpsOnly": {
+    "message": "HTTPS only. Please use an address starting with https://"
+  },
+  "validationNoLocalhost": {
+    "message": "Local addresses are not supported"
+  },
+  "validationNoPrivateIp": {
+    "message": "Private network addresses are not supported"
+  },
+  "validationPathRequired": {
+    "message": "Please provide full API path, e.g. /v1/chat/completions"
+  },
+  "validationEmptyKey": {
+    "message": "Please enter an API Key"
+  },
+  "validationKeyTooShort": {
+    "message": "Invalid API Key format"
+  },
+  "validationOpenAIKeyFormat": {
+    "message": "OpenAI API Key should start with sk-"
+  },
+  "validationAnthropicKeyFormat": {
+    "message": "Anthropic API Key should start with sk-ant-"
   },
   "statusEndpointOk": {
     "message": "✓ Endpoint format correct"
@@ -83,7 +136,6 @@
   "statusUnknownError": {
     "message": "Unknown error"
   },
-
   "onboardingTitle": {
     "message": "Welcome to Lynx"
   },
@@ -123,7 +175,6 @@
   "onboardingStart": {
     "message": "Get Started"
   },
-
   "toastProcessing": {
     "message": "Processing..."
   },
@@ -157,7 +208,6 @@
   "toastUndone": {
     "message": "Undone"
   },
-
   "btnAriaLabel": {
     "message": "Enhance Prompt (Cmd/Ctrl+Shift+E)"
   },
@@ -167,7 +217,6 @@
   "btnAriaGenerating": {
     "message": "Generating..."
   },
-
   "errorMissingPrompt": {
     "message": "Missing prompt parameter"
   },
@@ -180,24 +229,29 @@
   "errorConfigApiKey": {
     "message": "Please configure an API Key in extension settings"
   },
-
   "trialWelcome": {
     "message": "Try It Free, Start Now"
   },
   "trialWelcomeDesc": {
-    "message": "You have 10 free trials (lifetime) — no setup needed. After the trial, configure your own API Key for unlimited use."
+    "message": "You have 10 free trials — no setup needed. After the trial, configure your own API Key for unlimited use."
   },
   "trialRemaining": {
     "message": "$REMAINING$/$TOTAL$ remaining",
     "placeholders": {
-      "remaining": { "content": "$1" },
-      "total": { "content": "$2" }
+      "remaining": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
     }
   },
   "trialLow": {
     "message": "Only $COUNT$ free trial(s) left",
     "placeholders": {
-      "count": { "content": "$1" }
+      "count": {
+        "content": "$1"
+      }
     }
   },
   "trialConfigHint": {
@@ -213,7 +267,7 @@
     "message": "Unlock Unlimited Use"
   },
   "trialExpiredOverlayDesc": {
-    "message": "Your 10 free trials have been used. Configure an API Key to continue using Lynx. Supports OpenAI, Anthropic, DeepSeek, Kimi, MiniMax, Qwen, Zhipu and more."
+    "message": "Your 10 free trials have been used. Configure an API Key to continue using Lynx. Supports OpenAI, Anthropic, DeepSeek, Gemini, Kimi, MiniMax, Qwen, Zhipu and more."
   },
   "trialHowToGetKey": {
     "message": "How to get an API Key?"
@@ -238,5 +292,31 @@
   },
   "trialBannerExpired": {
     "message": "Trial Ended"
+  },
+  "previewTitle": {
+    "message": "Preview"
+  },
+  "previewOptimizing": {
+    "message": "Optimizing..."
+  },
+  "previewComplete": {
+    "message": "Optimization complete"
+  },
+  "previewError": {
+    "message": "Error: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "previewCancel": {
+    "message": "Cancel"
+  },
+  "previewApply": {
+    "message": "Apply"
+  },
+  "previewClose": {
+    "message": "Close"
   }
 }

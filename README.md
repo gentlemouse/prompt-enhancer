@@ -150,7 +150,7 @@ Here's what each strategy does with real examples:
 - **8 Task Types** — Recognizes code, writing, analysis, Q&A, planning, research, chat, and extraction tasks
 - **3 Reasoning Modes** — Adjusts between Simple, Deep Thinking, and Expert modes based on complexity
 - **Session Memory** — 5-turn sliding window tracks conversation context for smarter follow-up handling
-- **Zero Config** — Install and use immediately with 10 free enhancements (lifetime), no API key needed
+- **Zero Config** — Install and use immediately with 10 free enhancements, no API key needed
 - **BYOK Mode** — Bring your own API key (OpenAI / Anthropic / DeepSeek / Kimi / MiniMax / Qwen / Zhipu / custom) for unlimited use
 - **50+ Platforms** — Works on ChatGPT, Claude, Gemini, DeepSeek, Kimi, Qwen, and many more
 - **Privacy First** — API keys encrypted locally, zero prompt content collection, opt-out analytics
@@ -186,7 +186,7 @@ npm run build
 
 ### Free Mode (No setup required)
 
-Install and start using on any AI chat page — 10 free enhancements (lifetime).
+Install and start using on any AI chat page — 10 free enhancements.
 
 ### BYOK Mode (Unlimited)
 

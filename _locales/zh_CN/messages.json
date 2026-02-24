@@ -11,9 +11,32 @@
   "contextMenuEnhance": {
     "message": "✨ 润色选中的 Prompt"
   },
-
   "popupProvider": {
     "message": "提供商"
+  },
+  "providerOpenai": {
+    "message": "OpenAI"
+  },
+  "providerAnthropic": {
+    "message": "Anthropic"
+  },
+  "providerDeepseek": {
+    "message": "DeepSeek"
+  },
+  "providerGemini": {
+    "message": "Google Gemini"
+  },
+  "providerKimi": {
+    "message": "Kimi（月之暗面）"
+  },
+  "providerMinimax": {
+    "message": "MiniMax"
+  },
+  "providerQwen": {
+    "message": "通义千问"
+  },
+  "providerZhipu": {
+    "message": "智谱 GLM"
   },
   "popupCustomApi": {
     "message": "自定义 API"
@@ -45,21 +68,21 @@
   "popupUndo": {
     "message": "撤回"
   },
-
   "popupAnthropicWarning": {
     "message": "Anthropic API 在浏览器中直接调用需要启用特殊访问模式，这可能带来安全风险。建议仅在信任的网络环境下使用。"
   },
   "popupAnthropicAck": {
     "message": "我已了解并接受风险"
   },
-
   "statusSaved": {
     "message": "设置已保存"
   },
   "statusSaveFailed": {
     "message": "保存失败: $ERROR$",
     "placeholders": {
-      "error": { "content": "$1" }
+      "error": {
+        "content": "$1"
+      }
     }
   },
   "statusLoadFailed": {
@@ -67,6 +90,36 @@
   },
   "statusInvalidEndpoint": {
     "message": "无效的地址"
+  },
+  "validationEmptyEndpoint": {
+    "message": "请输入 API 地址"
+  },
+  "validationInvalidUrl": {
+    "message": "无效的 URL 格式"
+  },
+  "validationHttpsOnly": {
+    "message": "安全原因，仅支持 HTTPS 协议。请使用 https:// 开头的地址"
+  },
+  "validationNoLocalhost": {
+    "message": "安全原因，不支持本地地址"
+  },
+  "validationNoPrivateIp": {
+    "message": "安全原因，不支持私有网络地址"
+  },
+  "validationPathRequired": {
+    "message": "请提供完整的 API 路径，例如 /v1/chat/completions"
+  },
+  "validationEmptyKey": {
+    "message": "请输入 API Key"
+  },
+  "validationKeyTooShort": {
+    "message": "API Key 格式不正确"
+  },
+  "validationOpenAIKeyFormat": {
+    "message": "OpenAI API Key 应以 sk- 开头"
+  },
+  "validationAnthropicKeyFormat": {
+    "message": "Anthropic API Key 应以 sk-ant- 开头"
   },
   "statusEndpointOk": {
     "message": "✓ 地址格式正确"
@@ -83,7 +136,6 @@
   "statusUnknownError": {
     "message": "未知错误"
   },
-
   "onboardingTitle": {
     "message": "欢迎使用 灵犀"
   },
@@ -123,7 +175,6 @@
   "onboardingStart": {
     "message": "开始使用"
   },
-
   "toastProcessing": {
     "message": "正在处理中..."
   },
@@ -157,7 +208,6 @@
   "toastUndone": {
     "message": "已撤回"
   },
-
   "btnAriaLabel": {
     "message": "润色 Prompt (Cmd/Ctrl+Shift+E)"
   },
@@ -167,7 +217,6 @@
   "btnAriaGenerating": {
     "message": "正在生成..."
   },
-
   "errorMissingPrompt": {
     "message": "缺少 prompt 参数"
   },
@@ -180,24 +229,29 @@
   "errorConfigApiKey": {
     "message": "请先在插件设置中配置 API Key"
   },
-
   "trialWelcome": {
     "message": "免费体验，即刻开始"
   },
   "trialWelcomeDesc": {
-    "message": "您有 10 次终身免费试用额度，无需配置即可体验 Prompt 润色功能。试用结束后，配置您自己的 API Key 即可无限制使用。"
+    "message": "您有 10 次免费试用额度，无需配置即可体验 Prompt 润色功能。试用结束后，配置您自己的 API Key 即可无限制使用。"
   },
   "trialRemaining": {
     "message": "剩余 $REMAINING$/$TOTAL$ 次",
     "placeholders": {
-      "remaining": { "content": "$1" },
-      "total": { "content": "$2" }
+      "remaining": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
     }
   },
   "trialLow": {
     "message": "免费试用仅剩 $COUNT$ 次",
     "placeholders": {
-      "count": { "content": "$1" }
+      "count": {
+        "content": "$1"
+      }
     }
   },
   "trialConfigHint": {
@@ -213,7 +267,7 @@
     "message": "解锁无限使用"
   },
   "trialExpiredOverlayDesc": {
-    "message": "您的 10 次免费试用已用完。配置 API Key 即可继续使用 灵犀 的全部功能。支持 OpenAI、Anthropic、DeepSeek、Kimi、MiniMax、通义千问、智谱 等多个服务商。"
+    "message": "您的 10 次免费试用已用完。配置 API Key 即可继续使用 灵犀 的全部功能。支持 OpenAI、Anthropic、DeepSeek、Gemini、Kimi、MiniMax、通义千问、智谱 等多个服务商。"
   },
   "trialHowToGetKey": {
     "message": "如何获取 API Key？"
@@ -238,5 +292,31 @@
   },
   "trialBannerExpired": {
     "message": "试用已结束"
+  },
+  "previewTitle": {
+    "message": "优化预览"
+  },
+  "previewOptimizing": {
+    "message": "正在优化..."
+  },
+  "previewComplete": {
+    "message": "优化完成"
+  },
+  "previewError": {
+    "message": "错误: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "previewCancel": {
+    "message": "取消"
+  },
+  "previewApply": {
+    "message": "应用"
+  },
+  "previewClose": {
+    "message": "关闭"
   }
 }

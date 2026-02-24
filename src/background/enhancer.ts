@@ -194,7 +194,10 @@ export const enhancePromptStreaming = async (
     chrome.tabs.sendMessage(tabId, {
       action: 'streamError',
       requestId,
-      error: error instanceof Error ? error.message : '未知错误',
+      error:
+        error instanceof Error
+          ? error.message
+          : (chrome.i18n.getMessage('statusUnknownError') || 'Unknown error'),
     });
   }
 };

@@ -34,6 +34,19 @@ export const API_PROVIDERS: Record<APIProvider, APIProviderConfig> = {
     defaultModel: 'deepseek-chat',
     models: ['deepseek-chat', 'deepseek-reasoner'],
   },
+  gemini: {
+    name: 'Google Gemini',
+    endpoint:
+      'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    defaultModel: 'gemini-2.0-flash',
+    models: [
+      'gemini-2.0-flash',
+      'gemini-2.5-flash-preview',
+      'gemini-2.5-pro-preview',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro',
+    ],
+  },
   kimi: {
     name: 'Kimi（月之暗面）',
     endpoint: 'https://api.moonshot.ai/v1/chat/completions',

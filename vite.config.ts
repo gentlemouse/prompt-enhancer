@@ -24,7 +24,9 @@ export default defineConfig({
     minify: 'esbuild',
   },
   esbuild: {
-    // 生产环境移除 console.log 和 debugger
-    drop: ['console', 'debugger'],
+    // 生产环境移除 debugger
+    drop: ['debugger'],
+    // 仅移除 console.log/debug/info，保留 console.error/warn 以便排查线上问题
+    pure: ['console.log', 'console.debug', 'console.info'],
   },
 });

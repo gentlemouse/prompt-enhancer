@@ -12,9 +12,14 @@ import { encryptApiKey, decryptApiKey, isEncryptedFormat } from './utils/crypto'
 
 /**
  * 从旧的 sync 存储迁移到新的 local 存储
- * P0-1.2: 数据迁移
+ * P0-1.2: 数据迁移（仅在首次调用时执行）
  */
+let migrationDone = false;
+
 const migrateLegacyStorage = async (): Promise<void> => {
+  if (migrationDone) return;
+  migrationDone = true;
+
   try {
     // 检查是否有旧数据
     const legacyData = (await chrome.storage.sync.get([
@@ -64,7 +69,7 @@ export const getStorageConfig = async (): Promise<{
   customModel: string;
   anthropicWarningAcknowledged?: boolean;
 } | null> => {
-  // 先尝试迁移旧数据
+  // 先尝试迁移旧数据（仅首次）
   await migrateLegacyStorage();
 
   // 从 local 存储读取

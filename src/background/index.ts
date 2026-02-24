@@ -55,6 +55,7 @@ syncQuotaFromServer().then(() => updateTrialBadge());
 /**
  * 动态注入 Content Script
  * P0-1.1: 按需注入而非全站默认注入
+ * 从 manifest 读取实际的 content_scripts 文件路径，兼容 Vite/CRXJS 构建后的哈希文件名
  */
 const injectContentScript = async (tabId: number): Promise<boolean> => {
   try {
@@ -71,17 +72,30 @@ const injectContentScript = async (tabId: number): Promise<boolean> => {
       return false;
     }
 
+    // 从 manifest 读取实际的 content script 文件路径
+    const manifest = chrome.runtime.getManifest();
+    const contentScriptEntry = manifest.content_scripts?.[0];
+
+    if (!contentScriptEntry) {
+      console.warn('[Prompt Enhancer] No content_scripts found in manifest');
+      return false;
+    }
+
     // 注入 CSS
-    await chrome.scripting.insertCSS({
-      target: { tabId },
-      files: ['src/content/styles.css'],
-    });
+    if (contentScriptEntry.css && contentScriptEntry.css.length > 0) {
+      await chrome.scripting.insertCSS({
+        target: { tabId },
+        files: contentScriptEntry.css,
+      });
+    }
 
     // 注入 JS
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['src/content/index.ts'],
-    });
+    if (contentScriptEntry.js && contentScriptEntry.js.length > 0) {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: contentScriptEntry.js,
+      });
+    }
 
     return true;
   } catch {

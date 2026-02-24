@@ -3,6 +3,8 @@
  * P0-1.4: 自定义 Endpoint 校验
  */
 
+import { t } from '../i18n';
+
 /**
  * 验证 URL 是否为有效的 HTTPS 地址
  * @param url 要验证的 URL
@@ -21,7 +23,7 @@ export interface ValidationResult {
  */
 export const validateEndpoint = (endpoint: string): ValidationResult => {
   if (!endpoint) {
-    return { valid: false, error: '请输入 API 地址' };
+    return { valid: false, error: t('validationEmptyEndpoint') };
   }
 
   // 尝试解析 URL
@@ -29,14 +31,14 @@ export const validateEndpoint = (endpoint: string): ValidationResult => {
   try {
     url = new URL(endpoint);
   } catch {
-    return { valid: false, error: '无效的 URL 格式' };
+    return { valid: false, error: t('validationInvalidUrl') };
   }
 
   // 强制要求 HTTPS
   if (url.protocol !== 'https:') {
     return {
       valid: false,
-      error: '安全原因，仅支持 HTTPS 协议。请使用 https:// 开头的地址',
+      error: t('validationHttpsOnly'),
     };
   }
 
@@ -46,7 +48,7 @@ export const validateEndpoint = (endpoint: string): ValidationResult => {
   if (localPatterns.some(pattern => hostname === pattern)) {
     return {
       valid: false,
-      error: '安全原因，不支持本地地址',
+      error: t('validationNoLocalhost'),
     };
   }
 
@@ -59,7 +61,7 @@ export const validateEndpoint = (endpoint: string): ValidationResult => {
   if (privateIPPatterns.some(pattern => pattern.test(hostname))) {
     return {
       valid: false,
-      error: '安全原因，不支持私有网络地址',
+      error: t('validationNoPrivateIp'),
     };
   }
 
@@ -67,7 +69,7 @@ export const validateEndpoint = (endpoint: string): ValidationResult => {
   if (!url.pathname || url.pathname === '/') {
     return {
       valid: false,
-      error: '请提供完整的 API 路径，例如 /v1/chat/completions',
+      error: t('validationPathRequired'),
     };
   }
 
@@ -85,12 +87,12 @@ export const validateApiKey = (
   provider: string
 ): ValidationResult => {
   if (!apiKey) {
-    return { valid: false, error: '请输入 API Key' };
+    return { valid: false, error: t('validationEmptyKey') };
   }
 
   // 基本长度检查
   if (apiKey.length < 10) {
-    return { valid: false, error: 'API Key 格式不正确' };
+    return { valid: false, error: t('validationKeyTooShort') };
   }
 
   // 提供商特定的格式检查
@@ -99,7 +101,7 @@ export const validateApiKey = (
       if (!apiKey.startsWith('sk-')) {
         return {
           valid: false,
-          error: 'OpenAI API Key 应以 sk- 开头',
+          error: t('validationOpenAIKeyFormat'),
         };
       }
       break;
@@ -107,7 +109,7 @@ export const validateApiKey = (
       if (!apiKey.startsWith('sk-ant-')) {
         return {
           valid: false,
-          error: 'Anthropic API Key 应以 sk-ant- 开头',
+          error: t('validationAnthropicKeyFormat'),
         };
       }
       break;

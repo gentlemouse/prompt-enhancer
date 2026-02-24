@@ -60,7 +60,7 @@ export const handleEnhance = async (
 
   // 显示加载状态
   setButtonLoading(buttonState, true);
-  showToast('润色中...');
+  showToast(t('toastEnhancing'));
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -70,16 +70,17 @@ export const handleEnhance = async (
 
     if (response?.success) {
       setInputValue(input, response.enhanced);
-      showToast('✓ 完成 (Ctrl+Z 可撤回)');
+      const isMac = navigator.platform.toUpperCase().includes('MAC');
+      showToast(isMac ? t('toastDoneMac') : t('toastDone'));
     } else {
-      showToast('✗ ' + (response?.error || '失败'));
+      showToast('✗ ' + (response?.error || t('toastRequestFailed')));
     }
   } catch (error) {
     // 处理 Extension context invalidated 错误
     const errorMessage =
-      error instanceof Error ? error.message : '未知错误';
+      error instanceof Error ? error.message : t('statusUnknownError');
     if (errorMessage.includes('Extension context invalidated')) {
-      showToast('扩展已更新，请刷新页面');
+      showToast(t('toastRefreshPage'));
     } else {
       showToast('✗ ' + errorMessage);
     }
