@@ -77,6 +77,8 @@ const injectContentScript = async (tabId: number): Promise<boolean> => {
     const contentScriptEntry = manifest.content_scripts?.[0];
 
     if (!contentScriptEntry) {
+      // 扩展运行时缺失 content_scripts 时需保留警告便于排查
+      // eslint-disable-next-line no-console -- 有意保留的运行时诊断信息
       console.warn('[Prompt Enhancer] No content_scripts found in manifest');
       return false;
     }

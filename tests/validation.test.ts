@@ -32,13 +32,16 @@ describe('validateEndpoint', () => {
     it('空字符串应失败', () => {
       const result = validateEndpoint('');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('请输入');
+      expect(result.error).toBeDefined();
+      // 测试环境 t() 返回 i18n key；运行时为翻译文案
+      expect(result.error === 'validationEmptyEndpoint' || result.error?.includes('请输入')).toBe(true);
     });
 
     it('无效 URL 格式应失败', () => {
       const result = validateEndpoint('not-a-url');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('无效');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationInvalidUrl' || result.error?.includes('无效')).toBe(true);
     });
   });
 
@@ -46,13 +49,15 @@ describe('validateEndpoint', () => {
     it('HTTP 应被拒绝', () => {
       const result = validateEndpoint('http://api.example.com/v1/chat');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('HTTPS');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationHttpsOnly' || result.error?.includes('HTTPS')).toBe(true);
     });
 
     it('FTP 应被拒绝', () => {
       const result = validateEndpoint('ftp://files.example.com/api');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('HTTPS');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationHttpsOnly' || result.error?.includes('HTTPS')).toBe(true);
     });
   });
 
@@ -60,19 +65,22 @@ describe('validateEndpoint', () => {
     it('localhost 应被拒绝', () => {
       const result = validateEndpoint('https://localhost/v1/chat');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('本地地址');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationNoLocalhost' || result.error?.includes('本地地址')).toBe(true);
     });
 
     it('127.0.0.1 应被拒绝', () => {
       const result = validateEndpoint('https://127.0.0.1/v1/chat');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('本地地址');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationNoLocalhost' || result.error?.includes('本地地址')).toBe(true);
     });
 
     it('0.0.0.0 应被拒绝', () => {
       const result = validateEndpoint('https://0.0.0.0/v1/chat');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('本地地址');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationNoLocalhost' || result.error?.includes('本地地址')).toBe(true);
     });
   });
 
@@ -80,19 +88,22 @@ describe('validateEndpoint', () => {
     it('10.x.x.x 应被拒绝', () => {
       const result = validateEndpoint('https://10.0.0.1/v1/chat');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('私有网络');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationNoPrivateIp' || result.error?.includes('私有网络')).toBe(true);
     });
 
     it('172.16.x.x 应被拒绝', () => {
       const result = validateEndpoint('https://172.16.0.1/v1/chat');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('私有网络');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationNoPrivateIp' || result.error?.includes('私有网络')).toBe(true);
     });
 
     it('192.168.x.x 应被拒绝', () => {
       const result = validateEndpoint('https://192.168.1.1/v1/chat');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('私有网络');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationNoPrivateIp' || result.error?.includes('私有网络')).toBe(true);
     });
 
     it('172.32.x.x 不应被拒绝（非私有范围）', () => {
@@ -105,13 +116,15 @@ describe('validateEndpoint', () => {
     it('仅域名无路径应失败', () => {
       const result = validateEndpoint('https://api.example.com');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('完整的 API 路径');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationPathRequired' || result.error?.includes('完整的 API 路径')).toBe(true);
     });
 
     it('仅有根路径应失败', () => {
       const result = validateEndpoint('https://api.example.com/');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('完整的 API 路径');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationPathRequired' || result.error?.includes('完整的 API 路径')).toBe(true);
     });
   });
 });
@@ -121,13 +134,15 @@ describe('validateApiKey', () => {
     it('空字符串应失败', () => {
       const result = validateApiKey('', 'openai');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('请输入');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationEmptyKey' || result.error?.includes('请输入')).toBe(true);
     });
 
     it('过短的 key 应失败', () => {
       const result = validateApiKey('short', 'openai');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('格式不正确');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationKeyTooShort' || result.error?.includes('格式不正确')).toBe(true);
     });
   });
 
@@ -140,7 +155,8 @@ describe('validateApiKey', () => {
     it('不以 sk- 开头应失败', () => {
       const result = validateApiKey('pk-1234567890abcdef', 'openai');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('sk-');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationOpenAIKeyFormat' || result.error?.includes('sk-')).toBe(true);
     });
   });
 
@@ -153,7 +169,8 @@ describe('validateApiKey', () => {
     it('仅以 sk- 开头应失败', () => {
       const result = validateApiKey('sk-1234567890abcdef', 'anthropic');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('sk-ant-');
+      expect(result.error).toBeDefined();
+      expect(result.error === 'validationAnthropicKeyFormat' || result.error?.includes('sk-ant-')).toBe(true);
     });
   });
 
