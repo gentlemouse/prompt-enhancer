@@ -15,8 +15,13 @@ export const API_PROVIDERS: Record<APIProvider, APIProviderConfig> = {
   anthropic: {
     name: 'Anthropic',
     endpoint: 'https://api.anthropic.com/v1/messages',
-    defaultModel: 'claude-3-5-haiku-latest',
-    models: ['claude-sonnet-4-20250514', 'claude-3-5-haiku-latest'],
+    defaultModel: 'claude-haiku-4-5-20251001',
+    models: [
+      'claude-opus-4-6',
+      'claude-sonnet-4-6',
+      'claude-haiku-4-5-20251001',
+      'claude-sonnet-4-5-20250929',
+    ],
     // P0-1.3: 安全警告
     securityWarning:
       '注意：Anthropic API 在浏览器中直接调用需要启用特殊访问模式，' +
@@ -29,9 +34,41 @@ export const API_PROVIDERS: Record<APIProvider, APIProviderConfig> = {
     defaultModel: 'deepseek-chat',
     models: ['deepseek-chat', 'deepseek-reasoner'],
   },
+  kimi: {
+    name: 'Kimi（月之暗面）',
+    endpoint: 'https://api.moonshot.ai/v1/chat/completions',
+    defaultModel: 'kimi-k2-turbo-preview',
+    models: [
+      'kimi-k2-turbo-preview',
+      'kimi-k2.5',
+      'moonshot-v1-8k',
+      'moonshot-v1-32k',
+      'moonshot-v1-128k',
+    ],
+  },
+  minimax: {
+    name: 'MiniMax',
+    endpoint: 'https://api.minimax.io/v1/text/chatcompletion_v2',
+    defaultModel: 'M2-her',
+    models: ['M2-her', 'abab6.5s-chat', 'abab6.5-chat'],
+  },
+  qwen: {
+    name: '通义千问',
+    endpoint:
+      'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    defaultModel: 'qwen-plus',
+    models: ['qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen3-max', 'qwen3'],
+  },
+  zhipu: {
+    name: '智谱 GLM',
+    endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+    defaultModel: 'glm-4-flash',
+    models: ['glm-4-plus', 'glm-4-flash', 'glm-4-air', 'glm-4-long'],
+  },
   proxy: {
     name: '免费模式（无需 API Key）',
-    endpoint: 'https://prompt-enhancer-proxy.gentlemouse666.workers.dev/v1/enhance',
+    endpoint:
+      'https://prompt-enhancer-proxy.gentlemouse666.workers.dev/v1/enhance',
     defaultModel: 'deepseek-chat',
     models: ['deepseek-chat'],
   },

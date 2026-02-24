@@ -53,7 +53,16 @@ export interface HistoryItem {
 }
 
 /** API 提供商类型 */
-export type APIProvider = 'openai' | 'anthropic' | 'deepseek' | 'custom' | 'proxy';
+export type APIProvider =
+  | 'openai'
+  | 'anthropic'
+  | 'deepseek'
+  | 'kimi'
+  | 'minimax'
+  | 'qwen'
+  | 'zhipu'
+  | 'custom'
+  | 'proxy';
 
 /** API 提供商配置接口 */
 export interface APIProviderConfig {

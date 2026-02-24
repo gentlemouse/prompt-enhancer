@@ -63,7 +63,9 @@ export const createOpenAIAdapter = (
 
         if (!res.ok) {
           const error = (await res.json()) as OpenAIResponse;
-          throw new Error(error.error?.message || `API 调用失败: ${res.status}`);
+          throw new Error(
+            error.error?.message || `API 调用失败: ${res.status}`
+          );
         }
 
         return res;
@@ -94,4 +96,28 @@ export const openaiAdapter = createOpenAIAdapter(
 export const deepseekAdapter = createOpenAIAdapter(
   'DeepSeek',
   API_PROVIDERS.deepseek.endpoint
+);
+
+/** Kimi 适配器 */
+export const kimiAdapter = createOpenAIAdapter(
+  'Kimi',
+  API_PROVIDERS.kimi.endpoint
+);
+
+/** MiniMax 适配器 */
+export const minimaxAdapter = createOpenAIAdapter(
+  'MiniMax',
+  API_PROVIDERS.minimax.endpoint
+);
+
+/** 通义千问适配器 */
+export const qwenAdapter = createOpenAIAdapter(
+  'Qwen',
+  API_PROVIDERS.qwen.endpoint
+);
+
+/** 智谱 GLM 适配器 */
+export const zhipuAdapter = createOpenAIAdapter(
+  'Zhipu',
+  API_PROVIDERS.zhipu.endpoint
 );

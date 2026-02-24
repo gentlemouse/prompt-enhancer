@@ -185,7 +185,7 @@
     "message": "免费体验，即刻开始"
   },
   "trialWelcomeDesc": {
-    "message": "您有 10 次免费试用额度，无需配置即可体验 Prompt 润色功能。试用结束后，配置您自己的 API Key 即可无限制使用。"
+    "message": "您有 10 次终身免费试用额度，无需配置即可体验 Prompt 润色功能。试用结束后，配置您自己的 API Key 即可无限制使用。"
   },
   "trialRemaining": {
     "message": "剩余 $REMAINING$/$TOTAL$ 次",
@@ -213,7 +213,7 @@
     "message": "解锁无限使用"
   },
   "trialExpiredOverlayDesc": {
-    "message": "您的 10 次免费试用已用完。配置 API Key 即可继续使用 灵犀 的全部功能。支持 OpenAI / Anthropic / DeepSeek 等多个服务商。"
+    "message": "您的 10 次免费试用已用完。配置 API Key 即可继续使用 灵犀 的全部功能。支持 OpenAI、Anthropic、DeepSeek、Kimi、MiniMax、通义千问、智谱 等多个服务商。"
   },
   "trialHowToGetKey": {
     "message": "如何获取 API Key？"

@@ -4,9 +4,21 @@
 
 import type { APIProvider, PromptAnalysis } from '@shared/types';
 import type { APIProviderAdapter, APICallOptions } from './types';
-import { openaiAdapter, deepseekAdapter, createOpenAIAdapter } from './openai';
+import {
+  openaiAdapter,
+  deepseekAdapter,
+  kimiAdapter,
+  minimaxAdapter,
+  qwenAdapter,
+  zhipuAdapter,
+  createOpenAIAdapter,
+} from './openai';
 import { anthropicAdapter } from './anthropic';
-import { streamOpenAI, streamAnthropic, type StreamCallback } from './streaming';
+import {
+  streamOpenAI,
+  streamAnthropic,
+  type StreamCallback,
+} from './streaming';
 import { API_PROVIDERS } from '@shared/constants';
 import { getDeviceFingerprint } from '@shared/fingerprint';
 import { buildSystemPrompt, buildUserMessage } from '../prompt-builder';
@@ -58,7 +70,9 @@ const proxyAdapter: APIProviderAdapter = {
 
         if (!res.ok) {
           const error = (await res.json()) as ProxyResponse;
-          throw new Error(error.error?.message || `API 调用失败: ${res.status}`);
+          throw new Error(
+            error.error?.message || `API 调用失败: ${res.status}`
+          );
         }
         return res;
       },
@@ -75,6 +89,10 @@ const adapters: Record<Exclude<APIProvider, 'custom'>, APIProviderAdapter> = {
   openai: openaiAdapter,
   anthropic: anthropicAdapter,
   deepseek: deepseekAdapter,
+  kimi: kimiAdapter,
+  minimax: minimaxAdapter,
+  qwen: qwenAdapter,
+  zhipu: zhipuAdapter,
   proxy: proxyAdapter,
 };
 
@@ -109,8 +127,18 @@ export interface StreamingCallOptions {
  * 执行流式 API 调用
  * P2-3.2: 支持流式输出
  */
-export const streamingCall = async (options: StreamingCallOptions): Promise<void> => {
-  const { provider, apiKey, model, analysis, customEndpoint, onChunk, onError } = options;
+export const streamingCall = async (
+  options: StreamingCallOptions
+): Promise<void> => {
+  const {
+    provider,
+    apiKey,
+    model,
+    analysis,
+    customEndpoint,
+    onChunk,
+    onError,
+  } = options;
 
   const endpoint =
     provider === 'custom'
