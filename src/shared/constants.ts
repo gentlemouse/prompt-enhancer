@@ -3,6 +3,7 @@ import { TaskType } from './types';
 
 /**
  * API 提供商配置
+ * 各厂商的 models 列表仅包含已在其官方 API 文档中确认存在的模型 ID，新增/修改时请以官方文档为准。
  * P0-1.3: 为 Anthropic 添加安全警告
  */
 export const API_PROVIDERS: Record<APIProvider, APIProviderConfig> = {
@@ -12,15 +13,24 @@ export const API_PROVIDERS: Record<APIProvider, APIProviderConfig> = {
     defaultModel: 'gpt-4o-mini',
     models: [
       'gpt-5.2',
-      'gpt-5.2-chat-latest',
       'gpt-5.2-pro',
+      'gpt-5.2-chat-latest',
       'gpt-5-mini',
+      'gpt-5-nano',
+      'gpt-5.1',
+      'gpt-5',
+      'o3',
       'o3-mini',
+      'o3-pro',
+      'o4-mini',
       'o1',
-      'o1-mini',
-      'gpt-4.5',
+      'o1-pro',
+      'gpt-4.1',
+      'gpt-4.1-mini',
+      'gpt-4.1-nano',
       'gpt-4o',
       'gpt-4o-mini',
+      'gpt-4-turbo',
     ],
   },
   anthropic: {
@@ -30,7 +40,7 @@ export const API_PROVIDERS: Record<APIProvider, APIProviderConfig> = {
     models: [
       'claude-opus-4-6',
       'claude-sonnet-4-6',
-      'claude-haiku-4-5-20251001',
+      'claude-haiku-4-5',
       'claude-sonnet-4-5',
       'claude-opus-4-5',
     ],
@@ -56,10 +66,9 @@ export const API_PROVIDERS: Record<APIProvider, APIProviderConfig> = {
       'gemini-3.1-flash',
       'gemini-3.0-pro',
       'gemini-3.0-flash',
-      'gemini-2.5-pro-preview',
       'gemini-2.5-pro',
-      'gemini-2.5-flash-preview',
       'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
       'gemini-2.0-flash',
     ],
   },
@@ -68,13 +77,13 @@ export const API_PROVIDERS: Record<APIProvider, APIProviderConfig> = {
     endpoint: 'https://api.moonshot.ai/v1/chat/completions',
     defaultModel: 'kimi-k2.5',
     models: [
-      'kimi-k3',
       'kimi-k2.5',
-      'moonshot-v1-auto',
+      'kimi-k2',
       'kimi-k2-turbo-preview',
-      'moonshot-v1-8k',
-      'moonshot-v1-32k',
+      'moonshot-v1-auto',
       'moonshot-v1-128k',
+      'moonshot-v1-32k',
+      'moonshot-v1-8k',
     ],
   },
   minimax: {
