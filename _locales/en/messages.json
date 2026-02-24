@@ -1,9 +1,9 @@
 {
   "extName": {
-    "message": "Prompt Enhancer"
+    "message": "Lynx"
   },
   "extDescription": {
-    "message": "One-click prompt polishing to help AI better understand your intent"
+    "message": "心有灵犀一点通"
   },
   "commandEnhance": {
     "message": "Enhance current input prompt"
@@ -85,7 +85,7 @@
   },
 
   "onboardingTitle": {
-    "message": "Welcome to Prompt Enhancer"
+    "message": "Welcome to Lynx"
   },
   "onboardingStep1Title": {
     "message": "Configure API Key"
@@ -213,7 +213,7 @@
     "message": "Unlock Unlimited Use"
   },
   "trialExpiredOverlayDesc": {
-    "message": "Your 10 free trials have been used. Configure an API Key to continue using all features of Prompt Enhancer. Supports OpenAI, Anthropic, DeepSeek and more."
+    "message": "Your 10 free trials have been used. Configure an API Key to continue using Lynx. Supports OpenAI, Anthropic, DeepSeek and more."
   },
   "trialHowToGetKey": {
     "message": "How to get an API Key?"

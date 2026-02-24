@@ -1,10 +1,10 @@
-# Privacy Policy — Prompt Enhancer
+# Privacy Policy — Lynx / 灵犀
 
-**Last Updated: February 23, 2026**
+**Last Updated: February 2026**
 
 ## Overview
 
-Prompt Enhancer is a Chrome extension that enhances your AI prompts. We are committed to protecting your privacy. This policy explains what data we collect, how we use it, and your rights.
+Lynx (灵犀) is a Chrome extension that enhances your AI prompts. We are committed to protecting your privacy. This policy explains what data we collect, how we use it, and your rights.
 
 ## Data Collection
 
@@ -73,7 +73,7 @@ We may update this policy from time to time. Changes will be reflected in the "L
 
 ## Contact
 
-If you have questions about this privacy policy, please open an issue on our [GitHub repository](https://github.com/user/prompt-enhancer).
+If you have questions about this privacy policy, please open an issue on our [GitHub repository](https://github.com/gentlemouse/prompt-enhancer).
 
 ---
 

@@ -16,7 +16,7 @@ const createOnboardingUI = (onComplete: () => void): HTMLElement => {
   div.innerHTML = `
     <div class="onboarding-modal" role="dialog" aria-labelledby="onboarding-title" aria-modal="true">
       <div class="onboarding-header">
-        <h2 id="onboarding-title">欢迎使用 Prompt Enhancer</h2>
+        <h2 id="onboarding-title" data-i18n="onboardingTitle"></h2>
         <div class="onboarding-progress">
           <span class="step-indicator step-1 active"></span>
           <span class="step-indicator step-2"></span>
@@ -108,8 +108,12 @@ const goToStep = (step: number): void => {
   });
 
   // 更新按钮状态
-  const prevBtn = container.querySelector('#onboarding-prev') as HTMLButtonElement;
-  const nextBtn = container.querySelector('#onboarding-next') as HTMLButtonElement;
+  const prevBtn = container.querySelector(
+    '#onboarding-prev'
+  ) as HTMLButtonElement;
+  const nextBtn = container.querySelector(
+    '#onboarding-next'
+  ) as HTMLButtonElement;
 
   prevBtn.disabled = step === 0;
   nextBtn.textContent = step === 2 ? '开始使用' : '下一步';
@@ -140,7 +144,10 @@ const completeOnboarding = async (onComplete: () => void): Promise<void> => {
 /**
  * 显示向导
  */
-export const showOnboarding = (parent: HTMLElement, onComplete: () => void): void => {
+export const showOnboarding = (
+  parent: HTMLElement,
+  onComplete: () => void
+): void => {
   if (container) return;
 
   container = createOnboardingUI(onComplete);
@@ -156,7 +163,9 @@ export const showOnboarding = (parent: HTMLElement, onComplete: () => void): voi
  */
 export const checkNeedsOnboarding = async (): Promise<boolean> => {
   try {
-    const response = await chrome.runtime.sendMessage({ action: 'checkOnboarding' });
+    const response = await chrome.runtime.sendMessage({
+      action: 'checkOnboarding',
+    });
     return response?.needsOnboarding ?? false;
   } catch {
     return false;

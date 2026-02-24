@@ -1,8 +1,8 @@
-# Prompt Enhancer 核心优化逻辑重构讨论文档
+# Lynx（灵犀）核心优化逻辑重构讨论文档
 
 ## 项目背景
 
-Prompt Enhancer 是一款 Chrome 浏览器扩展，功能是一键润色/优化用户输入给 AI 的 prompt。用户在任意 AI 聊天网站（ChatGPT、Gemini、DeepSeek 等）的输入框中写好 prompt 后，点击插件按钮，插件会调用 LLM API 对 prompt 进行优化重写，然后替换回输入框。
+Lynx（灵犀）是一款 Chrome 浏览器扩展，功能是一键润色/优化用户输入给 AI 的 prompt。用户在任意 AI 聊天网站（ChatGPT、Gemini、DeepSeek 等）的输入框中写好 prompt 后，点击插件按钮，插件会调用 LLM API 对 prompt 进行优化重写，然后替换回输入框。
 
 ## 当前架构
 

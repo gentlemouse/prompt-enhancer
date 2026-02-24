@@ -1,5 +1,4 @@
-/**
- * Prompt Enhancer — Cloudflare Worker API 代理
+# Lynx — Cloudflare Worker API 代理
  *
  * 功能：
  * - 为免费用户代理 AI API 调用（无需自备 API Key）

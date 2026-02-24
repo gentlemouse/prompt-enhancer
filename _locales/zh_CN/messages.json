@@ -1,9 +1,9 @@
 {
   "extName": {
-    "message": "Prompt Enhancer"
+    "message": "灵犀"
   },
   "extDescription": {
-    "message": "一键润色优化你的 Prompt，让 AI 更好地理解你的意图"
+    "message": "心有灵犀一点通"
   },
   "commandEnhance": {
     "message": "润色当前输入框的 Prompt"
@@ -85,7 +85,7 @@
   },
 
   "onboardingTitle": {
-    "message": "欢迎使用 Prompt Enhancer"
+    "message": "欢迎使用 灵犀"
   },
   "onboardingStep1Title": {
     "message": "配置 API Key"
@@ -213,7 +213,7 @@
     "message": "解锁无限使用"
   },
   "trialExpiredOverlayDesc": {
-    "message": "您的 10 次免费试用已用完。配置 API Key 即可继续使用 Prompt Enhancer 的全部功能。支持 OpenAI / Anthropic / DeepSeek 等多个服务商。"
+    "message": "您的 10 次免费试用已用完。配置 API Key 即可继续使用 灵犀 的全部功能。支持 OpenAI / Anthropic / DeepSeek 等多个服务商。"
   },
   "trialHowToGetKey": {
     "message": "如何获取 API Key？"
