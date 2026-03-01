@@ -154,7 +154,6 @@ export type MessageAction =
   | 'streamEnd'
   | 'checkOnboarding'
   | 'completeOnboarding'
-  | 'colorSchemeChange'
   | 'getTrialStatus'
   | 'enhanceSelection'
   | 'triggerEnhance';
@@ -168,8 +167,6 @@ export interface ExtensionMessage {
   requestId?: string;
   chunk?: string;
   error?: string;
-  /** 是否为暗色模式 */
-  isDark?: boolean;
 }
 
 /** 试用状态 */

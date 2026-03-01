@@ -185,7 +185,9 @@ const getOnboardingStyles = (): string => `
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -193,62 +195,70 @@ const getOnboardingStyles = (): string => `
   }
 
   .onboarding-modal {
-    background: white;
-    border-radius: 12px;
+    background: #ffffff;
+    border-radius: 16px;
     width: 100%;
-    max-width: 320px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    animation: modal-appear 0.3s ease;
+    max-width: 340px;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.04),
+      0 8px 40px rgba(0, 0, 0, 0.16),
+      0 24px 60px rgba(0, 0, 0, 0.08);
+    animation: modal-appear 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     outline: none;
+    overflow: hidden;
   }
 
   @keyframes modal-appear {
     from {
       opacity: 0;
-      transform: scale(0.95);
+      transform: scale(0.94) translateY(8px);
     }
     to {
       opacity: 1;
-      transform: scale(1);
+      transform: scale(1) translateY(0);
     }
   }
 
   .onboarding-header {
     padding: 20px 20px 16px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     text-align: center;
   }
 
   .onboarding-header h2 {
-    font-size: 16px;
-    font-weight: 600;
-    margin: 0 0 12px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin: 0 0 14px;
+    color: #1e1f24;
   }
 
   .onboarding-progress {
     display: flex;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
   }
 
   .step-indicator {
-    width: 24px;
-    height: 4px;
-    border-radius: 2px;
-    background: #e0e0e0;
-    transition: background 0.3s;
+    width: 28px;
+    height: 3px;
+    border-radius: 9999px;
+    background: #e8e8ec;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .step-indicator.active {
-    background: #1a1a1a;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
   }
 
   .step-indicator.current {
-    background: #4a90d9;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    width: 36px;
   }
 
   .onboarding-content {
-    padding: 20px;
+    padding: 24px 20px;
     min-height: 180px;
     position: relative;
   }
@@ -256,7 +266,7 @@ const getOnboardingStyles = (): string => `
   .onboarding-step {
     display: none;
     text-align: center;
-    animation: step-appear 0.3s ease;
+    animation: step-appear 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .onboarding-step.active {
@@ -266,7 +276,7 @@ const getOnboardingStyles = (): string => `
   @keyframes step-appear {
     from {
       opacity: 0;
-      transform: translateX(10px);
+      transform: translateX(12px);
     }
     to {
       opacity: 1;
@@ -275,44 +285,50 @@ const getOnboardingStyles = (): string => `
   }
 
   .step-icon {
-    font-size: 40px;
-    margin-bottom: 12px;
+    font-size: 42px;
+    margin-bottom: 14px;
   }
 
   .onboarding-step h3 {
-    font-size: 14px;
-    font-weight: 600;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    font-weight: 650;
     margin: 0 0 8px;
+    letter-spacing: -0.2px;
+    color: #1e1f24;
   }
 
   .onboarding-step p {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 13px;
-    color: #666;
-    line-height: 1.5;
+    color: #62636c;
+    line-height: 1.6;
     margin: 0 0 8px;
   }
 
   .step-hint {
     font-size: 11px !important;
-    color: #999 !important;
+    color: #8b8d98 !important;
   }
 
   .onboarding-step kbd {
     display: inline-block;
     padding: 2px 6px;
-    background: #f5f5f5;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    background: #f0f0f3;
+    border: 1px solid #e0e0e5;
+    border-radius: 5px;
     font-size: 11px;
-    font-family: monospace;
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    box-shadow: 0 1px 0 #e0e0e5;
   }
 
   .onboarding-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
-    border-top: 1px solid #eee;
+    padding: 14px 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    background: #fcfcfd;
   }
 
   .onboarding-nav {
@@ -321,100 +337,125 @@ const getOnboardingStyles = (): string => `
   }
 
   .onboarding-btn {
-    padding: 8px 16px;
+    padding: 8px 18px;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 13px;
+    font-weight: 500;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .onboarding-btn.primary {
-    background: #1a1a1a;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
+    box-shadow: 0 1px 3px rgba(99, 102, 241, 0.25), 0 4px 12px rgba(99, 102, 241, 0.15);
   }
 
   .onboarding-btn.primary:hover {
-    background: #333;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35), 0 8px 20px rgba(99, 102, 241, 0.2);
+    transform: translateY(-0.5px);
   }
 
   .onboarding-btn.secondary {
-    background: #f0f0f0;
-    color: #666;
+    background: #f0f0f3;
+    color: #62636c;
   }
 
   .onboarding-btn.secondary:hover {
-    background: #e0e0e0;
+    background: #e8e8ec;
+    color: #1e1f24;
   }
 
   .onboarding-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
   }
 
-  .onboarding-btn:focus {
-    outline: 2px solid #4a90d9;
-    outline-offset: 2px;
+  .onboarding-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
   }
 
-  /* 暗色模式适配 */
+  /* 暗色模式 */
   @media (prefers-color-scheme: dark) {
+    .onboarding-overlay {
+      background: rgba(0, 0, 0, 0.6);
+    }
+
     .onboarding-modal {
-      background: #1f1f1f;
-      color: #e0e0e0;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      background: #18191b;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.06),
+        0 8px 40px rgba(0, 0, 0, 0.5),
+        0 24px 60px rgba(0, 0, 0, 0.3);
     }
 
     .onboarding-header {
-      border-bottom: 1px solid #333;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .onboarding-header h2 {
-      color: #fff;
+      color: #edeef0;
     }
 
     .step-indicator {
-      background: #333;
+      background: #272a2d;
     }
 
-    .step-indicator.active {
-      background: #fff;
+    .step-indicator.active,
+    .step-indicator.current {
+      background: linear-gradient(135deg, #818cf8, #a78bfa);
+    }
+
+    .onboarding-step h3 {
+      color: #edeef0;
     }
 
     .onboarding-step p {
-      color: #aaa;
+      color: #a0a4ab;
     }
 
     .step-hint {
-      color: #666 !important;
+      color: #696e77 !important;
     }
 
     .onboarding-step kbd {
-      background: #2d2d2d;
-      border: 1px solid #444;
-      color: #ccc;
+      background: #212225;
+      border: 1px solid #363a3f;
+      color: #a0a4ab;
+      box-shadow: 0 1px 0 #363a3f;
     }
 
     .onboarding-footer {
-      border-top: 1px solid #333;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      background: #111113;
     }
 
     .onboarding-btn.primary {
-      background: #fff;
-      color: #000;
+      background: linear-gradient(135deg, #818cf8, #a78bfa);
+      box-shadow: 0 1px 3px rgba(129, 140, 248, 0.2), 0 4px 12px rgba(129, 140, 248, 0.12);
     }
 
     .onboarding-btn.primary:hover {
-      background: #e0e0e0;
+      box-shadow: 0 2px 6px rgba(129, 140, 248, 0.3), 0 8px 20px rgba(129, 140, 248, 0.18);
     }
 
     .onboarding-btn.secondary {
-      background: #2d2d2d;
-      color: #ccc;
+      background: #212225;
+      color: #a0a4ab;
     }
 
     .onboarding-btn.secondary:hover {
-      background: #3a3a3a;
+      background: #2e3135;
+      color: #edeef0;
+    }
+
+    .onboarding-btn:focus-visible {
+      box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25);
     }
   }
 `;

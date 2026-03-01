@@ -108,9 +108,8 @@ const buildHistorySummary = (history: HistoryItem[]): string | undefined => {
   // 取最近 3 条，每条截取前 80 字
   const recent = history.slice(-3);
   const lines = recent.map((item, i) => {
-    const preview = item.text.length > 80
-      ? item.text.substring(0, 80) + '...'
-      : item.text;
+    const preview =
+      item.text.length > 80 ? item.text.substring(0, 80) + '...' : item.text;
     return `[第${i + 1}轮] ${preview}`;
   });
 
@@ -138,8 +137,8 @@ const selectStrategy = (
   // 2. 多轮追问 → 意图澄清
   if (isFollowUp) return OptimizationStrategy.INTENT_CLARIFY;
 
-  // 3. 简短指令（<50字）且意图明确 → 轻润色
-  if (length < 50) return OptimizationStrategy.LIGHT_POLISH;
+  // 3. 极短指令（<30字）→ 轻润色（30-50字进入结构化重写以获得更好效果）
+  if (length < 30) return OptimizationStrategy.LIGHT_POLISH;
 
   // 4. 已有良好结构 → 微调锐化
   if (hasGoodStructure) return OptimizationStrategy.SHARPEN;
@@ -208,7 +207,10 @@ export const analyzePrompt = (
   }
 
   // --- 结构特征检测 ---
-  const hasCode = /```|`[^`]+`|function\s|def\s|class\s|import\s|const\s|let\s|var\s/.test(prompt);
+  const hasCode =
+    /```|`[^`]+`|function\s|def\s|class\s|import\s|const\s|let\s|var\s/.test(
+      prompt
+    );
   const hasFormatRequest = /json|xml|markdown|表格|列表|格式|yaml/.test(text);
   const hasMultipleQuestions = (prompt.match(/[?？]/g) || []).length > 1;
   const hasNumberedList = /\d+[.、)）]/.test(prompt);

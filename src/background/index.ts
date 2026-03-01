@@ -17,39 +17,7 @@ import type {
   TrialState,
 } from '@shared/types';
 
-/** 颜色方案存储键 */
-const COLOR_SCHEME_KEY = 'prompt_enhancer_color_scheme';
-
-/**
- * 暗色模式图标切换
- * 同时保存状态到 storage，以便 Service Worker 重启时恢复
- */
-const setIconForColorScheme = (isDark: boolean): void => {
-  const iconPath = isDark ? 'icons/dark' : 'icons';
-  chrome.action.setIcon({
-    path: {
-      '16': `${iconPath}/icon16.png`,
-      '48': `${iconPath}/icon48.png`,
-      '128': `${iconPath}/icon128.png`,
-    },
-  });
-  // 保存状态
-  chrome.storage.local.set({ [COLOR_SCHEME_KEY]: isDark });
-};
-
-/**
- * 初始化颜色方案
- * 从 storage 读取上次保存的状态
- */
-const initColorScheme = async (): Promise<void> => {
-  const result = await chrome.storage.local.get(COLOR_SCHEME_KEY);
-  if (result[COLOR_SCHEME_KEY] !== undefined) {
-    setIconForColorScheme(result[COLOR_SCHEME_KEY]);
-  }
-};
-
 // Service Worker 启动时初始化
-initColorScheme();
 syncQuotaFromServer().then(() => updateTrialBadge());
 
 /**
@@ -261,12 +229,6 @@ chrome.runtime.onMessage.addListener(
             trialRemaining: remaining,
             trialTotal: trialData.maxUses,
           };
-        }
-
-        // 暗色模式切换
-        case 'colorSchemeChange': {
-          setIconForColorScheme(request.isDark === true);
-          return { success: true };
         }
 
         default:

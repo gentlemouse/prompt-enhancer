@@ -1,120 +1,242 @@
 /**
- * Popup 样式
+ * Popup 样式 — Premium Design System
+ * 配色：靛青→紫罗兰品牌渐变  |  字体：Inter  |  间距：4px 网格
+ * 设计标杆：Linear · Raycast · Arc Browser
  */
 
-/* 颜色变量 - 亮色主题 */
+/* ─── Google Fonts ─── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ─── Design Tokens — 亮色主题 ─── */
 :root {
-  --bg-primary: #fff;
-  --bg-secondary: #f5f5f7;
-  --bg-hover: #fff;
-  --bg-footer: #fafafa;
-  --text-primary: #1a1a1a;
-  --text-secondary: #52525b;
-  --text-muted: #71717a;
-  --border-color: #e4e4e7;
-  --border-light: #f4f4f5;
-  --brand-color: #3b82f6;
-  --brand-color-hover: #2563eb;
-  --brand-color-active: #1d4ed8;
-  --btn-bg: #3b82f6;
-  --btn-bg-hover: #2563eb;
-  --btn-bg-active: #1d4ed8;
-  --btn-text: #fff;
-  --input-border-focus: #3b82f6;
+  /* 品牌渐变 */
+  --brand-from: #6366f1;
+  --brand-to: #8b5cf6;
+  --brand-gradient: linear-gradient(135deg, var(--brand-from), var(--brand-to));
+  --brand-color: #6366f1;
+  --brand-color-hover: #4f46e5;
+  --brand-color-active: #4338ca;
+
+  /* 中性色阶 (Radix-inspired) */
+  --gray-1: #fcfcfd;
+  --gray-2: #f9f9fb;
+  --gray-3: #f0f0f3;
+  --gray-4: #e8e8ec;
+  --gray-5: #e0e0e5;
+  --gray-6: #d8d8df;
+  --gray-7: #cdced6;
+  --gray-8: #b9bbc6;
+  --gray-9: #8b8d98;
+  --gray-10: #80828d;
+  --gray-11: #62636c;
+  --gray-12: #1e1f24;
+
+  /* 语义色 */
+  --bg-primary: #ffffff;
+  --bg-secondary: var(--gray-2);
+  --bg-hover: var(--gray-3);
+  --bg-footer: var(--gray-1);
+  --text-primary: var(--gray-12);
+  --text-secondary: var(--gray-11);
+  --text-muted: var(--gray-9);
+  --border-color: var(--gray-4);
+  --border-light: var(--gray-3);
+
+  /* 按钮 */
+  --btn-bg: var(--brand-gradient);
+  --btn-bg-solid: var(--brand-color);
+  --btn-bg-hover: var(--brand-color-hover);
+  --btn-bg-active: var(--brand-color-active);
+  --btn-text: #ffffff;
+  --btn-shadow:
+    0 1px 3px rgba(99, 102, 241, 0.25), 0 4px 12px rgba(99, 102, 241, 0.15);
+  --btn-shadow-hover:
+    0 2px 6px rgba(99, 102, 241, 0.35), 0 8px 20px rgba(99, 102, 241, 0.2);
+
+  /* 输入框 */
+  --input-border-focus: var(--brand-color);
+  --input-ring: rgba(99, 102, 241, 0.2);
+
+  /* 状态色 */
   --success-bg: #f0fdf4;
-  --success-text: #16a34a;
+  --success-text: #15803d;
+  --success-border: #bbf7d0;
   --error-bg: #fef2f2;
   --error-text: #dc2626;
+  --error-border: #fecaca;
   --warning-bg: #fffbeb;
-  --warning-border: #f59e0b;
+  --warning-border: #fbbf24;
   --warning-text: #b45309;
-  --tooltip-trigger-bg: #f4f4f5;
-  --tooltip-trigger-bg-hover: #e4e4e7;
-  --tooltip-bg: #27272a;
-  --tooltip-text: #fff;
-  --kbd-bg: #f4f4f5;
-  --kbd-border: #d4d4d8;
-  --kbd-text: #3f3f46;
+
+  /* Tooltip */
+  --tooltip-trigger-bg: var(--gray-3);
+  --tooltip-trigger-bg-hover: var(--gray-5);
+  --tooltip-bg: var(--gray-12);
+  --tooltip-text: #ffffff;
+
+  /* 键盘按键 */
+  --kbd-bg: var(--gray-2);
+  --kbd-border: var(--gray-5);
+  --kbd-text: var(--gray-11);
+
+  /* 间距 tokens (4px 网格) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  /* 圆角 tokens */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-full: 9999px;
+
+  /* 字体 */
+  --font-sans:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:
+    'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  /* 过渡 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.25s;
+  --duration-slow: 0.4s;
 }
 
-/* 颜色变量 - 暗色主题 */
+/* ─── Design Tokens — 暗色主题 ─── */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-primary: #18181b;
-    --bg-secondary: #27272a;
-    --bg-hover: #3f3f46;
-    --bg-footer: #1f1f23;
-    --text-primary: #fafafa;
-    --text-secondary: #a1a1aa;
-    --text-muted: #71717a;
-    --border-color: #3f3f46;
-    --border-light: #27272a;
-    --brand-color: #60a5fa;
-    --brand-color-hover: #3b82f6;
-    --brand-color-active: #2563eb;
-    --btn-bg: #3b82f6;
-    --btn-bg-hover: #60a5fa;
-    --btn-bg-active: #2563eb;
-    --btn-text: #fff;
-    --input-border-focus: #60a5fa;
+    /* 品牌色（暗色模式稍微提亮） */
+    --brand-from: #818cf8;
+    --brand-to: #a78bfa;
+    --brand-color: #818cf8;
+    --brand-color-hover: #6366f1;
+    --brand-color-active: #4f46e5;
+
+    /* 中性色阶 (暗色) */
+    --gray-1: #111113;
+    --gray-2: #18191b;
+    --gray-3: #212225;
+    --gray-4: #272a2d;
+    --gray-5: #2e3135;
+    --gray-6: #363a3f;
+    --gray-7: #43484e;
+    --gray-8: #5a6169;
+    --gray-9: #696e77;
+    --gray-10: #7d8188;
+    --gray-11: #a0a4ab;
+    --gray-12: #edeef0;
+
+    /* 语义色 */
+    --bg-primary: #111113;
+    --bg-secondary: var(--gray-2);
+    --bg-hover: var(--gray-4);
+    --bg-footer: var(--gray-2);
+    --text-primary: var(--gray-12);
+    --text-secondary: var(--gray-11);
+    --text-muted: var(--gray-9);
+    --border-color: var(--gray-4);
+    --border-light: var(--gray-3);
+
+    /* 按钮 */
+    --btn-bg: var(--brand-gradient);
+    --btn-bg-solid: var(--brand-color);
+    --btn-shadow:
+      0 1px 3px rgba(129, 140, 248, 0.2), 0 4px 12px rgba(129, 140, 248, 0.12);
+    --btn-shadow-hover:
+      0 2px 6px rgba(129, 140, 248, 0.3), 0 8px 20px rgba(129, 140, 248, 0.18);
+
+    /* 输入框 */
+    --input-ring: rgba(129, 140, 248, 0.25);
+
+    /* 状态色 */
     --success-bg: #052e16;
     --success-text: #4ade80;
+    --success-border: #166534;
     --error-bg: #450a0a;
     --error-text: #f87171;
+    --error-border: #7f1d1d;
     --warning-bg: #422006;
     --warning-border: #d97706;
     --warning-text: #fbbf24;
-    --tooltip-trigger-bg: #3f3f46;
-    --tooltip-trigger-bg-hover: #52525b;
-    --tooltip-bg: #fafafa;
-    --tooltip-text: #18181b;
-    --kbd-bg: #27272a;
-    --kbd-border: #3f3f46;
-    --kbd-text: #d4d4d8;
+
+    /* Tooltip */
+    --tooltip-trigger-bg: var(--gray-4);
+    --tooltip-trigger-bg-hover: var(--gray-6);
+    --tooltip-bg: var(--gray-12);
+    --tooltip-text: var(--gray-1);
+
+    /* 键盘按键 */
+    --kbd-bg: var(--gray-3);
+    --kbd-border: var(--gray-5);
+    --kbd-text: var(--gray-11);
   }
 }
 
+/* ─── Reset ─── */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* ─── Body ─── */
 body {
-  width: 320px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  width: 340px;
+  font-family: var(--font-sans);
   background: var(--bg-primary);
   color: var(--text-primary);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Container ─── */
 .container {
-  padding: 24px;
+  padding: var(--space-6);
 }
 
+/* ─── Header ─── */
 .header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-bottom: 20px;
-  margin-bottom: 24px;
+  gap: var(--space-3);
+  padding-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
   border-bottom: 1px solid var(--border-light);
 }
 
-.header img {
-  width: 28px;
-  height: 28px;
+.header .logo-container {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-gradient);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
 }
 
 .header h1 {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   color: var(--text-primary);
+  letter-spacing: -0.3px;
 }
 
+/* ─── Form Group ─── */
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 label {
@@ -122,105 +244,156 @@ label {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
 }
 
+/* ─── Select & Input — 统一控件 ─── */
 select,
 input {
   width: 100%;
-  padding: 11px 14px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
   font-size: 14px;
+  font-family: var(--font-sans);
   background: var(--bg-secondary);
   color: var(--text-primary);
   transition:
-    border-color 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
 select:hover,
 input:hover {
-  border-color: var(--text-muted);
+  border-color: var(--gray-6);
+  background: var(--bg-hover);
 }
 
 select:focus,
 input:focus {
   outline: none;
   border-color: var(--input-border-focus);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 3px var(--input-ring);
+  transform: translateY(-0.5px);
 }
 
 input[type='password'] {
-  font-family: monospace;
-  letter-spacing: 1px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 1.5px;
 }
 
 input.error {
   border-color: var(--error-text);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
 }
 
+/* ─── Primary Button — 品牌渐变 ─── */
 .btn {
   width: 100%;
-  padding: 12px;
+  padding: var(--space-3) var(--space-4);
   background: var(--btn-bg);
   color: var(--btn-text);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  font-family: var(--font-sans);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--btn-shadow);
   transition:
-    background 0.2s ease,
-    transform 0.1s ease,
-    box-shadow 0.2s ease;
+    box-shadow var(--duration-normal) var(--ease-out),
+    transform var(--duration-fast) var(--ease-spring);
+}
+
+/* 按钮微光泽层 */
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.12),
+    transparent
+  );
+  transition: left 0.5s var(--ease-out);
 }
 
 .btn:hover {
-  background: var(--btn-bg-hover);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+  box-shadow: var(--btn-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.btn:hover::before {
+  left: 100%;
 }
 
 .btn:active {
-  background: var(--btn-bg-active);
-  transform: scale(0.98);
+  transform: translateY(0) scale(0.98);
+  box-shadow: var(--btn-shadow);
 }
 
-.btn:focus {
+.btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+  box-shadow:
+    0 0 0 3px var(--input-ring),
+    var(--btn-shadow);
 }
 
+/* ─── Status Message ─── */
 .status {
   text-align: center;
   font-size: 12px;
-  margin-top: 12px;
-  padding: 8px 12px;
-  border-radius: 4px;
+  font-weight: 500;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   display: none;
+  animation: status-slide-in var(--duration-normal) var(--ease-out);
+}
+
+@keyframes status-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .status.success {
   display: block;
   background: var(--success-bg);
   color: var(--success-text);
+  border: 1px solid var(--success-border);
 }
 
 .status.error {
   display: block;
   background: var(--error-bg);
   color: var(--error-text);
+  border: 1px solid var(--error-border);
 }
 
-/* 底部快捷键区域 */
+/* ─── Footer 快捷键区域 ─── */
 .footer {
   background: var(--bg-footer);
-  margin: 24px -24px -24px;
-  padding: 16px 24px;
-  border-radius: 0 0 0 0;
+  margin: var(--space-6) calc(var(--space-6) * -1) calc(var(--space-6) * -1);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border-light);
 }
 
 .hint {
@@ -233,7 +406,7 @@ input.error {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
+  padding: var(--space-1) 0;
 }
 
 .hint-row span:first-child {
@@ -241,39 +414,59 @@ input.error {
   font-weight: 500;
 }
 
-/* 键盘按键样式 */
+/* ─── 键盘按键样式 ─── */
 .hint-key {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .hint-key kbd {
-  display: inline-block;
-  padding: 3px 6px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
   color: var(--kbd-text);
   background: var(--kbd-bg);
   border: 1px solid var(--kbd-border);
-  border-radius: 4px;
+  border-radius: 5px;
   box-shadow: 0 1px 0 var(--kbd-border);
 }
 
+/* ─── Custom Endpoint ─── */
 .custom-endpoint {
   display: none;
 }
 
 .custom-endpoint.show {
   display: block;
+  animation: field-reveal var(--duration-normal) var(--ease-out);
 }
 
-/* Label with tooltip */
+@keyframes field-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+    max-height: 0;
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 200px;
+  }
+}
+
+/* ─── Label with Tooltip ─── */
 .label-with-tooltip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .tooltip-trigger {
@@ -281,18 +474,19 @@ input.error {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-muted);
   background: var(--tooltip-trigger-bg);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   cursor: default;
   text-transform: none;
   letter-spacing: 0;
   vertical-align: middle;
   margin-top: -1px;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .tooltip-trigger:hover,
@@ -306,20 +500,24 @@ input.error {
   left: 0;
   bottom: calc(100% + 8px);
   width: max-content;
-  max-width: 180px;
-  padding: 8px 10px;
+  max-width: 200px;
+  padding: var(--space-2) var(--space-3);
   font-size: 11px;
   font-weight: 400;
   color: var(--tooltip-text);
   background: var(--tooltip-bg);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   white-space: normal;
-  line-height: 1.4;
+  line-height: 1.5;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.15s, visibility 0.15s;
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    visibility var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
   z-index: 100;
   pointer-events: none;
+  transform: translateY(4px);
 }
 
 .tooltip::after {
@@ -335,33 +533,34 @@ input.error {
 .tooltip-trigger:focus .tooltip {
   opacity: 1;
   visibility: visible;
+  transform: translateY(0);
 }
 
-/* P0-1.3: 警告框样式 */
+/* ─── 警告框 ─── */
 .warning-box {
   background: var(--warning-bg);
   border: 1px solid var(--warning-border);
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .warning-icon {
   font-size: 16px;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .warning-text {
   font-size: 12px;
   color: var(--warning-text);
-  line-height: 1.5;
-  margin-bottom: 10px;
+  line-height: 1.6;
+  margin-bottom: var(--space-3);
 }
 
 .warning-checkbox {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: 12px;
   color: var(--warning-text);
   cursor: pointer;
@@ -372,10 +571,10 @@ input.error {
   margin: 0;
 }
 
-/* P0-1.4: Endpoint 验证提示 */
+/* ─── Endpoint 验证提示 ─── */
 .form-group .hint {
   font-size: 11px;
-  margin-top: 4px;
+  margin-top: var(--space-1);
   min-height: 16px;
 }
 
@@ -387,20 +586,20 @@ input.error {
   color: var(--success-text);
 }
 
-/* 试用横幅 */
+/* ─── 试用横幅 ─── */
 .trial-banner {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin-bottom: 20px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .trial-banner-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .trial-banner-label {
@@ -418,29 +617,31 @@ input.error {
   width: 100%;
   height: 4px;
   background: var(--border-color);
-  border-radius: 2px;
+  border-radius: var(--radius-full);
   overflow: hidden;
 }
 
 .trial-banner-fill {
   height: 100%;
-  border-radius: 2px;
-  transition: width 0.4s ease, background 0.3s ease;
+  border-radius: var(--radius-full);
+  transition:
+    width var(--duration-slow) var(--ease-out),
+    background var(--duration-normal) var(--ease-out);
 }
 
 .trial-banner-fill.good {
-  background: var(--brand-color);
+  background: var(--brand-gradient);
 }
 
 .trial-banner-fill.warning {
-  background: #f59e0b;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
 }
 
 .trial-banner-fill.expired {
-  background: #dc2626;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
 }
 
-/* 试用结束引导覆盖层 */
+/* ─── 试用结束引导覆盖层 ─── */
 .trial-expired-overlay {
   position: fixed;
   top: 0;
@@ -453,42 +654,50 @@ input.error {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 28px;
+  padding: var(--space-8) var(--space-7);
   text-align: center;
-  animation: overlay-appear 0.3s ease;
+  animation: overlay-appear var(--duration-normal) var(--ease-out);
 }
 
 @keyframes overlay-appear {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .trial-expired-icon {
   font-size: 48px;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .trial-expired-title {
   font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 10px;
+  margin-bottom: var(--space-3);
+  letter-spacing: -0.3px;
 }
 
 .trial-expired-desc {
   font-size: 13px;
   color: var(--text-muted);
   line-height: 1.6;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .trial-expired-steps {
   text-align: left;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 14px 16px;
-  margin-bottom: 24px;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
   width: 100%;
 }
 
@@ -497,8 +706,8 @@ input.error {
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 10px;
+  letter-spacing: 0.6px;
+  margin-bottom: var(--space-3);
 }
 
 .trial-expired-steps ol {
@@ -512,23 +721,23 @@ input.error {
   counter-increment: steps;
   font-size: 12px;
   color: var(--text-secondary);
-  padding: 4px 0 4px 24px;
+  padding: var(--space-1) 0 var(--space-1) var(--space-6);
   position: relative;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .trial-expired-steps li::before {
   content: counter(steps);
   position: absolute;
   left: 0;
-  top: 4px;
-  width: 16px;
-  height: 16px;
-  background: var(--brand-color);
+  top: var(--space-1);
+  width: 18px;
+  height: 18px;
+  background: var(--brand-gradient);
   color: #fff;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -536,22 +745,26 @@ input.error {
 
 .trial-expired-btn {
   width: 100%;
-  padding: 12px;
-  background: var(--btn-bg);
+  padding: var(--space-3);
+  background: var(--brand-gradient);
   color: var(--btn-text);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  font-family: var(--font-sans);
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--btn-shadow);
+  transition:
+    box-shadow var(--duration-normal) var(--ease-out),
+    transform var(--duration-fast) var(--ease-spring);
 }
 
 .trial-expired-btn:hover {
-  background: var(--btn-bg-hover);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+  box-shadow: var(--btn-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .trial-expired-btn:active {
-  background: var(--btn-bg-active);
+  transform: translateY(0) scale(0.98);
 }
