@@ -26,10 +26,12 @@ import {
   type EditableElement,
 } from './services/input-detector';
 import { tryUndo, saveOriginalContent } from './services/enhance-handler';
-import { initSessionMemory, pushHistory, updateLastEnhanced, getHistory } from './services/session-memory';
-
-/** 获取图标 URL */
-const ICON_URL = chrome.runtime.getURL('icons/icon24.png');
+import {
+  initSessionMemory,
+  pushHistory,
+  updateLastEnhanced,
+  getHistory,
+} from './services/session-memory';
 
 /** 当前活跃的输入框 */
 let activeInput: EditableElement | null = null;
@@ -46,24 +48,156 @@ let streamingInput: EditableElement | null = null;
 /** 流式累积文本 */
 let streamingText = '';
 
-/** 用于标识元素的数据属性 */
-const ELEMENT_ID_ATTR = 'data-prompt-enhancer-id';
-let nextElementId = 1;
+/** rAF 定位任务 ID */
+let positionFrameId: number | null = null;
 
-/**
- * 获取或创建元素的唯一标识
- */
-const getElementId = (el: HTMLElement): string => {
-  let id = el.getAttribute(ELEMENT_ID_ATTR);
-  if (!id) {
-    id = `pe-${nextElementId++}`;
-    el.setAttribute(ELEMENT_ID_ATTR, id);
-  }
-  return id;
+/** 定位兜底定时器 ID */
+let positionSyncTimer: number | null = null;
+
+/** 当前已绑定滚动监听的容器 */
+let observedScrollContainers: HTMLElement[] = [];
+
+/** 当前输入框 ResizeObserver */
+let activeInputResizeObserver: {
+  disconnect: () => void;
+  observe: (target: Element) => void;
+} | null = null;
+
+/** 是否滚动容器 */
+const isScrollableElement = (el: HTMLElement): boolean => {
+  const style = window.getComputedStyle(el);
+  const overflowY = style.overflowY;
+  const overflowX = style.overflowX;
+  const allowScroll = /(auto|scroll|overlay)/;
+
+  return (
+    (allowScroll.test(overflowY) && el.scrollHeight > el.clientHeight) ||
+    (allowScroll.test(overflowX) && el.scrollWidth > el.clientWidth)
+  );
 };
 
-/** 已定位的输入框 ID */
-let positionedInputId: string | null = null;
+/**
+ * 收集输入框的可滚动祖先（用于监听局部滚动容器）
+ */
+const collectScrollableAncestors = (input: HTMLElement): HTMLElement[] => {
+  const ancestors: HTMLElement[] = [];
+  let current = input.parentElement;
+
+  while (
+    current &&
+    current !== document.body &&
+    current !== document.documentElement
+  ) {
+    if (isScrollableElement(current)) {
+      ancestors.push(current);
+    }
+    current = current.parentElement;
+  }
+
+  return ancestors;
+};
+
+/**
+ * 清理当前输入框关联观察器
+ */
+const detachActiveInputObservers = (): void => {
+  if (activeInputResizeObserver) {
+    activeInputResizeObserver.disconnect();
+    activeInputResizeObserver = null;
+  }
+
+  for (const container of observedScrollContainers) {
+    container.removeEventListener('scroll', scheduleButtonPosition);
+  }
+  observedScrollContainers = [];
+};
+
+/**
+ * 给当前输入框挂载滚动/尺寸监听
+ */
+const attachActiveInputObservers = (input: EditableElement): void => {
+  detachActiveInputObservers();
+
+  observedScrollContainers = collectScrollableAncestors(input);
+  for (const container of observedScrollContainers) {
+    container.addEventListener('scroll', scheduleButtonPosition, {
+      passive: true,
+    });
+  }
+
+  if (typeof window.ResizeObserver !== 'undefined') {
+    activeInputResizeObserver = new window.ResizeObserver(() => {
+      scheduleButtonPosition();
+    });
+    activeInputResizeObserver.observe(input);
+
+    // 观察一层父容器，覆盖大多数「输入框外壳尺寸变化」场景
+    if (input.parentElement) {
+      activeInputResizeObserver.observe(input.parentElement);
+    }
+  }
+};
+
+/**
+ * 兜底同步：处理无事件触发的布局漂移（动画、异步插入内容等）
+ */
+const startPositionSync = (): void => {
+  if (positionSyncTimer !== null) return;
+
+  positionSyncTimer = window.setInterval(() => {
+    scheduleButtonPosition();
+  }, 250);
+};
+
+/**
+ * 停止兜底同步
+ */
+const stopPositionSync = (): void => {
+  if (positionSyncTimer !== null) {
+    window.clearInterval(positionSyncTimer);
+    positionSyncTimer = null;
+  }
+};
+
+/**
+ * 立即更新按钮位置
+ */
+const updateButtonPosition = (): void => {
+  if (!buttonState || !activeInput) return;
+
+  if (!activeInput.isConnected || !isValidInput(activeInput)) {
+    hideButton(buttonState.container);
+    activeInput = null;
+    detachActiveInputObservers();
+    stopPositionSync();
+    return;
+  }
+
+  positionButton(buttonState.container, activeInput);
+};
+
+/**
+ * 调度按钮位置更新（rAF 合帧）
+ */
+function scheduleButtonPosition(): void {
+  if (positionFrameId !== null) return;
+
+  positionFrameId = window.requestAnimationFrame(() => {
+    positionFrameId = null;
+    updateButtonPosition();
+  });
+}
+
+/**
+ * 隐藏按钮并清理定位状态
+ */
+const hideEnhanceButton = (): void => {
+  if (!buttonState) return;
+  hideButton(buttonState.container);
+  activeInput = null;
+  detachActiveInputObservers();
+  stopPositionSync();
+};
 
 /**
  * 显示按钮
@@ -72,27 +206,28 @@ let positionedInputId: string | null = null;
 const showButton = (target: EditableElement): void => {
   if (!buttonState) return;
 
-  // 如果正在流式输出，不处理
-  if (currentRequestId) return;
+  // 如果正在流式输出，仅允许跟随当前流式输入框
+  if (currentRequestId && streamingInput && target !== streamingInput) return;
 
-  activeInput = target;
-
-  // 使用元素 ID 比较，而不是引用比较
-  // 这样即使 DOM 更新导致元素引用变化，只要是同一个 DOM 节点就不会重新定位
-  const targetId = getElementId(target as HTMLElement);
-  if (targetId !== positionedInputId) {
-    positionButton(buttonState.container, target);
-    positionedInputId = targetId;
+  if (!target.isConnected || !isValidInput(target)) {
+    hideEnhanceButton();
+    return;
   }
 
-  buttonState.container.style.display = 'flex';
+  activeInput = target;
+  attachActiveInputObservers(target);
+
+  updateButtonPosition();
+  startPositionSync();
 };
 
 /**
  * 处理流式增强请求
  * P2-3.2: 直接在输入框中流式显示
  */
-const handleStreamingEnhance = async (input: EditableElement): Promise<void> => {
+const handleStreamingEnhance = async (
+  input: EditableElement
+): Promise<void> => {
   if (!buttonState) return;
 
   // 如果已经在流式输出中，忽略
@@ -123,6 +258,7 @@ const handleStreamingEnhance = async (input: EditableElement): Promise<void> => 
 
   // 清空输入框，准备接收流式内容（静默写入，不创建 undo 记录）
   setInputValueDirect(input, '');
+  scheduleButtonPosition();
   showToast(t('toastEnhancing'));
 
   // 发送流式请求（附带会话历史）
@@ -145,7 +281,8 @@ const handleStreamingEnhance = async (input: EditableElement): Promise<void> => 
       resetStreamingState();
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : t('statusUnknownError');
+    const errorMessage =
+      error instanceof Error ? error.message : t('statusUnknownError');
     setInputValueDirect(input, originalText);
     if (errorMessage.includes('TRIAL_EXPIRED')) {
       showTrialExpiredPrompt();
@@ -168,6 +305,7 @@ const resetStreamingState = (): void => {
   currentRequestId = null;
   streamingInput = null;
   streamingText = '';
+  scheduleButtonPosition();
 };
 
 /**
@@ -182,7 +320,11 @@ const handleButtonClick = (): void => {
 /**
  * 根据剩余试用次数展示分级 Toast 提示
  */
-const showTrialToast = (remaining: number, total: number, isMac: boolean): void => {
+const showTrialToast = (
+  remaining: number,
+  total: number,
+  isMac: boolean
+): void => {
   const undoKey = isMac ? '⌘Z' : 'Ctrl+Z';
   const doneBase = `✓ ${t('popupUndo')} ${undoKey}`;
 
@@ -217,15 +359,14 @@ const init = (): void => {
   initSessionMemory();
 
   // 创建按钮
-  buttonState = createEnhanceButton(ICON_URL, handleButtonClick);
+  buttonState = createEnhanceButton(handleButtonClick);
   buttonState.container.style.display = 'none';
 
   // 注册 Shadow Host 重建回调
   // 当 SPA 路由切换导致 Shadow Host 被移除后重建时，重新创建按钮
   onShadowHostRebuild(() => {
-    buttonState = createEnhanceButton(ICON_URL, handleButtonClick);
+    buttonState = createEnhanceButton(handleButtonClick);
     buttonState.container.style.display = 'none';
-    positionedInputId = null; // 重置定位缓存
     // 如果之前有活跃输入框，立即重新显示按钮
     if (activeInput && isValidInput(activeInput)) {
       showButton(activeInput);
@@ -242,18 +383,18 @@ const init = (): void => {
       if (buttonState?.container.matches(':hover') || currentRequestId) {
         return;
       }
-      if (buttonState) {
-        hideButton(buttonState.container);
-      }
+      hideEnhanceButton();
     },
   });
 
-  // 窗口大小变化时更新位置
-  window.addEventListener('resize', () => {
-    if (activeInput && buttonState && buttonState.container.style.display !== 'none') {
-      // 窗口大小变化时强制重新定位
-      positionButton(buttonState.container, activeInput);
-    }
+  // 全局布局变更监听：窗口尺寸/文档滚动/移动端视口变化
+  window.addEventListener('resize', scheduleButtonPosition, { passive: true });
+  document.addEventListener('scroll', scheduleButtonPosition, true);
+  window.visualViewport?.addEventListener('resize', scheduleButtonPosition, {
+    passive: true,
+  });
+  window.visualViewport?.addEventListener('scroll', scheduleButtonPosition, {
+    passive: true,
   });
 
   // 快捷键处理
@@ -309,9 +450,14 @@ const init = (): void => {
   // 监听来自 background 的流式消息
   chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
     // 流式数据块 - 静默写入输入框（不创建 undo 记录）
-    if (req.action === 'streamChunk' && req.requestId === currentRequestId && streamingInput) {
+    if (
+      req.action === 'streamChunk' &&
+      req.requestId === currentRequestId &&
+      streamingInput
+    ) {
       streamingText += req.chunk;
       setInputValueDirect(streamingInput, streamingText);
+      scheduleButtonPosition();
       sendResponse({ success: true });
       return;
     }
@@ -365,34 +511,11 @@ const init = (): void => {
   });
 };
 
-/**
- * 检测并通知颜色方案变化
- * 用于切换工具栏图标的暗色/亮色版本
- */
-const setupColorSchemeDetection = (): void => {
-  const notifyColorScheme = (isDark: boolean): void => {
-    chrome.runtime.sendMessage({ action: 'colorSchemeChange', isDark }).catch(() => {
-      // 忽略错误（扩展可能已重新加载）
-    });
-  };
-
-  // 检测当前颜色方案
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  notifyColorScheme(mediaQuery.matches);
-
-  // 监听颜色方案变化
-  mediaQuery.addEventListener('change', e => {
-    notifyColorScheme(e.matches);
-  });
-};
-
 // 初始化
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     init();
-    setupColorSchemeDetection();
   });
 } else {
   init();
-  setupColorSchemeDetection();
 }
