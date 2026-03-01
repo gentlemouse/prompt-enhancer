@@ -20,7 +20,10 @@
 import { AI_CHAT_DOMAINS } from '@shared/constants';
 
 /** 可编辑元素类型 */
-export type EditableElement = HTMLTextAreaElement | HTMLInputElement | HTMLElement;
+export type EditableElement =
+  | HTMLTextAreaElement
+  | HTMLInputElement
+  | HTMLElement;
 
 // ==========================================================
 //  站点分类
@@ -31,8 +34,11 @@ export type EditableElement = HTMLTextAreaElement | HTMLInputElement | HTMLEleme
  * 白名单站点享受放宽的检测规则
  */
 export const isAIChatSite = (): boolean => {
-  const hostname = window.location.hostname;
-  return AI_CHAT_DOMAINS.some(domain => hostname.includes(domain));
+  const hostname = window.location.hostname.toLowerCase();
+  return AI_CHAT_DOMAINS.some(domain => {
+    const normalized = domain.toLowerCase();
+    return hostname === normalized || hostname.endsWith(`.${normalized}`);
+  });
 };
 
 // ==========================================================
@@ -220,7 +226,11 @@ const isValidTextInput = (el: HTMLInputElement): boolean => {
   if (['numeric', 'decimal', 'tel'].includes(inputMode)) return false;
 
   // 排除：有 min/max/step 属性（数字滑块/计数器）
-  if (el.hasAttribute('min') || el.hasAttribute('max') || el.hasAttribute('step')) {
+  if (
+    el.hasAttribute('min') ||
+    el.hasAttribute('max') ||
+    el.hasAttribute('step')
+  ) {
     return false;
   }
 
@@ -272,17 +282,23 @@ export const isValidInput = (el: Element | null): el is EditableElement => {
  * 从事件目标查找可编辑元素
  * @param el 起始元素（通常是事件目标）
  */
-export const findEditableElement = (el: Element | null): EditableElement | null => {
+export const findEditableElement = (
+  el: Element | null
+): EditableElement | null => {
   if (!el) return null;
 
   // textarea：直接验证
   if (el.tagName === 'TEXTAREA') {
-    return isValidTextarea(el as HTMLTextAreaElement) ? (el as HTMLTextAreaElement) : null;
+    return isValidTextarea(el as HTMLTextAreaElement)
+      ? (el as HTMLTextAreaElement)
+      : null;
   }
 
   // input：直接验证
   if (el.tagName === 'INPUT') {
-    return isValidTextInput(el as HTMLInputElement) ? (el as HTMLInputElement) : null;
+    return isValidTextInput(el as HTMLInputElement)
+      ? (el as HTMLInputElement)
+      : null;
   }
 
   // contenteditable：查找根元素再验证
@@ -317,7 +333,10 @@ export const getInputValue = (el: EditableElement): string => {
  * @param el 输入框元素
  * @param value 要设置的值
  */
-export const setInputValueDirect = (el: EditableElement, value: string): void => {
+export const setInputValueDirect = (
+  el: EditableElement,
+  value: string
+): void => {
   if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
     const input = el as HTMLTextAreaElement | HTMLInputElement;
     const proto =
@@ -382,7 +401,9 @@ interface InputDetectorConfig {
  * 创建输入框检测器
  * 监听页面焦点事件，自动发现可编辑元素
  */
-export const createInputDetector = (config: InputDetectorConfig): (() => void) => {
+export const createInputDetector = (
+  config: InputDetectorConfig
+): (() => void) => {
   const { onFocus, onBlur } = config;
   let activeInput: EditableElement | null = null;
   let observer: MutationObserver | null = null;

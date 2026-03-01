@@ -10,6 +10,10 @@ import {
   positionButton,
   hideButton,
   setButtonStreaming,
+  collapseButton,
+  expandButton,
+  showOnboarding,
+  hideOnboarding,
   type ButtonState,
 } from './ui/button';
 import { showToast } from './ui/toast';
@@ -53,6 +57,17 @@ let positionFrameId: number | null = null;
 
 /** 定位兜底定时器 ID */
 let positionSyncTimer: number | null = null;
+
+/** 输入停顿检测定时器 */
+let typingIdleTimer: number | null = null;
+
+/** 是否已完成引导 */
+let hasSeenOnboarding = false;
+let onboardingStateLoaded = false;
+
+/** 输入事件监听器（用于动态绑定/解绑） */
+let activeInputListener: ((e: Event) => void) | null = null;
+let typingListenerInput: EditableElement | null = null;
 
 /** 当前已绑定滚动监听的容器 */
 let observedScrollContainers: HTMLElement[] = [];
@@ -167,6 +182,8 @@ const updateButtonPosition = (): void => {
 
   if (!activeInput.isConnected || !isValidInput(activeInput)) {
     hideButton(buttonState.container);
+    detachTypingListener();
+    clearTypingIdleTimer();
     activeInput = null;
     detachActiveInputObservers();
     stopPositionSync();
@@ -194,9 +211,101 @@ function scheduleButtonPosition(): void {
 const hideEnhanceButton = (): void => {
   if (!buttonState) return;
   hideButton(buttonState.container);
+  detachTypingListener();
+  clearTypingIdleTimer();
   activeInput = null;
   detachActiveInputObservers();
   stopPositionSync();
+};
+
+/**
+ * 清理输入停顿定时器
+ */
+const clearTypingIdleTimer = (): void => {
+  if (typingIdleTimer !== null) {
+    window.clearTimeout(typingIdleTimer);
+    typingIdleTimer = null;
+  }
+};
+
+/**
+ * 解绑打字监听
+ */
+const detachTypingListener = (): void => {
+  if (activeInputListener && typingListenerInput) {
+    typingListenerInput.removeEventListener('input', activeInputListener);
+  }
+  activeInputListener = null;
+  typingListenerInput = null;
+};
+
+/**
+ * 处理用户输入事件 — 收起按钮并启动停顿检测
+ */
+const handleTypingEvent = (): void => {
+  if (!buttonState || currentRequestId) return;
+
+  // 用户正在输入 → 收起按钮
+  collapseButton(buttonState);
+
+  // 重置停顿定时器
+  clearTypingIdleTimer();
+
+  // 1.5 秒无输入 → 自动展开
+  typingIdleTimer = window.setTimeout(() => {
+    if (buttonState && activeInput) {
+      expandButton(buttonState);
+    }
+  }, 1500);
+};
+
+/**
+ * 为当前输入框绑定打字监听
+ */
+const attachTypingListener = (input: EditableElement): void => {
+  if (activeInputListener && typingListenerInput === input) return;
+  detachTypingListener();
+  activeInputListener = handleTypingEvent;
+  typingListenerInput = input;
+  input.addEventListener('input', activeInputListener);
+};
+
+/**
+ * 标记引导完成
+ */
+const markOnboardingSeen = (): void => {
+  if (hasSeenOnboarding) return;
+  hasSeenOnboarding = true;
+  onboardingStateLoaded = true;
+  if (buttonState) {
+    hideOnboarding(buttonState);
+  }
+  try {
+    chrome.storage.local.set({ prompt_enhancer_onboarding_seen: true });
+  } catch {
+    // 忽略存储错误
+  }
+
+  if (activeInput && isValidInput(activeInput)) {
+    attachTypingListener(activeInput);
+  }
+};
+
+/**
+ * Shadow DOM 内是否有增强器焦点
+ */
+const isEnhancerFocused = (): boolean => {
+  if (!buttonState) return false;
+
+  const root = buttonState.button.getRootNode();
+  if (!(root instanceof ShadowRoot)) return false;
+  const focused = root.activeElement;
+  if (!focused) return false;
+
+  if (focused === buttonState.button) return true;
+  return !!(
+    buttonState.onboardingEl && buttonState.onboardingEl.contains(focused)
+  );
 };
 
 /**
@@ -216,6 +325,19 @@ const showButton = (target: EditableElement): void => {
 
   activeInput = target;
   attachActiveInputObservers(target);
+  clearTypingIdleTimer();
+
+  // 首次使用：在状态加载完成后再决定是否显示引导，避免旧用户闪现
+  if (onboardingStateLoaded && !hasSeenOnboarding) {
+    expandButton(buttonState);
+    showOnboarding(buttonState, markOnboardingSeen);
+    detachTypingListener();
+  }
+
+  // 绑定打字监听（仅在引导完成后才会自动收起）
+  if (onboardingStateLoaded && hasSeenOnboarding) {
+    attachTypingListener(target);
+  }
 
   updateButtonPosition();
   startPositionSync();
@@ -244,6 +366,9 @@ const handleStreamingEnhance = async (
 
   // 保存原始内容用于撤回
   saveOriginalContent(input, originalText);
+
+  // 首次增强 → 标记引导完成
+  markOnboardingSeen();
 
   // 记录到会话历史
   pushHistory(originalText);
@@ -373,15 +498,49 @@ const init = (): void => {
     }
   });
 
+  // 从 storage 读取引导状态
+  try {
+    chrome.storage.local.get(
+      'prompt_enhancer_onboarding_seen',
+      (result: { [key: string]: unknown }) => {
+        hasSeenOnboarding = !!result.prompt_enhancer_onboarding_seen;
+        onboardingStateLoaded = true;
+
+        if (!buttonState || !activeInput || !isValidInput(activeInput)) return;
+
+        if (hasSeenOnboarding) {
+          hideOnboarding(buttonState);
+          attachTypingListener(activeInput);
+          return;
+        }
+
+        expandButton(buttonState);
+        showOnboarding(buttonState, markOnboardingSeen);
+      }
+    );
+  } catch {
+    // 忽略存储错误
+    onboardingStateLoaded = true;
+  }
+
   // 创建输入框检测器
   createInputDetector({
     onFocus: target => {
       showButton(target);
     },
     onBlur: () => {
+      const isHoveringButton =
+        !!buttonState?.button.matches(':hover') ||
+        !!buttonState?.onboardingEl?.matches(':hover');
+      const isFocusInsideEnhancer = isEnhancerFocused();
+
       // 检查焦点是否在按钮上或正在流式输出
-      if (buttonState?.container.matches(':hover') || currentRequestId) {
+      if (isHoveringButton || isFocusInsideEnhancer || currentRequestId) {
         return;
+      }
+      // 失焦时先展开（如果是收起态的话），让用户看到按钮位置
+      if (buttonState) {
+        expandButton(buttonState);
       }
       hideEnhanceButton();
     },

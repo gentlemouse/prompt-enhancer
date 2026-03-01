@@ -21,6 +21,7 @@ export interface ButtonState {
   button: HTMLElement;
   iconEl: HTMLElement | null;
   loader: HTMLElement;
+  onboardingEl: HTMLElement | null;
 }
 
 type ElementRect = ReturnType<HTMLElement['getBoundingClientRect']>;
@@ -89,7 +90,6 @@ export const createEnhanceButton = (onClick: () => void): ButtonState => {
   button.setAttribute('role', 'button');
   button.setAttribute('tabindex', '0');
   button.setAttribute('aria-label', t('btnAriaLabel'));
-  button.setAttribute('aria-describedby', 'prompt-enhancer-tooltip');
 
   // 注入内联 SVG 图标
   const iconWrapper = document.createElement('span');
@@ -113,6 +113,12 @@ export const createEnhanceButton = (onClick: () => void): ButtonState => {
     onClick();
   });
 
+  // 避免点击按钮时抢走输入框焦点，减少 blur-hide 误触发
+  button.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
   // P2-3.6: 键盘事件（无障碍支持）
   button.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -124,6 +130,8 @@ export const createEnhanceButton = (onClick: () => void): ButtonState => {
   // 创建容器（在 Shadow DOM 中）
   const container = document.createElement('div');
   container.className = CONTAINER_CLASS;
+  // 固定定位，供按钮与引导气泡锚定到输入框坐标
+  container.style.position = 'fixed';
   container.appendChild(button);
   root.appendChild(container);
 
@@ -132,6 +140,7 @@ export const createEnhanceButton = (onClick: () => void): ButtonState => {
     button,
     iconEl: iconWrapper,
     loader,
+    onboardingEl: null,
   };
 };
 
@@ -147,6 +156,7 @@ export const setButtonLoading = (
   const { button, iconEl, loader } = state;
 
   if (loading) {
+    button.classList.remove('collapsed');
     if (iconEl) iconEl.style.display = 'none';
     loader.style.display = 'block';
     button.classList.add('loading');
@@ -158,6 +168,7 @@ export const setButtonLoading = (
     loader.style.display = 'none';
     button.classList.remove('loading');
     button.classList.remove('streaming');
+    button.classList.remove('generating');
     button.style.pointerEvents = 'auto';
     button.removeAttribute('aria-busy');
     button.setAttribute('aria-label', t('btnAriaLabel'));
@@ -175,6 +186,7 @@ export const setButtonStreaming = (
   const { button, iconEl, loader } = state;
 
   if (streaming) {
+    button.classList.remove('collapsed');
     if (iconEl) iconEl.style.display = 'flex';
     loader.style.display = 'none';
     button.classList.remove('loading');
@@ -279,4 +291,84 @@ export const positionButton = (
  */
 export const hideButton = (container: HTMLElement): void => {
   container.style.display = 'none';
+};
+
+/**
+ * 收起按钮为迷你星芒
+ */
+export const collapseButton = (state: ButtonState): void => {
+  state.button.classList.add('collapsed');
+};
+
+/**
+ * 展开按钮为完整图标
+ */
+export const expandButton = (state: ButtonState): void => {
+  state.button.classList.remove('collapsed');
+};
+
+/**
+ * 检查按钮是否处于收起状态
+ */
+export const isButtonCollapsed = (state: ButtonState): boolean => {
+  return state.button.classList.contains('collapsed');
+};
+
+/**
+ * 显示引导气泡
+ * @param state 按钮状态
+ * @param onDismiss 关闭回调
+ */
+export const showOnboarding = (
+  state: ButtonState,
+  onDismiss: () => void
+): void => {
+  // 如果已经存在，不重复创建
+  if (state.onboardingEl) return;
+
+  const tooltip = document.createElement('div');
+  tooltip.className = 'prompt-enhancer-onboarding';
+
+  // 图标
+  const icon = document.createElement('span');
+  icon.className = 'prompt-enhancer-onboarding-icon';
+  icon.textContent = '✨';
+  tooltip.appendChild(icon);
+
+  // 文字
+  const text = document.createElement('span');
+  text.className = 'prompt-enhancer-onboarding-text';
+  text.textContent = t('onboardingStep2Hint');
+  tooltip.appendChild(text);
+
+  // 关闭按钮
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'prompt-enhancer-onboarding-close';
+  closeBtn.type = 'button';
+  closeBtn.textContent = '✕';
+  closeBtn.setAttribute('aria-label', t('previewClose'));
+  closeBtn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  closeBtn.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideOnboarding(state);
+    onDismiss();
+  });
+  tooltip.appendChild(closeBtn);
+
+  state.container.appendChild(tooltip);
+  state.onboardingEl = tooltip;
+};
+
+/**
+ * 隐藏引导气泡
+ */
+export const hideOnboarding = (state: ButtonState): void => {
+  if (state.onboardingEl) {
+    state.onboardingEl.remove();
+    state.onboardingEl = null;
+  }
 };

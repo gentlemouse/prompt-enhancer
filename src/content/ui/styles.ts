@@ -11,17 +11,17 @@ export const getStyles = (): string => `
 /* ─── 字体引入 ─── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* 按钮容器 - 固定定位，始终在可视区域内 */
+/* ─── 按钮容器 ─── */
 .prompt-enhancer-container {
   position: fixed;
   z-index: 2147483647 !important;
   display: flex;
   gap: 4px;
-  pointer-events: auto;
+  pointer-events: none;
   isolation: isolate;
 }
 
-/* 按钮基础样式 — Premium 渐变底座 + 白色 SVG */
+/* ─── 按钮基础样式 — Premium 渐变底座 + 白色 SVG ─── */
 .prompt-enhancer-btn {
   width: 30px;
   height: 30px;
@@ -33,11 +33,24 @@ export const getStyles = (): string => `
   align-items: center;
   justify-content: center;
   color: #ffffff;
+  pointer-events: auto;
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  /* 展开时使用快速响应曲线 */
+  transition:
+    width 0.15s ease-out,
+    height 0.15s ease-out,
+    border-radius 0.15s ease-out,
+    opacity 0.15s ease-out,
+    transform 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    background 0.15s ease-out,
+    clip-path 0.15s ease-out;
   user-select: none;
   opacity: 0.55;
   transform: scale(0.92);
+  /* 确保 clip-path 过渡时不裁掉内容 */
+  overflow: visible;
+  position: relative;
 }
 
 .prompt-enhancer-icon {
@@ -45,13 +58,82 @@ export const getStyles = (): string => `
   align-items: center;
   justify-content: center;
   line-height: 0;
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
 }
 
-/* Hover：从含蓄到亮起 */
-.prompt-enhancer-btn:hover {
+/* ─── 收起态：迷你星芒 ✦ ─── */
+.prompt-enhancer-btn.collapsed {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: #7c3aed;
+  box-shadow: 0 0 6px rgba(124, 58, 237, 0.4);
+  opacity: 0.8;
+  transform: scale(1);
+  /* 四芒星裁切形状 */
+  clip-path: polygon(
+    50% 0%,
+    62% 38%,
+    100% 50%,
+    62% 62%,
+    50% 100%,
+    38% 62%,
+    0% 50%,
+    38% 38%
+  );
+  /* 收起时使用柔和退让曲线 */
+  transition:
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: sparkle-breathe 3s ease-in-out infinite;
+}
+
+/* 收起态隐藏 SVG 图标 */
+.prompt-enhancer-btn.collapsed .prompt-enhancer-icon {
+  opacity: 0;
+  transform: scale(0.3);
+}
+
+/* 收起态呼吸动画 */
+@keyframes sparkle-breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* ─── 悬停：从收起态展开，或从含蓄态亮起 ─── */
+.prompt-enhancer-btn:hover,
+.prompt-enhancer-btn.collapsed:hover {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   opacity: 1;
   transform: scale(1);
   box-shadow: 0 4px 16px rgba(99, 102, 241, 0.45);
+  clip-path: none;
+  animation: none;
+  /* 展开时使用灵敏曲线 */
+  transition:
+    width 0.15s ease-out,
+    height 0.15s ease-out,
+    border-radius 0.15s ease-out,
+    opacity 0.15s ease-out,
+    transform 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    background 0.15s ease-out,
+    clip-path 0.15s ease-out;
+}
+
+/* 悬停收起态时恢复图标可见 */
+.prompt-enhancer-btn.collapsed:hover .prompt-enhancer-icon {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .prompt-enhancer-btn:active {
@@ -59,16 +141,20 @@ export const getStyles = (): string => `
   box-shadow: 0 1px 4px rgba(99, 102, 241, 0.25);
 }
 
-/* 生成中：魔法棒施法效果 */
+/* ─── 生成中：魔法棒施法效果 ─── */
 .prompt-enhancer-btn.generating {
   opacity: 1;
   pointer-events: none;
   position: relative;
+  clip-path: none;
+  animation: btn-glow 1.8s ease-in-out infinite;
 }
 
 /* 图标微浮动 + 多层品牌色光晕 */
 .prompt-enhancer-btn.generating .prompt-enhancer-icon {
   animation: wand-float 2.4s ease-in-out infinite;
+  opacity: 1;
+  transform: scale(1);
 }
 
 /* 轻微浮动：营造"悬浮施法"感 */
@@ -89,10 +175,6 @@ export const getStyles = (): string => `
       0 4px 16px rgba(99, 102, 241, 0.5),
       0 0 20px 4px rgba(139, 92, 246, 0.2);
   }
-}
-
-.prompt-enhancer-btn.generating {
-  animation: btn-glow 1.8s ease-in-out infinite;
 }
 
 /* 星尘粒子：按钮伪元素 */
@@ -153,6 +235,13 @@ export const getStyles = (): string => `
 /* P2-3.2: 流式输出时的脉动动画 */
 .prompt-enhancer-btn.streaming {
   animation: streaming-pulse 1.5s ease-in-out infinite;
+  clip-path: none;
+}
+
+.prompt-enhancer-btn.generating.streaming {
+  animation:
+    btn-glow 1.8s ease-in-out infinite,
+    streaming-pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes streaming-pulse {
@@ -161,6 +250,107 @@ export const getStyles = (): string => `
   }
   50% {
     opacity: 1;
+  }
+}
+
+/* ─── 引导气泡 (Onboarding Tooltip) ─── */
+.prompt-enhancer-onboarding {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  max-width: min(320px, calc(100vw - 16px));
+  background: rgba(17, 17, 19, 0.92);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  white-space: normal;
+  pointer-events: auto;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: onboarding-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.5s;
+  letter-spacing: -0.1px;
+}
+
+/* 气泡尾巴（小三角） */
+.prompt-enhancer-onboarding::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  right: 14px;
+  width: 10px;
+  height: 10px;
+  background: rgba(17, 17, 19, 0.92);
+  transform: rotate(45deg);
+  border-radius: 0 0 2px 0;
+}
+
+.prompt-enhancer-onboarding-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.prompt-enhancer-onboarding-text {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+}
+
+.prompt-enhancer-onboarding-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+  flex-shrink: 0;
+  border-radius: 4px;
+  transition: all 0.15s;
+  margin-left: 4px;
+}
+
+.prompt-enhancer-onboarding-close:hover {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.prompt-enhancer-onboarding-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.45);
+}
+
+@keyframes onboarding-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prompt-enhancer-btn,
+  .prompt-enhancer-icon,
+  .prompt-enhancer-loader,
+  .prompt-enhancer-onboarding,
+  .prompt-enhancer-toast,
+  .prompt-enhancer-btn::before,
+  .prompt-enhancer-btn::after {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
