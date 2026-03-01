@@ -11,8 +11,9 @@ import { t } from '@shared/i18n';
 const CONTAINER_CLASS = 'prompt-enhancer-container';
 const BUTTON_CLASS = 'prompt-enhancer-btn';
 const LOADER_CLASS = 'prompt-enhancer-loader';
+const BUTTON_ANCHOR_SIZE = 30;
 
-/** Sparkles SVG 内联代码 (Lucide Icons) */
+/** Sparkles SVG 内联代码 (Lucide Sparkles — 与参考图一致) */
 const SPARKLES_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg>`;
 
 /** 按钮状态 */
@@ -132,6 +133,8 @@ export const createEnhanceButton = (onClick: () => void): ButtonState => {
   container.className = CONTAINER_CLASS;
   // 固定定位，供按钮与引导气泡锚定到输入框坐标
   container.style.position = 'fixed';
+  container.style.width = `${BUTTON_ANCHOR_SIZE}px`;
+  container.style.height = `${BUTTON_ANCHOR_SIZE}px`;
   container.appendChild(button);
   root.appendChild(container);
 
@@ -223,14 +226,9 @@ export const positionButton = (
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
-  const buttonEl = container.firstElementChild as HTMLElement | null;
-  const buttonStyle = buttonEl ? window.getComputedStyle(buttonEl) : null;
-  const btnWidth = Math.round(
-    Number.parseFloat(buttonStyle?.width || '') || 30
-  );
-  const btnHeight = Math.round(
-    Number.parseFloat(buttonStyle?.height || '') || 30
-  );
+  // 使用固定锚点尺寸，避免收起/悬停等样式过渡引发重新锚定抖动
+  const btnWidth = BUTTON_ANCHOR_SIZE;
+  const btnHeight = BUTTON_ANCHOR_SIZE;
   const baseMargin = 6;
 
   // 安全检查：输入框必须在视口中可见且尺寸合理

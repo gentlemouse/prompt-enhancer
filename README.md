@@ -1,4 +1,4 @@
-# Lynx
+# Lynx — Smart Prompt Enhancer
 
 [![CI](https://github.com/gentlemouse/prompt-enhancer/actions/workflows/ci.yml/badge.svg)](https://github.com/gentlemouse/prompt-enhancer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -7,165 +7,142 @@
 
 **[简体中文](README.zh-CN.md)** | English
 
-> 心有灵犀一点通
+> 心有灵犀一点通 — Instant understanding, every time.
 
-A browser extension that **dynamically analyzes** your prompt and applies the **right optimization strategy** before sending it to any AI. Works on ChatGPT, Claude, Gemini, DeepSeek, and 50+ other AI platforms. Zero config, install and go.
+**Lynx** is a browser extension that acts as an intelligent layer between you and any AI. It reads your prompt, figures out exactly what it needs, and upgrades it — automatically, in under a second — before you hit send.
 
----
-
-## Why Lynx?
-
-We've all been there — you type a quick question into ChatGPT, get a mediocre answer, then spend 5 minutes rewriting your prompt with better structure, clearer constraints, and specific output requirements. *Then* the AI gives you what you actually wanted.
-
-**The quality of AI output is directly tied to the quality of your input.** But writing great prompts is a skill, and doing it every single time is exhausting.
-
-Lynx solves this by acting as an **intelligent layer between you and the AI**. But unlike simple "make it longer" tools, it actually **understands what your prompt needs** and applies a tailored strategy.
-
-### What makes it different?
-
-| Feature | Simple prompt tools | Lynx |
-|---------|-------------------|-----------------|
-| Optimization approach | One-size-fits-all template | Dynamic strategy based on 15+ signal dimensions |
-| Short commands | Bloats them unnecessarily | Light polish — keeps them concise |
-| Already good prompts | Rewrites them anyway | Detects good structure, only fine-tunes |
-| Follow-up questions | Treats as standalone | Understands conversation context (5-turn memory) |
-| Corrections ("also add...") | Ignores intent | Merges new constraints into original prompt |
+Works on ChatGPT, Claude, Gemini, DeepSeek, Kimi, and 50+ other platforms. No API keys needed to get started.
 
 ---
 
-## How It Works
+## The Problem It Solves
 
-When you press `Cmd+Shift+E` (or click the button), Lynx runs your input through a 3-stage pipeline:
+You type a quick question into an AI and get a mediocre answer. You rewrite the prompt — adding structure, constraints, a role, output requirements — and *then* the AI gives you what you actually wanted.
 
-```mermaid
-flowchart LR
-    A["✍️ Your Prompt"] -->|"Cmd+Shift+E"| B["🔍 Analyze"]
-    B --> C["⚡ Strategize"]
-    C --> D["✅ Enhanced"]
+**Great prompts are a skill. Using it every single time is exhausting.**
 
-    style A fill:#f9f9f9,stroke:#333
-    style D fill:#d4edda,stroke:#28a745
+Most "prompt enhancers" just make your prompt longer. Lynx is different: it **understands what your specific prompt needs** and applies a targeted strategy.
+
+---
+
+## Why Lynx Beats the Other Tools
+
+| | Generic Tools | Lynx |
+|---|---|---|
+| Short commands like `"translate this"` | Bloat them with unnecessary structure | Light polish — just fills the gaps |
+| Complex requests | Apply one fixed template | Selects from 5 strategies based on 15+ signal dimensions |
+| Your carefully written prompt | Rewrite it anyway | Detects good structure, only fine-tunes |
+| Follow-up questions like `"can you elaborate?"` | Treat as a standalone new prompt | Understands it's a follow-up, resolves the vague reference |
+| Corrections like `"also make it async"` | Ignore the correction context | Merges your new constraint into the original request |
+| Bilingual users | Pick one language | Auto-detects Chinese/English, preserves your language |
+
+---
+
+## How It Works: 3-Stage Pipeline
+
+```
+Your prompt  →  [Analyze]  →  [Strategize]  →  [Build]  →  Enhanced prompt
 ```
 
-### Stage 1: Multi-dimensional Analysis
+### Stage 1 · Multi-Dimensional Analysis
 
-The analyzer examines your prompt across **5 dimensions** simultaneously:
+Every prompt is analyzed across **5 dimensions simultaneously:**
 
-| Dimension | What it detects | Example |
-|-----------|----------------|---------|
-| **Task Type** | 8 categories: Code, Writing, Analysis, Q&A, Planning, Research, Chat, Extraction | "Write a sorting algorithm" → `CODE` |
-| **Complexity** | Chain-of-thought signals, reflection markers, multi-part questions | "Analyze the pros and cons" → `DEEP_THINKING` |
-| **Context** | New topic vs. follow-up vs. correction (using session memory) | "Can you elaborate on that?" → `Follow-up` |
-| **Structure** | Whether the prompt already has role/task/constraints | "Role: ... Task: ..." → `Well-structured` |
-| **Language** | Chinese or English (auto-detected) | Preserves original language |
+| Dimension | What it measures |
+|-----------|-----------------|
+| **Task Type** | One of 8 categories: Code, Writing, Analysis, Q&A, Planning, Research, Chat, Extraction |
+| **Complexity** | Detects chain-of-thought signals, multi-part questions, reflection markers |
+| **Context** | New topic, follow-up, or correction — using a 5-turn session memory |
+| **Structure** | Does the prompt already have role/task/constraints? |
+| **Language** | Chinese or English — preserved throughout |
 
-### Stage 2: Strategy Selection
+### Stage 2 · Strategy Selection
 
-Based on the analysis, the engine selects **1 of 5 strategies** — each designed for a specific scenario:
+Based on the analysis, one of **5 strategies** is chosen — each built for a different scenario:
 
-```mermaid
-flowchart TD
-    A["Incoming Prompt"] --> B{"Correction?\n'add...', 'remove...', 'change...'"}
-    B -->|Yes| C["📎 CONSTRAINT APPEND\nMerge new requirements\ninto existing prompt"]
-    B -->|No| D{"Follow-up?\nReferences previous context"}
-    D -->|Yes| E["🎯 INTENT CLARIFY\nResolve ambiguity,\nkeep conversational"]
-    D -->|No| F{"Short?\n< 50 characters"}
-    F -->|Yes| G["💬 LIGHT POLISH\nMinimal refinement,\ndon't over-expand"]
-    F -->|No| H{"Well-structured?\nHas role/task/constraints"}
-    H -->|Yes| I["✨ SHARPEN\nFine-tune wording,\npreserve structure"]
-    H -->|No| J["🏗️ STRUCTURAL REWRITE\nFull restructure with\nrole, task, constraints"]
+```
+Is it a correction? ("also add...", "remove...", "change...")
+  → CONSTRAINT APPEND  — merges new requirements into original
 
-    style C fill:#fff3cd,stroke:#856404
-    style E fill:#cce5ff,stroke:#004085
-    style G fill:#d4edda,stroke:#155724
-    style I fill:#e2d5f1,stroke:#6f42c1
-    style J fill:#f8d7da,stroke:#721c24
+Is it a follow-up? (references prior context)
+  → INTENT CLARIFY     — resolves ambiguous references, stays conversational
+
+Is the prompt very short? (< 30 chars)
+  → LIGHT POLISH       — fills critical gaps without over-expanding
+
+Is it already well-structured?
+  → SHARPEN            — tightens wording, adds specificity, preserves structure
+
+Otherwise:
+  → STRUCTURAL REWRITE — builds a full role/task/constraints/output framework
 ```
 
-### Stage 3: Prompt Building
+### Stage 3 · Prompt Building
 
-The selected strategy generates a **specialized system prompt** that instructs the LLM exactly how to optimize your input — then the enhanced version replaces your original text in the input box.
+The chosen strategy generates a **specialized system prompt** that instructs the LLM precisely how to optimize your text — tuned not just for strategy, but also for task type and reasoning depth. The result replaces your original input in the text box.
 
 ---
 
-## See It in Action
+## Real Examples
 
-Here's what each strategy does with real examples:
+### Light Polish — Short commands get smarter, not longer
 
-### Strategy 1: Light Polish
-
-> For short, clear commands that just need minor refinements.
-
-| | Content |
-|---|---------|
+| | |
+|---|---|
 | **Before** | `Translate this paragraph` |
-| **After** | `Translate the following paragraph into English. Preserve the original tone and style. For technical terms, keep the original in parentheses.` |
-| **What changed** | Added target language, style preservation, and terminology handling — without bloating it. |
+| **After** | `Translate the following paragraph into English. Preserve the original tone and style. For technical terms, keep the source term in parentheses.` |
 
-### Strategy 2: Structural Rewrite
+### Structural Rewrite — Complex requests get a clear framework
 
-> For complex requests that need a clear framework.
-
-| | Content |
-|---|---------|
+| | |
+|---|---|
 | **Before** | `Help me write a Python web scraper for news sites` |
-| **After** | `Role: Senior Python developer experienced with web scraping.`<br><br>`Task: Build a news website scraper with the following requirements:`<br>`1. Target: configurable news site URLs`<br>`2. Extract: title, date, author, body text`<br>`3. Handle pagination automatically`<br><br>`Constraints:`<br>`- Use requests + BeautifulSoup`<br>`- Implement rate limiting (1 req/sec)`<br>`- Handle network errors gracefully`<br><br>`Output: Complete, runnable Python script with usage example.` |
-| **What changed** | Restructured into role/task/constraints/output framework, making the request unambiguous. |
+| **After** | `Role: Senior Python developer experienced with web scraping.`<br><br>`Task: Build a configurable news site scraper that extracts: title, publish date, author, body text. Handle pagination automatically.`<br><br>`Constraints: Use requests + BeautifulSoup. Rate-limit to 1 req/sec. Graceful error handling — log and skip on failure, don't abort.`<br><br>`Output: Complete, runnable Python script with a usage example.` |
 
-### Strategy 3: Intent Clarify
+### Intent Clarify — Vague follow-ups become precise
 
-> For follow-up questions in a conversation.
-
-| | Content |
-|---|---------|
+| | |
+|---|---|
 | **Before** | `Can you go into more detail on that?` |
-| **After** | `Please elaborate on the "data storage architecture" section from your previous response. Specifically, explain the trade-offs between SQL and NoSQL for this use case, and recommend which to use.` |
-| **What changed** | Resolved vague reference ("that"), specified exactly what to elaborate on. |
+| **After** | `Please elaborate on the "data storage architecture" section from your previous response. Specifically, compare the trade-offs between SQL and NoSQL for this use case and give a recommendation.` |
 
-### Strategy 4: Sharpen
+### Sharpen — Already good prompts get polished
 
-> For prompts that are already well-written but could be tighter.
+| | |
+|---|---|
+| **Before** | `Role: marketing expert. Task: write ad copy. Requirements: make it engaging.` |
+| **After** | `Role: Senior marketing copywriter with 10+ years in consumer electronics. Task: Write 3 variations of ad copy for our new wireless earbuds. Tone: energetic, youth-oriented. Length: 50–80 words per variation. Include one CTA per variation. Avoid: generic superlatives, competitor comparisons.` |
 
-| | Content |
-|---|---------|
-| **Before** | `Role: You are a marketing expert.`<br>`Task: Write ad copy for our new product.`<br>`Requirements: Make it engaging and concise.` |
-| **After** | `Role: You are a senior marketing copywriter with 10+ years in consumer electronics.`<br>`Task: Write 3 variations of ad copy for our new wireless earbuds.`<br>`Requirements:`<br>`- Tone: energetic, youth-oriented`<br>`- Length: 50-80 words each`<br>`- Include one clear call-to-action per variation`<br>`- Avoid: generic superlatives, competitor comparisons` |
-| **What changed** | Sharpened vague terms ("engaging") into specific criteria, added negative constraints. |
+### Constraint Append — Corrections get properly integrated
 
-### Strategy 5: Constraint Append
-
-> For corrections and additions to a previous prompt.
-
-| | Content |
-|---|---------|
+| | |
+|---|---|
 | **Before** | `Add error handling and make it async` |
-| **After** | `Based on the previous code, please make the following modifications:`<br>`1. Convert all synchronous I/O operations to async/await`<br>`2. Add comprehensive error handling:`<br>`   - Network timeout: retry 3 times with exponential backoff`<br>`   - Invalid data: log warning and skip`<br>`   - Permission error: raise immediately`<br>`3. Keep all existing functionality unchanged.` |
-| **What changed** | Integrated corrections into a complete, unambiguous modification request with specifics. |
+| **After** | `Based on the previous code, make these modifications: 1. Convert all sync I/O to async/await. 2. Add error handling: network timeout → retry 3× with exponential backoff; invalid data → log warning and skip; permission error → raise immediately. 3. Keep all existing functionality unchanged.` |
 
 ---
 
-## Features
+## Features at a Glance
 
-- **5 Dynamic Strategies** — Automatically selects the right optimization approach for each prompt
-- **8 Task Types** — Recognizes code, writing, analysis, Q&A, planning, research, chat, and extraction tasks
-- **3 Reasoning Modes** — Adjusts between Simple, Deep Thinking, and Expert modes based on complexity
-- **Session Memory** — 5-turn sliding window tracks conversation context for smarter follow-up handling
-- **Zero Config** — Install and use immediately with 10 free enhancements, no API key needed
-- **BYOK Mode** — Bring your own API key (OpenAI / Anthropic / DeepSeek / Kimi / MiniMax / Qwen / Zhipu / custom) for unlimited use
-- **50+ Platforms** — Works on ChatGPT, Claude, Gemini, DeepSeek, Kimi, Qwen, and many more
-- **Privacy First** — API keys encrypted locally, zero prompt content collection, opt-out analytics
-- **Keyboard Shortcut** — `Cmd/Ctrl+Shift+E` to enhance, `Ctrl+Z` to undo
+- **5 Dynamic Strategies** — Automatically matched to each prompt's characteristics
+- **8 Task Types** — Code, Writing, Analysis, Q&A, Planning, Research, Chat, Extraction
+- **3 Reasoning Modes** — Simple / Deep Thinking / Expert, selected by complexity signals
+- **5-Turn Session Memory** — Tracks conversation context for accurate follow-up handling
+- **Anti-Injection Protection** — Prevents prompt injection attacks during optimization
+- **10 Free Enhancements** — No setup, no API key required to get started
+- **BYOK Mode** — Bring your own key from OpenAI, Anthropic, DeepSeek, Kimi, MiniMax, Qwen, Zhipu, or any custom endpoint
+- **50+ Platforms** — ChatGPT, Claude, Gemini, DeepSeek, Kimi, Qwen, and many more
+- **Privacy First** — Zero prompt collection, API keys encrypted locally, opt-out analytics
+- **Keyboard Shortcut** — `Cmd/Ctrl+Shift+E` to enhance · `Ctrl+Z` to undo
+
+---
 
 ## Install
 
 ### Chrome Web Store
-
-<!-- TODO: Replace with actual link after review -->
 > Coming soon.
 
 ### Edge Add-ons
-
-<!-- TODO: Replace with actual link after review -->
 > Coming soon.
 
 ### Build from Source
@@ -178,67 +155,62 @@ npm run build
 ```
 
 1. Open `chrome://extensions/` (Chrome) or `edge://extensions/` (Edge)
-2. Enable "Developer mode"
-3. Click "Load unpacked"
-4. Select the `dist` directory
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select the `dist` folder
+
+---
 
 ## Usage
 
-### Free Mode (No setup required)
+### Free Mode (No setup)
 
-Install and start using on any AI chat page — 10 free enhancements.
+Install → visit any AI chat page → press `Cmd+Shift+E` or click the ✦ button. Done. 10 free enhancements.
 
 ### BYOK Mode (Unlimited)
 
-1. Click the extension icon to open settings
-2. Select API provider (OpenAI / Anthropic / DeepSeek / Custom)
-3. Enter your API key and save
-4. Unlimited enhancements unlocked
+1. Click the extension icon → open settings
+2. Select a provider: OpenAI / Anthropic / DeepSeek / Kimi / Qwen / Custom
+3. Enter your API key → Save
+4. Unlimited enhancements, forever
 
 ### Shortcuts
 
 | Action | Mac | Windows / Linux |
 |--------|-----|-----------------|
-| Enhance | `⌘⇧E` | `Ctrl+Shift+E` |
+| Enhance prompt | `⌘⇧E` | `Ctrl+Shift+E` |
 | Undo | `⌘Z` | `Ctrl+Z` |
+
+---
 
 ## Architecture
 
 ```
 src/
-├── background/              # Service Worker
-│   ├── analyzer.ts          # Multi-dimensional analysis + strategy engine
-│   ├── prompt-builder.ts    # 5 strategy templates
-│   ├── enhancer.ts          # Orchestrator
-│   └── providers/           # API adapters (OpenAI/Anthropic/DeepSeek/Proxy)
-├── content/                 # Content Script
+├── background/
+│   ├── analyzer.ts         # Multi-dimensional analysis engine (5 dims, 15+ signals)
+│   ├── prompt-builder.ts   # 5 strategy templates with task-type guidance
+│   ├── enhancer.ts         # Orchestrator
+│   └── providers/          # API adapters: OpenAI / Anthropic / DeepSeek / Proxy
+├── content/
 │   ├── services/
-│   │   ├── input-detector.ts   # Input field detection
-│   │   └── session-memory.ts   # Session memory (sliding window)
-│   └── ui/                  # Shadow DOM isolated UI
-├── shared/                  # Shared modules
-│   ├── analytics.ts         # Anonymous usage analytics
-│   ├── fingerprint.ts       # Device fingerprint (anti-abuse)
-│   ├── trial.ts             # Free trial management
-│   └── utils/               # Encryption, retry, validation
-├── popup/                   # Settings page + onboarding
-└── manifest.ts              # Chrome Extension Manifest V3
+│   │   ├── input-detector.ts   # Detects input fields on 50+ platforms
+│   │   └── session-memory.ts   # 5-turn sliding window session memory
+│   └── ui/                     # Shadow DOM isolated UI components
+├── shared/
+│   ├── analytics.ts        # Anonymous, opt-out usage analytics
+│   ├── fingerprint.ts      # Device fingerprint for free tier anti-abuse
+│   ├── trial.ts            # Free trial management
+│   └── utils/              # Encryption, retry, validation
+├── popup/                  # Settings page + onboarding flow
+└── manifest.ts             # Chrome Extension Manifest V3
 ```
 
-## Development
+---
 
-```bash
-npm run dev            # Dev mode (HMR)
-npm run build          # Production build
-npm run test           # Run tests
-npm run test:coverage  # Tests + coverage report
-npm run lint           # ESLint
-npm run type-check     # TypeScript type check
-```
+## Testing
 
-### Testing
-
-Core module coverage: **97.99%** (146 test cases)
+Core module test coverage: **97.99%** across 146 test cases.
 
 | Module | Statements | Branches | Functions | Lines |
 |--------|-----------|----------|-----------|-------|
@@ -249,33 +221,55 @@ Core module coverage: **97.99%** (146 test cases)
 | validation.ts | 100% | 100% | 100% | 100% |
 | retry.ts | 96.96% | 91.3% | 100% | 96.55% |
 
+```bash
+npm run test            # Run tests
+npm run test:coverage   # Tests + coverage report
+```
+
+---
+
+## Development
+
+```bash
+npm run dev            # Dev mode with HMR
+npm run build          # Production build
+npm run lint           # ESLint
+npm run type-check     # TypeScript check
+```
+
+---
+
 ## Tech Stack
 
 - **TypeScript** — Strict mode, full type safety
 - **Vite + CRXJS** — Modern build tooling with HMR
 - **Vitest** — Unit tests + coverage
-- **ESLint + Prettier + Husky** — Code quality + commit gates
-- **GitHub Actions** — CI/CD automation
-- **Cloudflare Workers** — API proxy layer (free tier service)
+- **ESLint + Prettier + Husky** — Code quality gates
+- **GitHub Actions** — CI/CD pipeline
+- **Cloudflare Workers** — API proxy layer
 - **Chrome Extension Manifest V3**
+
+---
 
 ## Privacy
 
-- **Zero prompt collection** — Your prompts are never stored or transmitted beyond the AI provider
-- **Encrypted API keys** — Stored locally in `chrome.storage.local`, never synced to cloud
-- **HTTPS enforced** — Custom API endpoints require HTTPS
-- **Opt-out analytics** — Anonymous usage stats can be disabled anytime
-- See full [Privacy Policy](docs/privacy-policy.md)
+- **Zero prompt collection** — Your prompts are only sent to your chosen AI provider
+- **Encrypted API keys** — Stored in `chrome.storage.local`, never synced to cloud
+- **HTTPS enforced** — Custom endpoints require HTTPS
+- **Opt-out analytics** — Anonymous usage data can be disabled anytime
+
+See full [Privacy Policy](docs/privacy-policy.md).
+
+---
 
 ## Contributing
 
-Contributions welcome! Please:
-
 1. Fork this repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Commit your changes: `git commit -m 'feat: add your feature'`
+4. Push and open a Pull Request
+
+---
 
 ## License
 

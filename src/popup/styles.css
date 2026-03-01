@@ -9,13 +9,15 @@
 
 /* ─── Design Tokens — 亮色主题 ─── */
 :root {
-  /* 品牌渐变 */
-  --brand-from: #6366f1;
-  --brand-to: #8b5cf6;
+  /* 品牌色系：钛金与珠光霜月 (Titanium & Pearly Moon) */
+  --brand-from: #3a3937;
+  --brand-to: #272625;
   --brand-gradient: linear-gradient(135deg, var(--brand-from), var(--brand-to));
-  --brand-color: #6366f1;
-  --brand-color-hover: #4f46e5;
-  --brand-color-active: #4338ca;
+  --brand-color: #272625;
+  --brand-color-hover: #3a3937;
+  --brand-color-active: #1c1c1e;
+  --brand-highlight: #f6f1d5;
+  /* 珠光霜月，用于高光/文字 */
 
   /* 中性色阶 (Radix-inspired) */
   --gray-1: #fcfcfd;
@@ -47,15 +49,17 @@
   --btn-bg-solid: var(--brand-color);
   --btn-bg-hover: var(--brand-color-hover);
   --btn-bg-active: var(--brand-color-active);
-  --btn-text: #ffffff;
+  --btn-text: var(--brand-highlight);
   --btn-shadow:
-    0 1px 3px rgba(99, 102, 241, 0.25), 0 4px 12px rgba(99, 102, 241, 0.15);
+    inset 0 1px 1px rgba(246, 241, 213, 0.2), 0 1px 3px rgba(0, 0, 0, 0.25),
+    0 4px 12px rgba(0, 0, 0, 0.15);
   --btn-shadow-hover:
-    0 2px 6px rgba(99, 102, 241, 0.35), 0 8px 20px rgba(99, 102, 241, 0.2);
+    inset 0 1px 1px rgba(246, 241, 213, 0.3), 0 2px 6px rgba(0, 0, 0, 0.35),
+    0 8px 20px rgba(0, 0, 0, 0.2);
 
   /* 输入框 */
-  --input-border-focus: var(--brand-color);
-  --input-ring: rgba(99, 102, 241, 0.2);
+  --input-border-focus: var(--brand-highlight);
+  --input-ring: rgba(246, 241, 213, 0.4);
 
   /* 状态色 */
   --success-bg: #f0fdf4;
@@ -113,12 +117,13 @@
 /* ─── Design Tokens — 暗色主题 ─── */
 @media (prefers-color-scheme: dark) {
   :root {
-    /* 品牌色（暗色模式稍微提亮） */
-    --brand-from: #818cf8;
-    --brand-to: #a78bfa;
-    --brand-color: #818cf8;
-    --brand-color-hover: #6366f1;
-    --brand-color-active: #4f46e5;
+    /* 品牌色（暗色模式：更深的钛金与更弱的高光） */
+    --brand-from: #272625;
+    --brand-to: #171717;
+    --brand-color: #272625;
+    --brand-color-hover: #3a3937;
+    --brand-color-active: #1c1c1e;
+    --brand-highlight: #f6f1d5;
 
     /* 中性色阶 (暗色) */
     --gray-1: #111113;
@@ -148,13 +153,16 @@
     /* 按钮 */
     --btn-bg: var(--brand-gradient);
     --btn-bg-solid: var(--brand-color);
+    --btn-text: var(--brand-highlight);
     --btn-shadow:
-      0 1px 3px rgba(129, 140, 248, 0.2), 0 4px 12px rgba(129, 140, 248, 0.12);
+      inset 0 1px 1px rgba(246, 241, 213, 0.1), 0 1px 3px rgba(0, 0, 0, 0.3),
+      0 4px 12px rgba(0, 0, 0, 0.2);
     --btn-shadow-hover:
-      0 2px 6px rgba(129, 140, 248, 0.3), 0 8px 20px rgba(129, 140, 248, 0.18);
+      inset 0 1px 1px rgba(246, 241, 213, 0.2), 0 2px 6px rgba(0, 0, 0, 0.4),
+      0 8px 20px rgba(0, 0, 0, 0.3);
 
     /* 输入框 */
-    --input-ring: rgba(129, 140, 248, 0.25);
+    --input-ring: rgba(246, 241, 213, 0.2);
 
     /* 状态色 */
     --success-bg: #052e16;
@@ -219,12 +227,15 @@ body {
   height: 32px;
   border-radius: var(--radius-sm);
   background: var(--brand-gradient);
-  color: #ffffff;
+  color: var(--brand-highlight);
+  border: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+  box-shadow:
+    inset 0 1px 1px rgba(246, 241, 213, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .header h1 {
@@ -292,13 +303,12 @@ input.error {
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
 }
 
-/* ─── Primary Button — 品牌渐变 ─── */
 .btn {
   width: 100%;
   padding: var(--space-3) var(--space-4);
   background: var(--btn-bg);
   color: var(--btn-text);
-  border: none;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 600;
@@ -312,7 +322,7 @@ input.error {
     transform var(--duration-fast) var(--ease-spring);
 }
 
-/* 按钮微光泽层 */
+/* 按钮微光泽层：模拟霜月色的光辉流过金属表面 */
 .btn::before {
   content: '';
   position: absolute;
@@ -323,7 +333,7 @@ input.error {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.12),
+    rgba(246, 241, 213, 0.1),
     transparent
   );
   transition: left 0.5s var(--ease-out);
@@ -332,6 +342,7 @@ input.error {
 .btn:hover {
   box-shadow: var(--btn-shadow-hover);
   transform: translateY(-1px);
+  background: var(--btn-bg-hover);
 }
 
 .btn:hover::before {
@@ -341,6 +352,7 @@ input.error {
 .btn:active {
   transform: translateY(0) scale(0.98);
   box-shadow: var(--btn-shadow);
+  background: var(--btn-bg-active);
 }
 
 .btn:focus-visible {
@@ -630,7 +642,7 @@ input.error {
 }
 
 .trial-banner-fill.good {
-  background: var(--brand-gradient);
+  background: var(--brand-highlight);
 }
 
 .trial-banner-fill.warning {
@@ -734,13 +746,16 @@ input.error {
   width: 18px;
   height: 18px;
   background: var(--brand-gradient);
-  color: #fff;
+  color: var(--brand-highlight);
   border-radius: var(--radius-full);
   font-size: 10px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow:
+    inset 0 1px 1px rgba(246, 241, 213, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .trial-expired-btn {

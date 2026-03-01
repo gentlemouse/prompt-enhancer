@@ -249,11 +249,11 @@ const getOnboardingStyles = (): string => `
   }
 
   .step-indicator.active {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #3A3937, #272625);
   }
 
   .step-indicator.current {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #3A3937, #272625);
     width: 36px;
   }
 
@@ -348,13 +348,14 @@ const getOnboardingStyles = (): string => `
   }
 
   .onboarding-btn.primary {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    color: white;
-    box-shadow: 0 1px 3px rgba(99, 102, 241, 0.25), 0 4px 12px rgba(99, 102, 241, 0.15);
+    background: linear-gradient(135deg, #3A3937, #272625);
+    color: #F6F1D5;
+    box-shadow: inset 0 1px 1px rgba(246, 241, 213, 0.2), 0 1px 3px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(0, 0, 0, 0.1);
   }
 
   .onboarding-btn.primary:hover {
-    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35), 0 8px 20px rgba(99, 102, 241, 0.2);
+    box-shadow: inset 0 1px 1px rgba(246, 241, 213, 0.3), 0 2px 6px rgba(0, 0, 0, 0.35);
     transform: translateY(-0.5px);
   }
 
@@ -377,7 +378,7 @@ const getOnboardingStyles = (): string => `
 
   .onboarding-btn:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 0 3px rgba(246, 241, 213, 0.4);
   }
 
   /* 暗色模式 */
@@ -408,7 +409,7 @@ const getOnboardingStyles = (): string => `
 
     .step-indicator.active,
     .step-indicator.current {
-      background: linear-gradient(135deg, #818cf8, #a78bfa);
+      background: linear-gradient(135deg, #272625, #171717);
     }
 
     .onboarding-step h3 {
@@ -436,12 +437,15 @@ const getOnboardingStyles = (): string => `
     }
 
     .onboarding-btn.primary {
-      background: linear-gradient(135deg, #818cf8, #a78bfa);
-      box-shadow: 0 1px 3px rgba(129, 140, 248, 0.2), 0 4px 12px rgba(129, 140, 248, 0.12);
+      background: linear-gradient(135deg, #272625, #171717);
+      color: #F6F1D5;
+      box-shadow: inset 0 1px 1px rgba(246, 241, 213, 0.1), 0 1px 3px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .onboarding-btn.primary:hover {
-      box-shadow: 0 2px 6px rgba(129, 140, 248, 0.3), 0 8px 20px rgba(129, 140, 248, 0.18);
+      box-shadow: inset 0 1px 1px rgba(246, 241, 213, 0.2), 0 2px 6px rgba(0, 0, 0, 0.4);
+      background: linear-gradient(135deg, #3A3937, #272625);
     }
 
     .onboarding-btn.secondary {
@@ -455,7 +459,7 @@ const getOnboardingStyles = (): string => `
     }
 
     .onboarding-btn:focus-visible {
-      box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25);
+      box-shadow: 0 0 0 3px rgba(246, 241, 213, 0.25);
     }
   }
 `;

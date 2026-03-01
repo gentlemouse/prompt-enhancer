@@ -152,7 +152,7 @@
     "message": "Press <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> to enhance the current input."
   },
   "onboardingStep2Hint": {
-    "message": "Tip: You can also click the ✨ button next to the input"
+    "message": "Tip: Click the ✨ button next to the input to optimize your prompt"
   },
   "onboardingStep3Title": {
     "message": "Get Started"

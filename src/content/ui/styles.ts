@@ -11,6 +11,41 @@ export const getStyles = (): string => `
 /* ─── 字体引入 ─── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+/* ─── 语义化变量 (Semantic Variables) ─── */
+:host, :root {
+  /* 原始调色板: 方案五 钛金与珠光霜月 */
+  --color-titanium-deep: #272625;
+  --color-titanium-core: #878681;
+  --color-ethereal-mist: rgba(217, 217, 217, 0.4);
+  --color-pearly-moon: #F6F1D5;
+  --color-obsidian: #171717;
+
+  /* 语义令牌 - 默认（亮色输入框优先：深沉钛金带来高对比度） */
+  --ai-text-primary: rgba(255, 255, 255, 0.9);
+  --ai-text-secondary: rgba(255, 255, 255, 0.5);
+  --ai-border-subtle: rgba(255, 255, 255, 0.15);
+  --ai-border-highlight: rgba(246, 241, 213, 0.25);
+  --ai-glass-bg: rgba(39, 38, 37, 0.85); /* 显著加深：保障白色网页下按钮的可视性 */
+  --ai-glass-hover: rgba(58, 57, 55, 0.95);
+  --ai-icon-color: var(--color-pearly-moon); /* 霜月色 */
+  --ai-dot-color: var(--color-titanium-core);
+
+  /* 物理动效参数 */
+  --ai-curve-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ai-curve-asymmetric: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :host, :root {
+    /* 暗黑模式下输入框通常为黑与深灰，我们将按钮反转为浅色霜透玻璃提升物理边缘可视度 */
+    --ai-glass-bg: rgba(255, 255, 255, 0.12);
+    --ai-glass-hover: rgba(255, 255, 255, 0.2);
+    --ai-border-subtle: rgba(255, 255, 255, 0.25);
+    --ai-border-highlight: rgba(255, 255, 255, 0.4);
+    --ai-dot-color: #B0AFAF; /* 提亮收起态星芒点，避免随夜色隐匿 */
+  }
+}
+
 /* ─── 按钮容器 ─── */
 .prompt-enhancer-container {
   position: fixed;
@@ -21,34 +56,46 @@ export const getStyles = (): string => `
   isolation: isolate;
 }
 
-/* ─── 按钮基础样式 — Premium 渐变底座 + 白色 SVG ─── */
+/* ─── 按钮基础展开态 — 液态玻璃质感 (Liquid Glassmorphism) ─── */
 .prompt-enhancer-btn {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  border: none;
+  /* 液态玻璃基底 */
+  background: var(--ai-glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  /* 极细微透光边框界定物理边缘 */
+  border: 1px solid var(--ai-border-subtle);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
+  color: var(--ai-icon-color) !important; /* 防止宿主网站强制覆写 color */
   pointer-events: auto;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
-  /* 展开时使用快速响应曲线 */
+  
+  /* 多层复合悬浮外阴影，构建深度 */
+  box-shadow:
+    0px 1px 2px rgba(0, 0, 0, 0.3),
+    0px 2px 4px rgba(0, 0, 0, 0.2),
+    0px 4px 8px rgba(0, 0, 0, 0.15),
+    0px 8px 16px rgba(0, 0, 0, 0.1),
+    0px 16px 32px rgba(0, 0, 0, 0.05);
+
+  /* 内阴影雕刻边缘高光反射 */
+  box-shadow: inset 0 1px 1px rgba(246, 241, 213, 0.15), 
+              0px 1px 2px rgba(0, 0, 0, 0.3),
+              0px 4px 12px rgba(0, 0, 0, 0.15);
+
   transition:
-    width 0.15s ease-out,
-    height 0.15s ease-out,
     border-radius 0.15s ease-out,
     opacity 0.15s ease-out,
-    transform 0.15s ease-out,
     box-shadow 0.15s ease-out,
     background 0.15s ease-out,
-    clip-path 0.15s ease-out;
+    border-color 0.15s ease-out;
   user-select: none;
-  opacity: 0.55;
-  transform: scale(0.92);
-  /* 确保 clip-path 过渡时不裁掉内容 */
+  opacity: 0.9;
+  transform: none;
   overflow: visible;
   position: relative;
 }
@@ -58,19 +105,28 @@ export const getStyles = (): string => `
   align-items: center;
   justify-content: center;
   line-height: 0;
-  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+  opacity: 1;
+  transform: scale(1);
+  fill: currentColor !important; /* 强制跟随 color */
+  transition:
+    opacity 0.24s var(--ai-curve-asymmetric),
+    transform 0.32s var(--ai-curve-asymmetric);
 }
 
-/* ─── 收起态：迷你星芒 ✦ ─── */
-.prompt-enhancer-btn.collapsed {
+/* 小星芒视觉层（默认隐藏，collapsed 时显示） */
+.prompt-enhancer-btn::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
   width: 10px;
   height: 10px;
+  transform: translate(-50%, -50%) scale(0.6);
   border-radius: 2px;
-  background: #7c3aed;
-  box-shadow: 0 0 6px rgba(124, 58, 237, 0.4);
-  opacity: 0.8;
-  transform: scale(1);
-  /* 四芒星裁切形状 */
+  /* 自适应极简色基底 */
+  background: var(--ai-dot-color);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+  /* 四芒星裁切 */
   clip-path: polygon(
     50% 0%,
     62% 38%,
@@ -81,143 +137,139 @@ export const getStyles = (): string => `
     0% 50%,
     38% 38%
   );
-  /* 收起时使用柔和退让曲线 */
+  opacity: 0;
+  pointer-events: none;
+  animation: none;
   transition:
-    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: sparkle-breathe 3s ease-in-out infinite;
+    opacity 0.24s var(--ai-curve-asymmetric),
+    transform 0.32s var(--ai-curve-asymmetric);
+}
+
+/* ─── 收起态：迷你星芒 ✦ ─── */
+.prompt-enhancer-btn.collapsed {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  opacity: 0.9;
+  transform: none;
+  border-radius: 8px;
+  animation: none;
+}
+
+.prompt-enhancer-btn.collapsed::before {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  /* 引入非对称仿生呼吸动画 */
+  animation: pearly-breathe 5s ease-in-out infinite;
 }
 
 /* 收起态隐藏 SVG 图标 */
 .prompt-enhancer-btn.collapsed .prompt-enhancer-icon {
   opacity: 0;
-  transform: scale(0.3);
+  transform: scale(0.55);
 }
 
-/* 收起态呼吸动画 */
-@keyframes sparkle-breathe {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+/* 仿生呼吸动画：吸气稍快，呼气缓慢，光芒从内部透出 */
+@keyframes pearly-breathe {
+  0% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0.96);
+    box-shadow: 0 0 0px rgba(246, 241, 213, 0);
+  }
+  45% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.04);
+    /* 呼气峰值时透出高光 */
+    box-shadow: 0 0 10px 2px var(--ai-border-highlight);
+  }
+  100% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0.96);
+    box-shadow: 0 0 0px rgba(246, 241, 213, 0);
+  }
 }
 
-/* ─── 悬停：从收起态展开，或从含蓄态亮起 ─── */
-.prompt-enhancer-btn:hover,
-.prompt-enhancer-btn.collapsed:hover {
-  width: 30px;
-  height: 30px;
+/* ─── 悬停态：材质提亮 ─── */
+.prompt-enhancer-btn:hover {
   border-radius: 8px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: var(--ai-glass-hover); /* 环境自适应悬停提亮 */
   opacity: 1;
-  transform: scale(1);
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.45);
-  clip-path: none;
-  animation: none;
-  /* 展开时使用灵敏曲线 */
-  transition:
-    width 0.15s ease-out,
-    height 0.15s ease-out,
-    border-radius 0.15s ease-out,
-    opacity 0.15s ease-out,
-    transform 0.15s ease-out,
-    box-shadow 0.15s ease-out,
-    background 0.15s ease-out,
-    clip-path 0.15s ease-out;
+  transform: none;
+  border-color: var(--ai-border-highlight);
+  box-shadow: inset 0 1px 1px var(--ai-border-highlight), 
+              0px 4px 16px rgba(0, 0, 0, 0.2);
 }
 
-/* 悬停收起态时恢复图标可见 */
-.prompt-enhancer-btn.collapsed:hover .prompt-enhancer-icon {
-  opacity: 1;
+.prompt-enhancer-btn:hover .prompt-enhancer-icon {
   transform: scale(1);
 }
 
 .prompt-enhancer-btn:active {
-  transform: scale(0.9);
-  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.25);
+  transform: none;
+  background: var(--ai-glass-bg);
+  box-shadow: inset 0 1px 1px rgba(246, 241, 213, 0.1), 
+              0px 1px 4px rgba(0, 0, 0, 0.25);
 }
 
-/* ─── 生成中：魔法棒施法效果 ─── */
+/* ─── 生成中：内边缘光束环绕 (Border Beam Effect) ─── */
 .prompt-enhancer-btn.generating {
   opacity: 1;
   pointer-events: none;
   position: relative;
   clip-path: none;
-  animation: btn-glow 1.8s ease-in-out infinite;
+  /* 移除原有的跑马灯光晕，改用克制的光束 */
+  animation: none;
+  /* 留出微小的轨道 */
+  padding: 1px;
 }
 
-/* 图标微浮动 + 多层品牌色光晕 */
+/* 生成中发光器（背景光束旋转） */
+.prompt-enhancer-btn.generating::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    transparent 0%, 
+    rgba(246, 241, 213, 0.1) 60%, 
+    var(--color-pearly-moon) 100%
+  );
+  animation: beam-spin 4s linear infinite;
+  z-index: -2;
+  border-radius: inherit;
+}
+
+/* 生成中主体内衬罩（遮盖光束，只露边缘） */
+.prompt-enhancer-btn.generating::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: var(--color-titanium-deep);
+  border-radius: 7px;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes beam-spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* 图标微浮动 */
 .prompt-enhancer-btn.generating .prompt-enhancer-icon {
   animation: wand-float 2.4s ease-in-out infinite;
   opacity: 1;
   transform: scale(1);
 }
 
-/* 轻微浮动：营造"悬浮施法"感 */
 @keyframes wand-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
 }
 
-/* 生成中：按钮整体光晕脉冲 */
-@keyframes btn-glow {
-  0%, 100% {
-    box-shadow:
-      0 2px 8px rgba(99, 102, 241, 0.35),
-      0 0 0 0 rgba(139, 92, 246, 0);
-  }
-  50% {
-    box-shadow:
-      0 4px 16px rgba(99, 102, 241, 0.5),
-      0 0 20px 4px rgba(139, 92, 246, 0.2);
-  }
-}
-
-/* 星尘粒子：按钮伪元素 */
-.prompt-enhancer-btn.generating::before,
-.prompt-enhancer-btn.generating::after {
-  content: '';
-  position: absolute;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 70%);
-  pointer-events: none;
-}
-
-.prompt-enhancer-btn.generating::before {
-  top: 2px;
-  right: 0px;
-  animation: sparkle-a 1.8s ease-in-out infinite;
-}
-
-.prompt-enhancer-btn.generating::after {
-  top: 6px;
-  right: -2px;
-  animation: sparkle-b 2.2s ease-in-out infinite 0.4s;
-}
-
-@keyframes sparkle-a {
-  0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
-  20% { opacity: 1; transform: translate(-4px, -6px) scale(1); }
-  60% { opacity: 0.6; transform: translate(-8px, -10px) scale(0.8); }
-  100% { opacity: 0; transform: translate(-12px, -14px) scale(0.3); }
-}
-
-@keyframes sparkle-b {
-  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
-  25% { opacity: 0.9; transform: translate(3px, -7px) scale(1.1); }
-  65% { opacity: 0.4; transform: translate(5px, -12px) scale(0.7); }
-  100% { opacity: 0; transform: translate(6px, -16px) scale(0.2); }
-}
-
 /* P2-3.6: 焦点样式（无障碍） */
 .prompt-enhancer-btn:focus {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--color-pearly-moon);
   outline-offset: 2px;
   opacity: 1;
 }
@@ -234,19 +286,16 @@ export const getStyles = (): string => `
 
 /* P2-3.2: 流式输出时的脉动动画 */
 .prompt-enhancer-btn.streaming {
-  animation: streaming-pulse 1.5s ease-in-out infinite;
   clip-path: none;
 }
 
 .prompt-enhancer-btn.generating.streaming {
-  animation:
-    btn-glow 1.8s ease-in-out infinite,
-    streaming-pulse 1.5s ease-in-out infinite;
+  animation: streaming-pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes streaming-pulse {
   0%, 100% {
-    opacity: 0.7;
+    opacity: 0.8;
   }
   50% {
     opacity: 1;
@@ -258,9 +307,10 @@ export const getStyles = (): string => `
   position: absolute;
   bottom: calc(100% + 8px);
   right: 0;
-  max-width: min(320px, calc(100vw - 16px));
-  background: rgba(17, 17, 19, 0.92);
-  color: white;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 16px));
+  background: rgba(39, 38, 37, 0.85); /* 适配钛金深灰 */
+  color: var(--ai-text-primary);
   padding: 10px 14px;
   border-radius: 10px;
   font-size: 12px;
@@ -270,14 +320,15 @@ export const getStyles = (): string => `
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 4px 16px rgba(0, 0, 0, 0.3);
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    0 0 0 1px var(--ai-border-subtle),
+    0 4px 16px rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   gap: 8px;
   opacity: 0;
   transform: translateY(6px);
-  animation: onboarding-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: onboarding-enter 0.35s var(--ai-curve-spring) forwards;
   animation-delay: 0.5s;
   letter-spacing: -0.1px;
 }
@@ -286,13 +337,15 @@ export const getStyles = (): string => `
 .prompt-enhancer-onboarding::after {
   content: '';
   position: absolute;
-  bottom: -5px;
+  bottom: -4px;
   right: 14px;
   width: 10px;
   height: 10px;
-  background: rgba(17, 17, 19, 0.92);
+  background: rgba(39, 38, 37, 0.95);
   transform: rotate(45deg);
   border-radius: 0 0 2px 0;
+  border-bottom: 1px solid var(--ai-border-subtle);
+  border-right: 1px solid var(--ai-border-subtle);
 }
 
 .prompt-enhancer-onboarding-icon {
@@ -302,14 +355,15 @@ export const getStyles = (): string => `
 
 .prompt-enhancer-onboarding-text {
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ai-text-primary);
   line-height: 1.4;
+  white-space: nowrap;
 }
 
 .prompt-enhancer-onboarding-close {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--ai-text-secondary);
   font-size: 14px;
   cursor: pointer;
   padding: 2px;
@@ -321,13 +375,13 @@ export const getStyles = (): string => `
 }
 
 .prompt-enhancer-onboarding-close:hover {
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--ai-text-primary);
+  background: var(--ai-border-subtle);
 }
 
 .prompt-enhancer-onboarding-close:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.45);
+  box-shadow: 0 0 0 2px rgba(246, 241, 213, 0.45);
 }
 
 @keyframes onboarding-enter {
@@ -375,21 +429,22 @@ export const getStyles = (): string => `
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%) translateY(60px);
-  background: rgba(17, 17, 19, 0.88);
-  color: white;
+  background: rgba(39, 38, 37, 0.85); /* 适配钛金深灰 */
+  color: var(--ai-text-primary);
   padding: 10px 20px;
   border-radius: 12px;
   font-size: 13px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   z-index: 2147483647;
   opacity: 0;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.3s var(--ai-curve-spring);
   pointer-events: none;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 4px 16px rgba(0, 0, 0, 0.3);
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    0 0 0 1px var(--ai-border-subtle),
+    0 8px 24px rgba(0, 0, 0, 0.4);
   letter-spacing: -0.1px;
 }
 
@@ -440,13 +495,13 @@ export const getStyles = (): string => `
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: var(--color-pearly-moon); /* 微光色 */
   animation: dot-pulse 1.2s ease-in-out infinite;
 }
 
 @keyframes dot-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
+  50% { opacity: 0.4; transform: scale(0.85); box-shadow: 0 0 8px var(--color-pearly-moon); }
 }
 
 .prompt-enhancer-preview-close {
@@ -476,11 +531,11 @@ export const getStyles = (): string => `
   word-break: break-word;
 }
 
-/* 打字机光标 — 品牌色 */
+/* 打字机光标 — 品牌微光色 */
 .prompt-enhancer-preview-content::after {
   content: '▋';
   animation: cursor-blink 1s step-end infinite;
-  color: #6366f1;
+  color: var(--color-titanium-core);
 }
 
 .prompt-enhancer-preview-content.done::after {
@@ -509,18 +564,20 @@ export const getStyles = (): string => `
   font-weight: 500;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   cursor: pointer;
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s var(--ai-curve-spring);
 }
 
 .prompt-enhancer-preview-btn.primary {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: var(--color-titanium-deep);
   color: white;
-  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .prompt-enhancer-preview-btn.primary:hover {
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   transform: translateY(-0.5px);
+  background: #3A3937;
 }
 
 .prompt-enhancer-preview-btn.secondary {
@@ -549,20 +606,21 @@ export const getStyles = (): string => `
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%) translateY(80px);
-  background: rgba(17, 17, 19, 0.92);
-  color: white;
+  background: rgba(39, 38, 37, 0.9);
+  color: var(--ai-text-primary);
   padding: 20px 24px;
   border-radius: 16px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   z-index: 2147483647;
   opacity: 0;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.35s var(--ai-curve-spring);
   pointer-events: auto;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 8px 32px rgba(0, 0, 0, 0.35);
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    0 0 0 1px var(--ai-border-subtle),
+    0 8px 32px rgba(0, 0, 0, 0.4);
   max-width: 360px;
   text-align: center;
 }
@@ -586,7 +644,7 @@ export const getStyles = (): string => `
 
 .prompt-enhancer-trial-expired-desc {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--ai-text-secondary);
   margin-bottom: 16px;
   line-height: 1.5;
 }
@@ -594,20 +652,20 @@ export const getStyles = (): string => `
 .prompt-enhancer-trial-expired-btn {
   display: inline-block;
   padding: 9px 24px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
+  background: var(--color-pearly-moon);
+  color: var(--color-titanium-deep);
   border: none;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s var(--ai-curve-spring);
 }
 
 .prompt-enhancer-trial-expired-btn:hover {
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   transform: translateY(-1px);
 }
 

@@ -152,7 +152,7 @@
     "message": "使用 <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> 一键润色当前输入框的内容。"
   },
   "onboardingStep2Hint": {
-    "message": "提示：也可以点击输入框旁边的 ✨ 按钮"
+    "message": "提示：点击输入框旁边的 ✨ 按钮，即可优化你的提示词"
   },
   "onboardingStep3Title": {
     "message": "开始使用"
