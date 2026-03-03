@@ -1,9 +1,9 @@
 {
   "extName": {
-    "message": "灵犀"
+    "message": "灵犀：一键 AI 提示词优化与润色工具"
   },
   "extDescription": {
-    "message": "心有灵犀一点通"
+    "message": "即刻升级提示词。无需跳转，直接在输入框内一键优化与润色你的 Prompt。"
   },
   "commandEnhance": {
     "message": "润色当前输入框的 Prompt"

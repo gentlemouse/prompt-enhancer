@@ -1,6 +1,7 @@
 {
   "extName": {
-    "message": "Lynx"
+    "message": "Lynx: AI Prompt Enhancer & Optimizer",
+    "description": "The name of the extension"
   },
   "extDescription": {
     "message": "A spark of brilliance for every prompt"
