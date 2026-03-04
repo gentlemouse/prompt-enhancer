@@ -1,6 +1,6 @@
 {
   "name": "lynx",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "一键润色优化你的 Prompt，让 AI 更好地理解你的意图",
   "license": "MIT",
   "type": "module",
@@ -17,7 +17,7 @@
     "test:coverage": "vitest run --coverage",
     "verify-apis": "npx tsx scripts/verify-apis.ts",
     "prepare": "husky",
-    "package": "zip -r prompt-enhancer-v1.3.1.zip dist/"
+    "package": "zip -r prompt-enhancer-v1.3.2.zip dist/"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.28",

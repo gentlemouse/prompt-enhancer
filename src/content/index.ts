@@ -51,6 +51,11 @@ let streamingInput: EditableElement | null = null;
 
 /** 流式累积文本 */
 let streamingText = '';
+let streamingOriginalText = '';
+
+/** 流式无数据兜底超时（避免生成态卡死） */
+let streamingWatchdogTimer: number | null = null;
+const STREAMING_INACTIVITY_TIMEOUT_MS = 45000;
 
 /** rAF 定位任务 ID */
 let positionFrameId: number | null = null;
@@ -173,6 +178,36 @@ const stopPositionSync = (): void => {
     window.clearInterval(positionSyncTimer);
     positionSyncTimer = null;
   }
+};
+
+/**
+ * 清理流式兜底定时器
+ */
+const clearStreamingWatchdog = (): void => {
+  if (streamingWatchdogTimer !== null) {
+    window.clearTimeout(streamingWatchdogTimer);
+    streamingWatchdogTimer = null;
+  }
+};
+
+/**
+ * 刷新流式兜底定时器
+ * 若长时间未收到 chunk/end/error，则自动结束生成态，避免按钮动画卡住
+ */
+const refreshStreamingWatchdog = (): void => {
+  clearStreamingWatchdog();
+  if (!currentRequestId) return;
+
+  streamingWatchdogTimer = window.setTimeout(() => {
+    if (!currentRequestId) return;
+
+    if (streamingInput && !streamingText && streamingOriginalText) {
+      setInputValueDirect(streamingInput, streamingOriginalText);
+    }
+
+    showToast('✗ ' + t('toastRequestFailed'));
+    resetStreamingState();
+  }, STREAMING_INACTIVITY_TIMEOUT_MS);
 };
 
 /**
@@ -433,9 +468,11 @@ const handleStreamingEnhance = async (
   currentRequestId = Date.now().toString();
   streamingInput = input;
   streamingText = '';
+  streamingOriginalText = originalText;
 
   // 设置按钮流式状态
   setButtonStreaming(buttonState, true);
+  refreshStreamingWatchdog();
 
   // 清空输入框，准备接收流式内容（静默写入，不创建 undo 记录）
   setInputValueDirect(input, '');
@@ -480,12 +517,14 @@ const handleStreamingEnhance = async (
  * 重置流式状态
  */
 const resetStreamingState = (): void => {
+  clearStreamingWatchdog();
   if (buttonState) {
     setButtonStreaming(buttonState, false);
   }
   currentRequestId = null;
   streamingInput = null;
   streamingText = '';
+  streamingOriginalText = '';
   collapseButtonForIdle();
   scheduleButtonPosition();
 };
@@ -672,6 +711,7 @@ const init = (): void => {
     ) {
       streamingText += req.chunk;
       setInputValueDirect(streamingInput, streamingText);
+      refreshStreamingWatchdog();
       scheduleButtonPosition();
       sendResponse({ success: true });
       return;

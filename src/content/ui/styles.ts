@@ -113,6 +113,15 @@ export const getStyles = (): string => `
     transform 0.32s var(--ai-curve-asymmetric);
 }
 
+.prompt-enhancer-icon svg {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  display: block;
+  flex: 0 0 auto;
+}
+
 /* 小星芒视觉层（默认隐藏，collapsed 时显示） */
 .prompt-enhancer-btn::before {
   content: '';
@@ -160,7 +169,7 @@ export const getStyles = (): string => `
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
   /* 引入非对称仿生呼吸动画 */
-  animation: pearly-breathe 5s ease-in-out infinite;
+  animation: pe-collapsed-breathe 5s ease-in-out infinite;
 }
 
 /* 收起态隐藏 SVG 图标 */
@@ -170,7 +179,7 @@ export const getStyles = (): string => `
 }
 
 /* 仿生呼吸动画：吸气稍快，呼气缓慢，光芒从内部透出 */
-@keyframes pearly-breathe {
+@keyframes pe-collapsed-breathe {
   0% {
     opacity: 0.5;
     transform: translate(-50%, -50%) scale(0.96);
@@ -216,6 +225,7 @@ export const getStyles = (): string => `
   opacity: 1;
   pointer-events: none;
   position: relative;
+  overflow: hidden;
   clip-path: none;
   /* 移除原有的跑马灯光晕，改用克制的光束 */
   animation: none;
@@ -235,7 +245,7 @@ export const getStyles = (): string => `
     rgba(246, 241, 213, 0.1) 60%, 
     var(--color-pearly-moon) 100%
   );
-  animation: beam-spin 4s linear infinite;
+  animation: pe-beam-spin 4s linear infinite;
   z-index: -2;
   border-radius: inherit;
 }
@@ -251,18 +261,18 @@ export const getStyles = (): string => `
   pointer-events: none;
 }
 
-@keyframes beam-spin {
+@keyframes pe-beam-spin {
   100% { transform: rotate(360deg); }
 }
 
 /* 图标微浮动 */
 .prompt-enhancer-btn.generating .prompt-enhancer-icon {
-  animation: wand-float 2.4s ease-in-out infinite;
+  animation: pe-icon-float 2.4s ease-in-out infinite;
   opacity: 1;
   transform: scale(1);
 }
 
-@keyframes wand-float {
+@keyframes pe-icon-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
 }
@@ -290,10 +300,10 @@ export const getStyles = (): string => `
 }
 
 .prompt-enhancer-btn.generating.streaming {
-  animation: streaming-pulse 1.5s ease-in-out infinite;
+  animation: pe-streaming-pulse 1.5s ease-in-out infinite;
 }
 
-@keyframes streaming-pulse {
+@keyframes pe-streaming-pulse {
   0%, 100% {
     opacity: 0.8;
   }
@@ -328,7 +338,7 @@ export const getStyles = (): string => `
   gap: 8px;
   opacity: 0;
   transform: translateY(6px);
-  animation: onboarding-enter 0.35s var(--ai-curve-spring) forwards;
+  animation: pe-onboarding-enter 0.35s var(--ai-curve-spring) forwards;
   animation-delay: 0.5s;
   letter-spacing: -0.1px;
 }
@@ -384,7 +394,7 @@ export const getStyles = (): string => `
   box-shadow: 0 0 0 2px rgba(246, 241, 213, 0.45);
 }
 
-@keyframes onboarding-enter {
+@keyframes pe-onboarding-enter {
   from {
     opacity: 0;
     transform: translateY(6px);
@@ -411,11 +421,11 @@ export const getStyles = (): string => `
 .prompt-enhancer-loader {
   font-size: 20px;
   display: inline-block;
-  animation: hourglass-flip 2.4s ease-in-out infinite;
+  animation: pe-hourglass-flip 2.4s ease-in-out infinite;
 }
 
 /* 沙漏翻转动画 */
-@keyframes hourglass-flip {
+@keyframes pe-hourglass-flip {
   0% { transform: rotate(0deg); }
   20% { transform: rotate(180deg); }
   50% { transform: rotate(180deg); }
@@ -496,10 +506,10 @@ export const getStyles = (): string => `
   height: 7px;
   border-radius: 50%;
   background: var(--color-pearly-moon); /* 微光色 */
-  animation: dot-pulse 1.2s ease-in-out infinite;
+  animation: pe-dot-pulse 1.2s ease-in-out infinite;
 }
 
-@keyframes dot-pulse {
+@keyframes pe-dot-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.4; transform: scale(0.85); box-shadow: 0 0 8px var(--color-pearly-moon); }
 }
@@ -534,7 +544,7 @@ export const getStyles = (): string => `
 /* 打字机光标 — 品牌微光色 */
 .prompt-enhancer-preview-content::after {
   content: '▋';
-  animation: cursor-blink 1s step-end infinite;
+  animation: pe-cursor-blink 1s step-end infinite;
   color: var(--color-titanium-core);
 }
 
@@ -542,7 +552,7 @@ export const getStyles = (): string => `
   display: none;
 }
 
-@keyframes cursor-blink {
+@keyframes pe-cursor-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
