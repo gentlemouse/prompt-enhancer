@@ -36,7 +36,9 @@ const statusDiv = document.getElementById('status') as HTMLElement;
 const anthropicWarning = document.getElementById(
   'anthropicWarning'
 ) as HTMLElement;
-const anthropicAck = document.getElementById('anthropicAck') as HTMLInputElement;
+const anthropicAck = document.getElementById(
+  'anthropicAck'
+) as HTMLInputElement;
 const endpointHint = document.getElementById('endpointHint') as HTMLElement;
 const shortcutEnhance = document.getElementById(
   'shortcutEnhance'
@@ -193,7 +195,10 @@ const saveSettings = async (): Promise<void> => {
     showStatus(t('statusSaved'), 'success');
   } catch (error) {
     showStatus(
-      t('statusSaveFailed', error instanceof Error ? error.message : t('statusUnknownError')),
+      t(
+        'statusSaveFailed',
+        error instanceof Error ? error.message : t('statusUnknownError')
+      ),
       'error'
     );
   }
@@ -245,7 +250,9 @@ import { showOnboarding, checkNeedsOnboarding } from './onboarding';
  */
 const updateTrialBanner = async (): Promise<void> => {
   try {
-    const response = await chrome.runtime.sendMessage({ action: 'getTrialStatus' });
+    const response = await chrome.runtime.sendMessage({
+      action: 'getTrialStatus',
+    });
     if (!response?.success) return;
 
     const { trialState, trialRemaining, trialTotal } = response;
@@ -261,8 +268,13 @@ const updateTrialBanner = async (): Promise<void> => {
     const total = trialTotal ?? 10;
     const pct = Math.round((remaining / total) * 100);
 
-    trialLabel.textContent = remaining > 0 ? t('trialBannerActive') : t('trialBannerExpired');
-    trialCount.textContent = t('trialRemaining', String(remaining), String(total));
+    trialLabel.textContent =
+      remaining > 0 ? t('trialBannerActive') : t('trialBannerExpired');
+    trialCount.textContent = t(
+      'trialRemaining',
+      String(remaining),
+      String(total)
+    );
 
     trialFill.style.width = `${pct}%`;
     trialFill.className = 'trial-banner-fill';
@@ -316,11 +328,32 @@ const showTrialExpiredOverlay = (): void => {
 };
 
 /**
+ * 弹窗打开时尝试为当前活动标签页注入内容脚本
+ * 兜底修复：当站点未自动注入时，用户打开弹窗即可立即可用
+ */
+const injectCurrentTabContentScript = async (): Promise<void> => {
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    if (!tab?.id || !tab.url) return;
+    if (!/^https?:\/\//i.test(tab.url)) return;
+
+    await chrome.runtime.sendMessage({
+      action: 'injectContentScript',
+      tabId: tab.id,
+    });
+  } catch {
+    // 注入失败不影响设置页主流程
+  }
+};
+
+/**
  * 初始化
  */
 const initialize = async (): Promise<void> => {
   applyI18n();
   updateShortcutDisplay();
+  await injectCurrentTabContentScript();
 
   const needsOnboarding = await checkNeedsOnboarding();
   if (needsOnboarding) {

@@ -83,6 +83,32 @@ const TEXT_INPUT_KEYWORDS = [
   '搜索',
 ];
 
+/** search 输入框可视为聊天输入时的关键词（刻意不包含 search） */
+const CHAT_SEARCH_HINT_KEYWORDS = [
+  'message',
+  'prompt',
+  'chat',
+  'ask',
+  'query',
+  'input',
+  'type',
+  'send',
+  'write',
+  'compose',
+  'reply',
+  'comment',
+  '消息',
+  '输入',
+  '提问',
+  '对话',
+  '发送',
+  '回复',
+  '评论',
+];
+
+/** 明显偏“全站搜索”语义的关键词 */
+const GLOBAL_SEARCH_HINT_KEYWORDS = ['search', '搜索', 'find', '查找'];
+
 /** 容器级别的正向 CSS 类名片段（用于检测父级上下文） */
 const CHAT_CONTAINER_PATTERNS = [
   'chat',
@@ -93,6 +119,111 @@ const CHAT_CONTAINER_PATTERNS = [
   'conversation',
   'dialog',
 ];
+
+/** 发送/提交动作关键词（用于识别聊天输入旁边的发送按钮） */
+const SEND_ACTION_KEYWORDS = [
+  'send',
+  'submit',
+  'reply',
+  '发送',
+  '提交',
+  '回复',
+  'chat-send',
+];
+
+/** 发送控件选择器 */
+const SEND_CONTROL_SELECTOR =
+  'button,[role="button"],input[type="submit"],input[type="button"]';
+
+/**
+ * 判断元素是否可见
+ */
+const isElementVisible = (el: HTMLElement): boolean => {
+  const style = window.getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden') return false;
+  const opacity = Number.parseFloat(style.opacity || '1');
+  return Number.isNaN(opacity) || opacity > 0;
+};
+
+/** 与框架强绑定的 contenteditable 选择器（写回需走兼容路径） */
+const FRAMEWORK_MANAGED_EDITOR_SELECTORS = [
+  '.ProseMirror',
+  '[data-slate-editor]',
+  '[data-lexical-editor]',
+  '.ql-editor',
+  '.tiptap',
+];
+
+/**
+ * 跨 DOM 边界向上查找父节点
+ * 支持从 Shadow DOM 内部跳转到 host
+ */
+const getCrossBoundaryParent = (el: Element): Element | null => {
+  if (el.parentElement) return el.parentElement;
+  const root = el.getRootNode();
+  if (root instanceof ShadowRoot) return root.host;
+  return null;
+};
+
+/**
+ * 从事件中提取最接近真实交互节点的 Element
+ * 优先使用 composedPath，兼容 Shadow DOM 事件重定向
+ */
+const getEventElement = (e: Event): Element | null => {
+  if (typeof e.composedPath === 'function') {
+    const path = e.composedPath();
+    for (const node of path) {
+      if (node instanceof Element) return node;
+    }
+  }
+  return e.target instanceof Element ? e.target : null;
+};
+
+/**
+ * 获取当前文档（含 Shadow DOM / iframe）的最深层 activeElement
+ */
+const getDeepActiveElement = (
+  root: Document | ShadowRoot = document
+): Element | null => {
+  let active: Element | null = root.activeElement;
+
+  while (active) {
+    if (active instanceof HTMLElement && active.tagName === 'IFRAME') {
+      try {
+        const frameDoc = (active as { contentDocument?: Document | null })
+          .contentDocument;
+        if (
+          frameDoc?.activeElement &&
+          frameDoc.activeElement !== frameDoc.body
+        ) {
+          active = frameDoc.activeElement;
+          continue;
+        }
+      } catch {
+        // 跨域 iframe 无法访问，忽略并返回当前层级元素
+      }
+    }
+
+    if (active instanceof HTMLElement && active.shadowRoot?.activeElement) {
+      active = active.shadowRoot.activeElement;
+      continue;
+    }
+
+    break;
+  }
+
+  return active;
+};
+
+/**
+ * 判断是否为框架托管的 contenteditable 编辑器
+ * 这类编辑器通常依赖浏览器编辑命令/特定事件顺序同步内部状态
+ */
+const isFrameworkManagedContentEditable = (el: HTMLElement): boolean => {
+  return FRAMEWORK_MANAGED_EDITOR_SELECTORS.some(selector =>
+    el.matches(selector)
+  );
+};
 
 /**
  * 查找 contenteditable 根元素
@@ -116,8 +247,12 @@ const findContentEditableRoot = (el: Element): HTMLElement | null => {
   }
 
   // 向上查找最近的 contenteditable="true" 祖先
-  current = el.parentElement;
-  while (current && current !== document.body) {
+  current = getCrossBoundaryParent(el);
+  while (
+    current &&
+    current !== document.body &&
+    current !== document.documentElement
+  ) {
     if (current instanceof HTMLElement) {
       const attr = current.getAttribute('contenteditable');
       if (attr === 'false') break;
@@ -125,10 +260,106 @@ const findContentEditableRoot = (el: Element): HTMLElement | null => {
         return current;
       }
     }
-    current = current.parentElement;
+    current = getCrossBoundaryParent(current);
   }
 
   return null;
+};
+
+/**
+ * 提取输入提示文本（placeholder / aria 系列）
+ */
+const getHintText = (el: HTMLElement): string => {
+  return [
+    el.getAttribute('aria-label'),
+    el.getAttribute('aria-placeholder'),
+    el.getAttribute('data-placeholder'),
+    el.getAttribute('placeholder'),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+};
+
+/**
+ * 检测是否命中聊天容器上下文（最多向上 6 层）
+ */
+const hasChatContainerContext = (el: HTMLElement): boolean => {
+  let current: Element | null = el;
+  let depth = 0;
+
+  while (
+    current &&
+    current !== document.body &&
+    current !== document.documentElement &&
+    depth < 6
+  ) {
+    if (current instanceof HTMLElement) {
+      const classNames = String(current.className || '').toLowerCase();
+      const dataTestId = (
+        current.getAttribute('data-testid') || ''
+      ).toLowerCase();
+      const merged = `${classNames} ${dataTestId}`;
+      if (CHAT_CONTAINER_PATTERNS.some(p => merged.includes(p))) {
+        return true;
+      }
+    }
+    current = getCrossBoundaryParent(current);
+    depth += 1;
+  }
+
+  return false;
+};
+
+/**
+ * 检测输入框附近是否存在“发送/提交”按钮
+ */
+const hasNearbySendControl = (el: HTMLInputElement): boolean => {
+  const scope = el.closest('form') || el.parentElement;
+  if (!scope) return false;
+
+  const inputRect = el.getBoundingClientRect();
+  const controls = Array.from(
+    scope.querySelectorAll(SEND_CONTROL_SELECTOR)
+  ) as HTMLElement[];
+
+  // 限制扫描数量，避免大型表单页面带来不必要开销
+  const limitedControls = controls.slice(0, 40);
+
+  for (const control of limitedControls) {
+    if (!isElementVisible(control)) continue;
+    if (control === el) continue;
+
+    const rect = control.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) continue;
+
+    const verticalOverlap =
+      Math.min(inputRect.bottom, rect.bottom) -
+      Math.max(inputRect.top, rect.top);
+    if (verticalOverlap < Math.min(10, inputRect.height * 0.25)) continue;
+
+    // 发送按钮通常在输入框右侧或轻微重叠区域
+    const nearRight = rect.left >= inputRect.left + inputRect.width * 0.45;
+    const notTooFar = rect.left - inputRect.right <= 140;
+    if (!nearRight || !notTooFar) continue;
+
+    const signalText = [
+      control.getAttribute('aria-label'),
+      control.getAttribute('title'),
+      control.getAttribute('data-testid'),
+      control.textContent,
+      (control as HTMLInputElement).value,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    if (SEND_ACTION_KEYWORDS.some(kw => signalText.includes(kw))) {
+      return true;
+    }
+  }
+
+  return false;
 };
 
 /**
@@ -158,15 +389,7 @@ const isValidContentEditable = (el: HTMLElement): boolean => {
   }
 
   // 信号 3：aria-label / data-placeholder 包含文本输入关键词
-  const hintText = [
-    el.getAttribute('aria-label'),
-    el.getAttribute('aria-placeholder'),
-    el.getAttribute('data-placeholder'),
-    el.getAttribute('placeholder'),
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
+  const hintText = getHintText(el);
 
   if (hintText && TEXT_INPUT_KEYWORDS.some(kw => hintText.includes(kw))) {
     return true;
@@ -240,6 +463,29 @@ const isValidTextInput = (el: HTMLInputElement): boolean => {
     return false;
   }
 
+  // 对 search 输入框收紧触发门槛，减少 AI 站点中的“全站搜索”误触发
+  if (inputType === 'search') {
+    const hintText = getHintText(el);
+    const hasChatHint = CHAT_SEARCH_HINT_KEYWORDS.some(kw =>
+      hintText.includes(kw)
+    );
+    const hasChatContext = hasChatContainerContext(el);
+    const hasSendControl = hasNearbySendControl(el);
+    const chatSignalCount = [
+      hasChatHint,
+      hasChatContext,
+      hasSendControl,
+    ].filter(Boolean).length;
+
+    const hasGlobalSearchHint = GLOBAL_SEARCH_HINT_KEYWORDS.some(kw =>
+      hintText.includes(kw)
+    );
+    if (hasGlobalSearchHint && chatSignalCount === 0) return false;
+
+    // 至少命中 2 个聊天信号，才将 search 视为聊天输入框
+    if (chatSignalCount < 2) return false;
+  }
+
   // 尺寸检查
   const rect = el.getBoundingClientRect();
   return rect.width >= 100 && rect.height >= 20;
@@ -287,26 +533,35 @@ export const findEditableElement = (
 ): EditableElement | null => {
   if (!el) return null;
 
-  // textarea：直接验证
-  if (el.tagName === 'TEXTAREA') {
-    return isValidTextarea(el as HTMLTextAreaElement)
-      ? (el as HTMLTextAreaElement)
-      : null;
-  }
-
-  // input：直接验证
-  if (el.tagName === 'INPUT') {
-    return isValidTextInput(el as HTMLInputElement)
-      ? (el as HTMLInputElement)
-      : null;
-  }
-
-  // contenteditable：查找根元素再验证
-  if ((el as HTMLElement).isContentEditable) {
-    const root = findContentEditableRoot(el);
-    if (root && isValidContentEditable(root)) {
-      return root;
+  let current: Element | null = el;
+  while (
+    current &&
+    current !== document.body &&
+    current !== document.documentElement
+  ) {
+    // textarea：直接验证
+    if (current.tagName === 'TEXTAREA') {
+      return isValidTextarea(current as HTMLTextAreaElement)
+        ? (current as HTMLTextAreaElement)
+        : null;
     }
+
+    // input：直接验证
+    if (current.tagName === 'INPUT') {
+      return isValidTextInput(current as HTMLInputElement)
+        ? (current as HTMLInputElement)
+        : null;
+    }
+
+    // contenteditable：查找根元素再验证
+    if ((current as HTMLElement).isContentEditable) {
+      const root = findContentEditableRoot(current);
+      if (root && isValidContentEditable(root)) {
+        return root;
+      }
+    }
+
+    current = getCrossBoundaryParent(current);
   }
 
   return null;
@@ -351,8 +606,29 @@ export const setInputValueDirect = (
     }
     el.dispatchEvent(new Event('input', { bubbles: true }));
   } else {
+    // ProseMirror/Slate 等框架编辑器使用 textContent 写入时，
+    // 可能只更新 DOM 而不更新内部状态，导致“看起来改了但无法发送”。
+    if (isFrameworkManagedContentEditable(el)) {
+      setInputValue(el, value);
+      return;
+    }
+
     el.textContent = value;
-    el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    el.dispatchEvent(
+      new InputEvent('beforeinput', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertReplacementText',
+        data: value,
+      })
+    );
+    el.dispatchEvent(
+      new InputEvent('input', {
+        bubbles: true,
+        inputType: 'insertReplacementText',
+        data: value,
+      })
+    );
   }
 };
 
@@ -410,7 +686,7 @@ export const createInputDetector = (
 
   /** 处理焦点获取 */
   const handleFocusIn = (e: FocusEvent): void => {
-    const target = findEditableElement(e.target as Element);
+    const target = findEditableElement(getEventElement(e));
     if (target) {
       activeInput = target;
       onFocus(target);
@@ -420,7 +696,7 @@ export const createInputDetector = (
   /** 处理焦点丢失 */
   const handleFocusOut = (): void => {
     setTimeout(() => {
-      const newFocus = document.activeElement;
+      const newFocus = getDeepActiveElement();
       const newTarget = newFocus ? findEditableElement(newFocus) : null;
       if (!newTarget) {
         onBlur();
@@ -430,7 +706,23 @@ export const createInputDetector = (
 
   /** 处理点击（补充 focusin 的不足） */
   const handleClick = (e: MouseEvent): void => {
-    const target = findEditableElement(e.target as Element);
+    const focused = getDeepActiveElement();
+    if (focused) {
+      const focusedEditable = findEditableElement(focused);
+      if (focusedEditable) {
+        activeInput = focusedEditable;
+        onFocus(focusedEditable);
+        return;
+      }
+
+      // 若当前聚焦的是原生输入框但不符合 prompt 条件（如数字输入框），
+      // 则不再从点击目标向上回溯，避免误命中祖先 contenteditable 容器。
+      if (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA') {
+        return;
+      }
+    }
+
+    const target = findEditableElement(getEventElement(e));
     if (target) {
       activeInput = target;
       onFocus(target);
@@ -439,7 +731,7 @@ export const createInputDetector = (
 
   /** 处理输入事件（捕获新出现的输入框） */
   const handleInput = (e: Event): void => {
-    const target = findEditableElement(e.target as Element);
+    const target = findEditableElement(getEventElement(e));
     if (target && target !== activeInput) {
       activeInput = target;
       onFocus(target);
@@ -455,7 +747,7 @@ export const createInputDetector = (
   // MutationObserver：监听动态 DOM 变化（SPA 路由切换等）
   // 仅在检测到 contenteditable 时有意义
   observer = new MutationObserver(() => {
-    const focused = document.activeElement;
+    const focused = getDeepActiveElement();
     if (focused && focused !== document.body) {
       const target = findEditableElement(focused);
       if (target && target !== activeInput) {
@@ -486,6 +778,6 @@ export const createInputDetector = (
  * 获取当前活跃的输入框
  */
 export const getActiveInput = (): EditableElement | null => {
-  const focused = document.activeElement;
+  const focused = getDeepActiveElement();
   return focused ? findEditableElement(focused) : null;
 };
