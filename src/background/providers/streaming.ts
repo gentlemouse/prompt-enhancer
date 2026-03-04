@@ -8,7 +8,10 @@ import { buildSystemPrompt, buildUserMessage } from '../prompt-builder';
 import { fetchWithTimeout } from '@shared/utils/retry';
 
 /** 流式回调函数类型 */
-export type StreamCallback = (chunk: string, done: boolean) => void;
+export type StreamCallback = (
+  chunk: string,
+  done: boolean
+) => void | Promise<void>;
 
 /** 流式调用选项 */
 export interface StreamingOptions {
@@ -17,10 +20,24 @@ export interface StreamingOptions {
   analysis: PromptAnalysis;
   endpoint: string;
   onChunk: StreamCallback;
-  onError: (error: Error) => void;
+  onError: (error: Error) => void | Promise<void>;
   /** 附加请求头（代理模式用于传递设备指纹） */
   extraHeaders?: Record<string, string>;
 }
+
+/**
+ * 安全触发错误回调
+ */
+const notifyError = async (
+  onError: (error: Error) => void | Promise<void>,
+  error: Error
+): Promise<void> => {
+  try {
+    await onError(error);
+  } catch {
+    // 忽略 onError 内部异常，避免二次报错
+  }
+};
 
 /**
  * 解析 SSE 数据行
@@ -67,8 +84,11 @@ const extractFromJSONResponse = (text: string): string | null => {
  * OpenAI 兼容的流式调用
  * 兼容非流式响应（代理模式可能返回标准 JSON）
  */
-export const streamOpenAI = async (options: StreamingOptions): Promise<void> => {
-  const { apiKey, model, analysis, endpoint, onChunk, onError, extraHeaders } = options;
+export const streamOpenAI = async (
+  options: StreamingOptions
+): Promise<void> => {
+  const { apiKey, model, analysis, endpoint, onChunk, onError, extraHeaders } =
+    options;
   const systemPrompt = buildSystemPrompt(analysis);
   const userMessage = buildUserMessage(analysis.originalPrompt, analysis);
 
@@ -98,7 +118,9 @@ export const streamOpenAI = async (options: StreamingOptions): Promise<void> => 
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error?.message || `API 调用失败: ${response.status}`);
+      throw new Error(
+        error.error?.message || `API 调用失败: ${response.status}`
+      );
     }
 
     const contentType = response.headers.get('content-type') || '';
@@ -108,10 +130,10 @@ export const streamOpenAI = async (options: StreamingOptions): Promise<void> => 
       const text = await response.text();
       const content = extractFromJSONResponse(text);
       if (content) {
-        onChunk(content, false);
-        onChunk('', true);
+        await onChunk(content, false);
+        await onChunk('', true);
       } else {
-        onError(new Error('API 返回了空内容'));
+        await notifyError(onError, new Error('API 返回了空内容'));
       }
       return;
     }
@@ -137,7 +159,7 @@ export const streamOpenAI = async (options: StreamingOptions): Promise<void> => 
         const content = parseSSELine(line.trim());
         if (content) {
           hasContent = true;
-          onChunk(content, false);
+          await onChunk(content, false);
         }
       }
     }
@@ -146,24 +168,29 @@ export const streamOpenAI = async (options: StreamingOptions): Promise<void> => 
       const content = parseSSELine(buffer.trim());
       if (content) {
         hasContent = true;
-        onChunk(content, false);
+        await onChunk(content, false);
       }
     }
 
     if (hasContent) {
-      onChunk('', true);
+      await onChunk('', true);
     } else {
-      onError(new Error('API 未返回任何内容'));
+      await notifyError(onError, new Error('API 未返回任何内容'));
     }
   } catch (error) {
-    onError(error instanceof Error ? error : new Error(String(error)));
+    await notifyError(
+      onError,
+      error instanceof Error ? error : new Error(String(error))
+    );
   }
 };
 
 /**
  * Anthropic 流式调用
  */
-export const streamAnthropic = async (options: StreamingOptions): Promise<void> => {
+export const streamAnthropic = async (
+  options: StreamingOptions
+): Promise<void> => {
   const { apiKey, model, analysis, endpoint, onChunk, onError } = options;
   const systemPrompt = buildSystemPrompt(analysis);
   const userMessage = buildUserMessage(analysis.originalPrompt, analysis);
@@ -193,7 +220,9 @@ export const streamAnthropic = async (options: StreamingOptions): Promise<void> 
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error?.message || `API 调用失败: ${response.status}`);
+      throw new Error(
+        error.error?.message || `API 调用失败: ${response.status}`
+      );
     }
 
     const reader = response.body?.getReader();
@@ -218,7 +247,7 @@ export const streamAnthropic = async (options: StreamingOptions): Promise<void> 
           try {
             const json = JSON.parse(trimmed.slice(6));
             if (json.type === 'content_block_delta' && json.delta?.text) {
-              onChunk(json.delta.text, false);
+              await onChunk(json.delta.text, false);
             }
           } catch {
             // 忽略解析错误
@@ -227,8 +256,11 @@ export const streamAnthropic = async (options: StreamingOptions): Promise<void> 
       }
     }
 
-    onChunk('', true);
+    await onChunk('', true);
   } catch (error) {
-    onError(error instanceof Error ? error : new Error(String(error)));
+    await notifyError(
+      onError,
+      error instanceof Error ? error : new Error(String(error))
+    );
   }
 };

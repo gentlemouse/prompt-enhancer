@@ -12,6 +12,21 @@ import { isTrialExpired, incrementTrialUsage } from '@shared/trial';
 import type { APIProvider, HistoryItem } from '@shared/types';
 
 /**
+ * 安全发送消息到 content script
+ * content script 丢失/页面切换时，消息发送失败不应中断后台流程
+ */
+const safeSendToTab = async (
+  tabId: number,
+  message: Record<string, unknown>
+): Promise<void> => {
+  try {
+    await chrome.tabs.sendMessage(tabId, message);
+  } catch {
+    // 忽略发送失败（可能是页面已刷新或脚本已卸载）
+  }
+};
+
+/**
  * 更新扩展图标上的试用额度 Badge
  * 当前已禁用 — 试用信息仅在 Popup 设置界面展示
  */
@@ -46,7 +61,11 @@ const getConfigAndModel = async (): Promise<{
     if (await isTrialExpired()) {
       throw new Error('TRIAL_EXPIRED');
     }
-    return { config: PROXY_FALLBACK, model: PROXY_FALLBACK.model, isProxyMode: true };
+    return {
+      config: PROXY_FALLBACK,
+      model: PROXY_FALLBACK.model,
+      isProxyMode: true,
+    };
   }
 
   const provider = config.apiProvider || 'openai';
@@ -54,7 +73,8 @@ const getConfigAndModel = async (): Promise<{
     config.model ||
     (provider === 'custom'
       ? config.customModel
-      : API_PROVIDERS[provider as Exclude<APIProvider, 'custom' | 'proxy'>]?.defaultModel);
+      : API_PROVIDERS[provider as Exclude<APIProvider, 'custom' | 'proxy'>]
+          ?.defaultModel);
 
   if (!model) {
     throw new Error(chrome.i18n.getMessage('errorConfigModel'));
@@ -142,7 +162,7 @@ export const enhancePromptStreaming = async (
       customEndpoint: config.customEndpoint,
       onChunk: async (chunk, done) => {
         if (done) {
-          trackEnhanceEvent({
+          void trackEnhanceEvent({
             strategy: analysis.strategy,
             taskType: analysis.taskType,
             siteDomain: 'streaming',
@@ -150,25 +170,27 @@ export const enhancePromptStreaming = async (
             isFollowUp: analysis.isFollowUp,
           });
 
+          const endMessage: Record<string, unknown> = {
+            action: 'streamEnd',
+            requestId,
+          };
+
           if (isProxyMode && receivedContent) {
-            const trialData = await incrementTrialUsage();
-            const remaining = trialData.maxUses - trialData.usedCount;
-            updateTrialBadge();
-            chrome.tabs.sendMessage(tabId, {
-              action: 'streamEnd',
-              requestId,
-              trialRemaining: remaining,
-              trialTotal: trialData.maxUses,
-            });
-          } else {
-            chrome.tabs.sendMessage(tabId, {
-              action: 'streamEnd',
-              requestId,
-            });
+            try {
+              const trialData = await incrementTrialUsage();
+              endMessage.trialRemaining =
+                trialData.maxUses - trialData.usedCount;
+              endMessage.trialTotal = trialData.maxUses;
+              void updateTrialBadge();
+            } catch {
+              // 额度写入失败不应阻塞用户结果展示
+            }
           }
+
+          await safeSendToTab(tabId, endMessage);
         } else {
           receivedContent = true;
-          chrome.tabs.sendMessage(tabId, {
+          await safeSendToTab(tabId, {
             action: 'streamChunk',
             requestId,
             chunk,
@@ -176,14 +198,14 @@ export const enhancePromptStreaming = async (
         }
       },
       onError: error => {
-        trackEnhanceEvent({
+        void trackEnhanceEvent({
           strategy: analysis.strategy,
           taskType: analysis.taskType,
           siteDomain: 'streaming',
           success: false,
           isFollowUp: analysis.isFollowUp,
         });
-        chrome.tabs.sendMessage(tabId, {
+        void safeSendToTab(tabId, {
           action: 'streamError',
           requestId,
           error: error.message,
@@ -191,13 +213,13 @@ export const enhancePromptStreaming = async (
       },
     });
   } catch (error) {
-    chrome.tabs.sendMessage(tabId, {
+    void safeSendToTab(tabId, {
       action: 'streamError',
       requestId,
       error:
         error instanceof Error
           ? error.message
-          : (chrome.i18n.getMessage('statusUnknownError') || 'Unknown error'),
+          : chrome.i18n.getMessage('statusUnknownError') || 'Unknown error',
     });
   }
 };

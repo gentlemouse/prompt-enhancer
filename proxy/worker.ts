@@ -1,4 +1,5 @@
-# Lynx — Cloudflare Worker API 代理
+/**
+ * Lynx — Cloudflare Worker API 代理
  *
  * 功能：
  * - 为免费用户代理 AI API 调用（无需自备 API Key）
@@ -40,8 +41,8 @@ function getLimitKey(identifier: string): string {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Device-FP',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-FP',
 };
 
 /**
