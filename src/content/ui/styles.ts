@@ -29,6 +29,10 @@ export const getStyles = (): string => `
   --ai-glass-hover: rgba(58, 57, 55, 0.95);
   --ai-icon-color: var(--color-pearly-moon); /* 霜月色 */
   --ai-dot-color: var(--color-titanium-core);
+  --ai-collapsed-star-size: 13px;
+  --ai-collapsed-star-rest-opacity: 0.78;
+  --ai-collapsed-star-glow-soft: rgba(246, 241, 213, 0.28);
+  --ai-collapsed-star-glow-strong: rgba(246, 241, 213, 0.5);
 
   /* 物理动效参数 */
   --ai-curve-spring: cubic-bezier(0.16, 1, 0.3, 1);
@@ -128,13 +132,16 @@ export const getStyles = (): string => `
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 10px;
-  height: 10px;
+  width: var(--ai-collapsed-star-size);
+  height: var(--ai-collapsed-star-size);
   transform: translate(-50%, -50%) scale(0.6);
   border-radius: 2px;
   /* 自适应极简色基底 */
-  background: var(--ai-dot-color);
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(
+    180deg,
+    var(--color-pearly-moon) 0%,
+    var(--ai-dot-color) 100%
+  );
   /* 四芒星裁切 */
   clip-path: polygon(
     50% 0%,
@@ -151,7 +158,8 @@ export const getStyles = (): string => `
   animation: none;
   transition:
     opacity 0.24s var(--ai-curve-asymmetric),
-    transform 0.32s var(--ai-curve-asymmetric);
+    transform 0.32s var(--ai-curve-asymmetric),
+    filter 0.24s var(--ai-curve-asymmetric);
 }
 
 /* ─── 收起态：迷你星芒 ✦ ─── */
@@ -159,6 +167,8 @@ export const getStyles = (): string => `
   background: transparent;
   border-color: transparent;
   box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   opacity: 0.9;
   transform: none;
   border-radius: 8px;
@@ -168,7 +178,9 @@ export const getStyles = (): string => `
 .prompt-enhancer-btn.collapsed::before {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
-  /* 引入非对称仿生呼吸动画 */
+  filter:
+    drop-shadow(0 0 2px rgba(255, 255, 255, 0.18))
+    drop-shadow(0 0 4px var(--ai-collapsed-star-glow-soft));
   animation: pe-collapsed-breathe 5s ease-in-out infinite;
 }
 
@@ -178,23 +190,58 @@ export const getStyles = (): string => `
   transform: scale(0.55);
 }
 
-/* 仿生呼吸动画：吸气稍快，呼气缓慢，光芒从内部透出 */
+/* 收起态保留星芒反馈，但彻底阻断按钮本体矩形反馈 */
+.prompt-enhancer-btn.collapsed:hover,
+.prompt-enhancer-btn.collapsed:active,
+.prompt-enhancer-btn.collapsed:focus,
+.prompt-enhancer-btn.collapsed:focus-visible {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+.prompt-enhancer-btn.collapsed:hover::before,
+.prompt-enhancer-btn.collapsed:focus-visible::before {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.22);
+  filter:
+    drop-shadow(0 0 4px rgba(255, 255, 255, 0.3))
+    drop-shadow(0 0 8px var(--ai-collapsed-star-glow-strong));
+  animation: none;
+}
+
+.prompt-enhancer-btn.collapsed:active::before {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.12);
+  filter:
+    drop-shadow(0 0 3px rgba(255, 255, 255, 0.24))
+    drop-shadow(0 0 6px var(--ai-collapsed-star-glow-strong));
+  animation: none;
+}
+
+/* 仿生呼吸动画：贴合星芒轮廓发光，避免矩形投影 */
 @keyframes pe-collapsed-breathe {
   0% {
-    opacity: 0.5;
-    transform: translate(-50%, -50%) scale(0.96);
-    box-shadow: 0 0 0px rgba(246, 241, 213, 0);
+    opacity: var(--ai-collapsed-star-rest-opacity);
+    transform: translate(-50%, -50%) scale(0.95);
+    filter:
+      drop-shadow(0 0 2px rgba(255, 255, 255, 0.16))
+      drop-shadow(0 0 4px rgba(246, 241, 213, 0.12));
   }
-  45% {
+  42% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.04);
-    /* 呼气峰值时透出高光 */
-    box-shadow: 0 0 10px 2px var(--ai-border-highlight);
+    transform: translate(-50%, -50%) scale(1.12);
+    filter:
+      drop-shadow(0 0 4px rgba(255, 255, 255, 0.28))
+      drop-shadow(0 0 8px var(--ai-collapsed-star-glow-strong));
   }
   100% {
-    opacity: 0.5;
-    transform: translate(-50%, -50%) scale(0.96);
-    box-shadow: 0 0 0px rgba(246, 241, 213, 0);
+    opacity: var(--ai-collapsed-star-rest-opacity);
+    transform: translate(-50%, -50%) scale(0.95);
+    filter:
+      drop-shadow(0 0 2px rgba(255, 255, 255, 0.16))
+      drop-shadow(0 0 4px rgba(246, 241, 213, 0.12));
   }
 }
 
