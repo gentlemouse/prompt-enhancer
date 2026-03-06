@@ -5,6 +5,7 @@
 
 import { getShadowHost } from './shadow-host';
 import { t } from '@shared/i18n';
+import type { QuotaBlockReason } from '@shared/quota-errors';
 
 /** 当前提示元素 */
 let currentPrompt: HTMLElement | null = null;
@@ -12,10 +13,13 @@ let currentPrompt: HTMLElement | null = null;
 /**
  * 显示试用耗尽提示
  */
-export const showTrialExpiredPrompt = (): void => {
+export const showTrialExpiredPrompt = (
+  reason: QuotaBlockReason = 'trial_expired'
+): void => {
   if (currentPrompt) return;
 
   const { root } = getShadowHost();
+  const isFreeQuotaExhausted = reason === 'free_quota_exhausted';
 
   const prompt = document.createElement('div');
   prompt.className = 'prompt-enhancer-trial-expired';
@@ -23,19 +27,28 @@ export const showTrialExpiredPrompt = (): void => {
 
   prompt.innerHTML = `
     <button class="prompt-enhancer-trial-expired-close" aria-label="Close">×</button>
-    <div class="prompt-enhancer-trial-expired-icon">🔒</div>
-    <div class="prompt-enhancer-trial-expired-title">${t('trialExpired')}</div>
-    <div class="prompt-enhancer-trial-expired-desc">${t('trialExpiredDesc')}</div>
+    <div class="prompt-enhancer-trial-expired-icon">${isFreeQuotaExhausted ? '⚠️' : '🔒'}</div>
+    <div class="prompt-enhancer-trial-expired-title">${t(
+      isFreeQuotaExhausted ? 'freeQuotaExhaustedTitle' : 'trialExpired'
+    )}</div>
+    <div class="prompt-enhancer-trial-expired-desc">${t(
+      isFreeQuotaExhausted ? 'freeQuotaExhaustedDesc' : 'trialExpiredDesc'
+    )}</div>
     <button class="prompt-enhancer-trial-expired-btn">${t('trialOpenSettings')}</button>
   `;
 
-  const closeBtn = prompt.querySelector('.prompt-enhancer-trial-expired-close') as HTMLButtonElement;
+  const closeBtn = prompt.querySelector(
+    '.prompt-enhancer-trial-expired-close'
+  ) as HTMLButtonElement;
   closeBtn.addEventListener('click', () => dismissTrialExpiredPrompt());
 
-  const openBtn = prompt.querySelector('.prompt-enhancer-trial-expired-btn') as HTMLButtonElement;
+  const openBtn = prompt.querySelector(
+    '.prompt-enhancer-trial-expired-btn'
+  ) as HTMLButtonElement;
   openBtn.addEventListener('click', () => {
-    // 直接在新标签页中打开扩展设置页
-    const popupUrl = chrome.runtime.getURL('src/popup/index.html');
+    const popupUrl = chrome.runtime.getURL(
+      `src/popup/index.html?source=${reason}`
+    );
     window.open(popupUrl, '_blank');
     dismissTrialExpiredPrompt();
   });

@@ -22,6 +22,7 @@ import {
 } from './streaming';
 import { API_PROVIDERS } from '@shared/constants';
 import { getDeviceFingerprint } from '@shared/fingerprint';
+import { normalizeProxyError } from '@shared/quota-errors';
 import { buildSystemPrompt, buildUserMessage } from '../prompt-builder';
 import { withRetry, fetchWithTimeout } from '@shared/utils/retry';
 
@@ -70,10 +71,8 @@ const proxyAdapter: APIProviderAdapter = {
         );
 
         if (!res.ok) {
-          const error = (await res.json()) as ProxyResponse;
-          throw new Error(
-            error.error?.message || `API 调用失败: ${res.status}`
-          );
+          const errorText = await res.text();
+          throw normalizeProxyError(res.status, errorText);
         }
         return res;
       },
@@ -166,6 +165,7 @@ export const streamingCall = async (
       onChunk,
       onError,
       extraHeaders: { 'X-Device-FP': fp },
+      errorTransformer: normalizeProxyError,
     });
   } else {
     await streamOpenAI({

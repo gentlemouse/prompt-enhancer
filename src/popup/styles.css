@@ -250,6 +250,30 @@ body {
   margin-bottom: var(--space-5);
 }
 
+.setup-notice {
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  background:
+    linear-gradient(135deg, rgba(251, 191, 36, 0.14), rgba(180, 83, 9, 0.08)),
+    var(--bg-secondary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.setup-notice-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.setup-notice-desc {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
 label {
   display: block;
   font-size: 11px;
@@ -596,6 +620,10 @@ input.error {
 
 .form-group .hint.success {
   color: var(--success-text);
+}
+
+.form-group .hint.warning {
+  color: var(--warning-text);
 }
 
 /* ─── 试用横幅 ─── */

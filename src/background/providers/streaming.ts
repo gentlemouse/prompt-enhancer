@@ -23,6 +23,8 @@ export interface StreamingOptions {
   onError: (error: Error) => void | Promise<void>;
   /** 附加请求头（代理模式用于传递设备指纹） */
   extraHeaders?: Record<string, string>;
+  /** 允许 provider 按需归一化错误 */
+  errorTransformer?: (status: number, body: string) => Error;
 }
 
 /**
@@ -87,8 +89,16 @@ const extractFromJSONResponse = (text: string): string | null => {
 export const streamOpenAI = async (
   options: StreamingOptions
 ): Promise<void> => {
-  const { apiKey, model, analysis, endpoint, onChunk, onError, extraHeaders } =
-    options;
+  const {
+    apiKey,
+    model,
+    analysis,
+    endpoint,
+    onChunk,
+    onError,
+    extraHeaders,
+    errorTransformer,
+  } = options;
   const systemPrompt = buildSystemPrompt(analysis);
   const userMessage = buildUserMessage(analysis.originalPrompt, analysis);
 
@@ -117,10 +127,10 @@ export const streamOpenAI = async (
     );
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.error?.message || `API 调用失败: ${response.status}`
-      );
+      const errorText = await response.text();
+      throw errorTransformer
+        ? errorTransformer(response.status, errorText)
+        : new Error(errorText || `API 调用失败: ${response.status}`);
     }
 
     const contentType = response.headers.get('content-type') || '';

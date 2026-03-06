@@ -50,6 +50,11 @@
         </div>
       </div>
 
+      <div class="setup-notice" id="setupNotice" style="display: none">
+        <div class="setup-notice-title" id="setupNoticeTitle"></div>
+        <div class="setup-notice-desc" id="setupNoticeDesc"></div>
+      </div>
+
       <div class="form-group">
         <label for="provider" data-i18n="popupProvider"></label>
         <select id="provider" aria-describedby="provider-warning">
@@ -109,6 +114,7 @@
           </span>
         </label>
         <input type="password" id="apiKey" placeholder="sk-..." />
+        <div class="hint" id="apiKeyHint"></div>
       </div>
 
       <button class="btn" id="saveBtn" data-i18n="popupSave"></button>

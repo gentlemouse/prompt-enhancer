@@ -9,6 +9,7 @@ import { getStorageConfig } from '@shared/storage';
 import { API_PROVIDERS } from '@shared/constants';
 import { trackEnhanceEvent } from '@shared/analytics';
 import { isTrialExpired, incrementTrialUsage } from '@shared/trial';
+import { TRIAL_EXPIRED_ERROR } from '@shared/quota-errors';
 import type { APIProvider, HistoryItem } from '@shared/types';
 
 /**
@@ -59,7 +60,7 @@ const getConfigAndModel = async (): Promise<{
 
   if (!config?.apiKey) {
     if (await isTrialExpired()) {
-      throw new Error('TRIAL_EXPIRED');
+      throw new Error(TRIAL_EXPIRED_ERROR);
     }
     return {
       config: PROXY_FALLBACK,

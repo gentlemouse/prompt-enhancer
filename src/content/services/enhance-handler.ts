@@ -9,6 +9,8 @@ import { showToast } from '../ui/toast';
 import { t } from '@shared/i18n';
 import type { ButtonState } from '../ui/button';
 import { setButtonLoading } from '../ui/button';
+import { getQuotaBlockReason } from '@shared/quota-errors';
+import { showTrialExpiredPrompt } from '../ui/trial-prompt';
 
 /** 原始内容存储 */
 const originalContents = new WeakMap<EditableElement, string>();
@@ -29,7 +31,10 @@ const isExtensionContextValid = (): boolean => {
  * @param input 输入框元素
  * @param content 原始内容
  */
-export const saveOriginalContent = (input: EditableElement, content: string): void => {
+export const saveOriginalContent = (
+  input: EditableElement,
+  content: string
+): void => {
   originalContents.set(input, content);
 };
 
@@ -73,13 +78,21 @@ export const handleEnhance = async (
       const isMac = navigator.platform.toUpperCase().includes('MAC');
       showToast(isMac ? t('toastDoneMac') : t('toastDone'));
     } else {
-      showToast('✗ ' + (response?.error || t('toastRequestFailed')));
+      const quotaBlockReason = getQuotaBlockReason(response?.error);
+      if (quotaBlockReason) {
+        showTrialExpiredPrompt(quotaBlockReason);
+      } else {
+        showToast('✗ ' + (response?.error || t('toastRequestFailed')));
+      }
     }
   } catch (error) {
     // 处理 Extension context invalidated 错误
     const errorMessage =
       error instanceof Error ? error.message : t('statusUnknownError');
-    if (errorMessage.includes('Extension context invalidated')) {
+    const quotaBlockReason = getQuotaBlockReason(errorMessage);
+    if (quotaBlockReason) {
+      showTrialExpiredPrompt(quotaBlockReason);
+    } else if (errorMessage.includes('Extension context invalidated')) {
       showToast(t('toastRefreshPage'));
     } else {
       showToast('✗ ' + errorMessage);

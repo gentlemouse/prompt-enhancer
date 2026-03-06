@@ -20,6 +20,7 @@ import { showToast } from './ui/toast';
 import { showTrialExpiredPrompt } from './ui/trial-prompt';
 import { onShadowHostRebuild } from './ui/shadow-host';
 import { t } from '@shared/i18n';
+import { getQuotaBlockReason } from '@shared/quota-errors';
 import {
   createInputDetector,
   findEditableElement,
@@ -491,8 +492,9 @@ const handleStreamingEnhance = async (
 
     if (!response?.success) {
       setInputValueDirect(input, originalText);
-      if (response?.error === 'TRIAL_EXPIRED') {
-        showTrialExpiredPrompt();
+      const quotaBlockReason = getQuotaBlockReason(response?.error);
+      if (quotaBlockReason) {
+        showTrialExpiredPrompt(quotaBlockReason);
       } else {
         showToast('✗ ' + (response?.error || t('toastRequestFailed')));
       }
@@ -502,8 +504,9 @@ const handleStreamingEnhance = async (
     const errorMessage =
       error instanceof Error ? error.message : t('statusUnknownError');
     setInputValueDirect(input, originalText);
-    if (errorMessage.includes('TRIAL_EXPIRED')) {
-      showTrialExpiredPrompt();
+    const quotaBlockReason = getQuotaBlockReason(errorMessage);
+    if (quotaBlockReason) {
+      showTrialExpiredPrompt(quotaBlockReason);
     } else if (errorMessage.includes('Extension context invalidated')) {
       showToast(t('toastRefreshPage'));
     } else {

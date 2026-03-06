@@ -14,11 +14,19 @@ const trialBanner = document.getElementById('trialBanner') as HTMLElement;
 const trialLabel = document.getElementById('trialLabel') as HTMLElement;
 const trialCount = document.getElementById('trialCount') as HTMLElement;
 const trialFill = document.getElementById('trialFill') as HTMLElement;
+const setupNotice = document.getElementById('setupNotice') as HTMLElement;
+const setupNoticeTitle = document.getElementById(
+  'setupNoticeTitle'
+) as HTMLElement;
+const setupNoticeDesc = document.getElementById(
+  'setupNoticeDesc'
+) as HTMLElement;
 
 // DOM 元素
 const providerSelect = document.getElementById('provider') as HTMLSelectElement;
 const modelSelect = document.getElementById('model') as HTMLSelectElement;
 const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
+const apiKeyHint = document.getElementById('apiKeyHint') as HTMLElement;
 const customEndpointInput = document.getElementById(
   'customEndpoint'
 ) as HTMLInputElement;
@@ -44,6 +52,28 @@ const shortcutEnhance = document.getElementById(
   'shortcutEnhance'
 ) as HTMLElement;
 const shortcutUndo = document.getElementById('shortcutUndo') as HTMLElement;
+const pageParams = new window.URLSearchParams(window.location.search);
+
+const focusApiKeySetup = (): void => {
+  window.requestAnimationFrame(() => {
+    apiKeyInput.focus();
+    apiKeyInput.select();
+    apiKeyInput.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+};
+
+const showSetupNotice = (
+  titleKey: string,
+  descKey: string,
+  hintKey: string
+): void => {
+  setupNotice.style.display = 'block';
+  setupNoticeTitle.textContent = t(titleKey);
+  setupNoticeDesc.textContent = t(descKey);
+  apiKeyHint.textContent = t(hintKey);
+  apiKeyHint.className = 'hint warning';
+  focusApiKeySetup();
+};
 
 /** 当前 API 提供商配置 */
 const currentProviders: Record<APIProvider, APIProviderConfig> = API_PROVIDERS;
@@ -143,6 +173,21 @@ const loadSettings = async (): Promise<void> => {
 
     if (config?.anthropicWarningAcknowledged) {
       anthropicAck.checked = true;
+    }
+
+    const source = pageParams.get('source');
+    if (source === 'free_quota_exhausted') {
+      showSetupNotice(
+        'freeQuotaExhaustedTitle',
+        'popupSetupOwnKeyDesc',
+        'popupSetupOwnKeyHint'
+      );
+    } else if (source === 'trial_expired') {
+      showSetupNotice(
+        'trialExpired',
+        'popupTrialExpiredSetupDesc',
+        'popupSetupOwnKeyHint'
+      );
     }
   } catch {
     showStatus(t('statusLoadFailed'), 'error');
@@ -324,6 +369,11 @@ const showTrialExpiredOverlay = (): void => {
   const btn = overlay.querySelector('.trial-expired-btn') as HTMLButtonElement;
   btn.addEventListener('click', () => {
     overlay.remove();
+    showSetupNotice(
+      'trialExpired',
+      'popupTrialExpiredSetupDesc',
+      'popupSetupOwnKeyHint'
+    );
   });
 };
 

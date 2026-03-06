@@ -262,7 +262,13 @@
     "message": "Free trial expired"
   },
   "trialExpiredDesc": {
-    "message": "Configure your API Key to continue"
+    "message": "This device has used all free trials. Add your own API key to continue without the free-trial limit."
+  },
+  "freeQuotaExhaustedTitle": {
+    "message": "Free quota is temporarily unavailable"
+  },
+  "freeQuotaExhaustedDesc": {
+    "message": "The shared free quota is currently exhausted. Add your own API key to continue right away."
   },
   "trialUnlock": {
     "message": "Unlock Unlimited Use"
@@ -283,10 +289,19 @@
     "message": "Enter and save it below"
   },
   "trialOpenSettings": {
-    "message": "Open Settings"
+    "message": "Set Up API Key"
   },
   "trialStartConfig": {
     "message": "Start Configuration"
+  },
+  "popupSetupOwnKeyDesc": {
+    "message": "The shared free quota is temporarily exhausted. Choose a provider, enter your own API key, and save to keep using Lynx."
+  },
+  "popupTrialExpiredSetupDesc": {
+    "message": "Your free trial has ended. Choose a provider, enter your own API key, and save to continue."
+  },
+  "popupSetupOwnKeyHint": {
+    "message": "Recommended: choose your provider first, then paste the API key and save."
   },
   "trialBannerActive": {
     "message": "🎁 Free Trial"

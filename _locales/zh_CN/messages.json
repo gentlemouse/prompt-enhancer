@@ -261,7 +261,13 @@
     "message": "免费试用已用完"
   },
   "trialExpiredDesc": {
-    "message": "配置您自己的 API Key 即可继续使用"
+    "message": "这台设备的免费试用次数已经用完。配置您自己的 API Key 后，即可继续使用，不再受免费次数限制。"
+  },
+  "freeQuotaExhaustedTitle": {
+    "message": "免费额度暂时用完"
+  },
+  "freeQuotaExhaustedDesc": {
+    "message": "当前公共免费额度暂时不可用。请配置您自己的 API Key 继续使用，保存后立即生效。"
   },
   "trialUnlock": {
     "message": "解锁无限使用"
@@ -282,10 +288,19 @@
     "message": "在下方输入并保存"
   },
   "trialOpenSettings": {
-    "message": "打开设置"
+    "message": "去配置 API Key"
   },
   "trialStartConfig": {
     "message": "开始配置"
+  },
+  "popupSetupOwnKeyDesc": {
+    "message": "当前公共免费额度暂时用完。请选择服务商并填入您自己的 API Key，保存后就可以继续使用。"
+  },
+  "popupTrialExpiredSetupDesc": {
+    "message": "免费试用次数已经用完。请选择服务商并填入您自己的 API Key，保存后即可继续使用。"
+  },
+  "popupSetupOwnKeyHint": {
+    "message": "推荐：先选择常用服务商，再填入 API Key 并保存。"
   },
   "trialBannerActive": {
     "message": "🎁 免费试用中"

@@ -616,9 +616,11 @@ export const getStyles = (): string => `
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%) translateY(80px);
-  background: rgba(39, 38, 37, 0.9);
+  background:
+    radial-gradient(circle at top, rgba(246, 241, 213, 0.14), transparent 55%),
+    rgba(39, 38, 37, 0.94);
   color: var(--ai-text-primary);
-  padding: 20px 24px;
+  padding: 22px 24px 20px;
   border-radius: 16px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   z-index: 2147483647;
@@ -631,8 +633,8 @@ export const getStyles = (): string => `
     inset 0 1px 1px rgba(255, 255, 255, 0.1),
     0 0 0 1px var(--ai-border-subtle),
     0 8px 32px rgba(0, 0, 0, 0.4);
-  max-width: 360px;
-  text-align: center;
+  max-width: 384px;
+  text-align: left;
 }
 
 .prompt-enhancer-trial-expired.show {
@@ -641,27 +643,37 @@ export const getStyles = (): string => `
 }
 
 .prompt-enhancer-trial-expired-icon {
-  font-size: 28px;
-  margin-bottom: 10px;
+  width: 40px;
+  height: 40px;
+  font-size: 22px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(246, 241, 213, 0.08);
 }
 
 .prompt-enhancer-trial-expired-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 650;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   letter-spacing: -0.2px;
 }
 
 .prompt-enhancer-trial-expired-desc {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ai-text-secondary);
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   line-height: 1.5;
 }
 
 .prompt-enhancer-trial-expired-btn {
-  display: inline-block;
-  padding: 9px 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
+  padding: 10px 18px;
   background: var(--color-pearly-moon);
   color: var(--color-titanium-deep);
   border: none;
