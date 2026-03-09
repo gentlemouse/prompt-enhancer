@@ -189,6 +189,11 @@ describe('analyzePrompt', () => {
       expect(result.strategy).toBe(OptimizationStrategy.LIGHT_POLISH);
     });
 
+    it('高风险短提示词不应改变默认策略路由', () => {
+      const result = analyzePrompt('帮我写首诗');
+      expect(result.strategy).toBe(OptimizationStrategy.LIGHT_POLISH);
+    });
+
     it('已有良好结构应选择 SHARPEN', () => {
       const prompt = `角色：你是一个高级前端工程师
 任务：帮我审查以下代码并提出优化建议
@@ -387,6 +392,30 @@ describe('analyzePrompt', () => {
     it('包含反思信号应设置 needsReflection', () => {
       const result = analyzePrompt('给出最佳最优的高质量方案');
       expect(result.needsReflection).toBe(true);
+    });
+  });
+
+  describe('直接执行风险检测', () => {
+    it('极短问候语应标记为高风险短提示词', () => {
+      const result = analyzePrompt('你好');
+      expect(result.hasDirectExecutionRisk).toBe(true);
+    });
+
+    it('极短执行型命令应标记为高风险短提示词', () => {
+      const result = analyzePrompt('翻译成英文');
+      expect(result.hasDirectExecutionRisk).toBe(true);
+    });
+
+    it('极短问句应标记为高风险短提示词', () => {
+      const result = analyzePrompt('What is AI?');
+      expect(result.hasDirectExecutionRisk).toBe(true);
+    });
+
+    it('较长正常请求不应标记为高风险短提示词', () => {
+      const result = analyzePrompt(
+        '请帮我设计一个电商网站首页的模块结构，并说明每个模块的目标'
+      );
+      expect(result.hasDirectExecutionRisk).toBe(false);
     });
   });
 });

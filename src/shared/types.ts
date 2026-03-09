@@ -97,6 +97,8 @@ export interface PromptAnalysis {
   isCorrection: boolean;
   /** 是否已有良好结构 */
   hasGoodStructure: boolean;
+  /** 是否属于易被模型误当成直接执行任务的短提示词 */
+  hasDirectExecutionRisk: boolean;
   /** 会话历史摘要（如有） */
   historySummary?: string;
 }

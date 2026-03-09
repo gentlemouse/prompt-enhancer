@@ -24,6 +24,25 @@ const state: PreviewState = {
 };
 
 /**
+ * 隔离 Shadow DOM 内部交互，避免宿主页面接收到 composed click。
+ */
+const isolateControlClick = (
+  button: HTMLButtonElement,
+  handler: () => void
+): void => {
+  button.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  button.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    handler();
+  });
+};
+
+/**
  * 创建预览面板
  */
 const createPreviewPanel = (): HTMLElement => {
@@ -51,13 +70,19 @@ const createPreviewPanel = (): HTMLElement => {
   `;
 
   // 绑定事件
-  const closeBtn = container.querySelector('.prompt-enhancer-preview-close') as HTMLButtonElement;
-  const cancelBtn = container.querySelector('.prompt-enhancer-preview-btn.secondary') as HTMLButtonElement;
-  const applyBtn = container.querySelector('.prompt-enhancer-preview-btn.primary') as HTMLButtonElement;
+  const closeBtn = container.querySelector(
+    '.prompt-enhancer-preview-close'
+  ) as HTMLButtonElement;
+  const cancelBtn = container.querySelector(
+    '.prompt-enhancer-preview-btn.secondary'
+  ) as HTMLButtonElement;
+  const applyBtn = container.querySelector(
+    '.prompt-enhancer-preview-btn.primary'
+  ) as HTMLButtonElement;
 
-  closeBtn.addEventListener('click', () => hidePreview(true));
-  cancelBtn.addEventListener('click', () => hidePreview(true));
-  applyBtn.addEventListener('click', () => {
+  isolateControlClick(closeBtn, () => hidePreview(true));
+  isolateControlClick(cancelBtn, () => hidePreview(true));
+  isolateControlClick(applyBtn, () => {
     if (state.onApply && state.text) {
       state.onApply(state.text);
     }
@@ -67,8 +92,12 @@ const createPreviewPanel = (): HTMLElement => {
   // P2-3.6: 键盘导航支持
   container.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
       hidePreview(true);
     } else if (e.key === 'Enter' && !applyBtn.disabled) {
+      e.preventDefault();
+      e.stopPropagation();
       if (state.onApply && state.text) {
         state.onApply(state.text);
       }
@@ -125,7 +154,9 @@ export const showPreview = (
     state.container = createPreviewPanel();
   }
 
-  state.content = state.container.querySelector('.prompt-enhancer-preview-content');
+  state.content = state.container.querySelector(
+    '.prompt-enhancer-preview-content'
+  );
   state.text = '';
   state.onApply = onApply;
   state.onCancel = onCancel;
@@ -136,13 +167,19 @@ export const showPreview = (
     state.content.classList.remove('done');
   }
 
-  const statusText = state.container.querySelector('.prompt-enhancer-preview-status span');
+  const statusText = state.container.querySelector(
+    '.prompt-enhancer-preview-status span'
+  );
   if (statusText) statusText.textContent = t('previewOptimizing');
 
-  const dot = state.container.querySelector('.prompt-enhancer-preview-dot') as HTMLElement;
+  const dot = state.container.querySelector(
+    '.prompt-enhancer-preview-dot'
+  ) as HTMLElement;
   if (dot) dot.style.display = 'block';
 
-  const applyBtn = state.container.querySelector('.prompt-enhancer-preview-btn.primary') as HTMLButtonElement;
+  const applyBtn = state.container.querySelector(
+    '.prompt-enhancer-preview-btn.primary'
+  ) as HTMLButtonElement;
   if (applyBtn) applyBtn.disabled = true;
 
   // 定位并显示
@@ -171,13 +208,19 @@ export const appendText = (chunk: string): void => {
  */
 export const markComplete = (): void => {
   if (state.container) {
-    const statusText = state.container.querySelector('.prompt-enhancer-preview-status span');
+    const statusText = state.container.querySelector(
+      '.prompt-enhancer-preview-status span'
+    );
     if (statusText) statusText.textContent = t('previewComplete');
 
-    const dot = state.container.querySelector('.prompt-enhancer-preview-dot') as HTMLElement;
+    const dot = state.container.querySelector(
+      '.prompt-enhancer-preview-dot'
+    ) as HTMLElement;
     if (dot) dot.style.display = 'none';
 
-    const applyBtn = state.container.querySelector('.prompt-enhancer-preview-btn.primary') as HTMLButtonElement;
+    const applyBtn = state.container.querySelector(
+      '.prompt-enhancer-preview-btn.primary'
+    ) as HTMLButtonElement;
     if (applyBtn) applyBtn.disabled = false;
 
     if (state.content) {
@@ -194,13 +237,17 @@ export const markComplete = (): void => {
  */
 export const showError = (error: string): void => {
   if (state.container) {
-    const statusText = state.container.querySelector('.prompt-enhancer-preview-status span') as HTMLElement | null;
+    const statusText = state.container.querySelector(
+      '.prompt-enhancer-preview-status span'
+    ) as HTMLElement | null;
     if (statusText) {
       statusText.textContent = t('previewError', error);
       statusText.style.color = '#e53935';
     }
 
-    const dot = state.container.querySelector('.prompt-enhancer-preview-dot') as HTMLElement | null;
+    const dot = state.container.querySelector(
+      '.prompt-enhancer-preview-dot'
+    ) as HTMLElement | null;
     if (dot) dot.style.display = 'none';
 
     if (state.content) {

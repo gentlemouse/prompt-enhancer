@@ -11,6 +11,25 @@ import type { QuotaBlockReason } from '@shared/quota-errors';
 let currentPrompt: HTMLElement | null = null;
 
 /**
+ * 隔离提示框按钮事件，避免冒泡到宿主页面。
+ */
+const isolatePromptClick = (
+  button: HTMLButtonElement,
+  handler: () => void
+): void => {
+  button.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  button.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    handler();
+  });
+};
+
+/**
  * 显示试用耗尽提示
  */
 export const showTrialExpiredPrompt = (
@@ -40,12 +59,12 @@ export const showTrialExpiredPrompt = (
   const closeBtn = prompt.querySelector(
     '.prompt-enhancer-trial-expired-close'
   ) as HTMLButtonElement;
-  closeBtn.addEventListener('click', () => dismissTrialExpiredPrompt());
+  isolatePromptClick(closeBtn, () => dismissTrialExpiredPrompt());
 
   const openBtn = prompt.querySelector(
     '.prompt-enhancer-trial-expired-btn'
   ) as HTMLButtonElement;
-  openBtn.addEventListener('click', () => {
+  isolatePromptClick(openBtn, () => {
     const popupUrl = chrome.runtime.getURL(
       `src/popup/index.html?source=${reason}`
     );

@@ -27,6 +27,22 @@ export interface ButtonState {
 
 type ElementRect = ReturnType<HTMLElement['getBoundingClientRect']>;
 
+/** 可测试的矩形数据结构 */
+export interface RectLike {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
+const ACTION_CONTROL_SELECTOR =
+  'button,[role="button"],input[type="submit"],input[type="button"]';
+
+const MAX_SCOPE_DEPTH = 4;
+const MAX_SCOPE_CONTROLS = 40;
+
 /**
  * 判断元素是否可见
  */
@@ -38,22 +54,15 @@ const isElementVisible = (el: HTMLElement): boolean => {
 };
 
 /**
- * 估算输入框右侧被 sibling 控件占用的空间（例如发送按钮、附件按钮）
+ * 计算右侧控件需要保留的避让空间。
+ * 纯几何计算，便于在测试中覆盖不同布局。
  */
-const estimateRightOverlayInset = (
-  input: HTMLElement,
-  inputRect: ElementRect
+export const calculateRightOverlayInset = (
+  inputRect: RectLike,
+  controlRects: RectLike[]
 ): number => {
-  const parent = input.parentElement;
-  if (!parent) return 0;
-
   let reserved = 0;
-  const siblings = Array.from(parent.children) as HTMLElement[];
-
-  for (const sibling of siblings) {
-    if (sibling === input || !isElementVisible(sibling)) continue;
-
-    const rect = sibling.getBoundingClientRect();
+  for (const rect of controlRects) {
     if (rect.width < 8 || rect.height < 8) continue;
 
     const verticalOverlap =
@@ -61,19 +70,90 @@ const estimateRightOverlayInset = (
       Math.max(inputRect.top, rect.top);
     if (verticalOverlap < Math.min(12, inputRect.height * 0.3)) continue;
 
-    // 只考虑输入框右半区域内的 sibling，避免误判左侧元素
+    // 只考虑输入框右半区域内、且贴近右边缘的动作控件
     if (
       rect.left < inputRect.left + inputRect.width * 0.45 ||
-      rect.left >= inputRect.right
+      rect.left > inputRect.right + 8
     ) {
       continue;
     }
 
-    reserved = Math.max(reserved, inputRect.right - rect.left + 6);
+    const inset = inputRect.right - rect.left + 6;
+    if (inset <= 0) continue;
+
+    reserved = Math.max(reserved, inset);
   }
 
   const maxAllowed = Math.max(0, inputRect.width * 0.45);
   return Math.min(reserved, maxAllowed);
+};
+
+/**
+ * 收集输入框附近的动作控件矩形。
+ * 向上扫描少量祖先容器，覆盖绝对定位后代和 composer 内嵌按钮。
+ */
+const collectNearbyActionControlRects = (
+  input: HTMLElement,
+  inputRect: ElementRect
+): RectLike[] => {
+  const scopes: HTMLElement[] = [];
+  let current = input.parentElement;
+  let depth = 0;
+
+  while (
+    current &&
+    current !== document.body &&
+    current !== document.documentElement &&
+    depth < MAX_SCOPE_DEPTH
+  ) {
+    scopes.push(current);
+    if (current.matches('form,[role="dialog"],[role="group"]')) {
+      break;
+    }
+    current = current.parentElement;
+    depth += 1;
+  }
+
+  const seen = new Set<HTMLElement>();
+  const rects: RectLike[] = [];
+
+  for (const scope of scopes) {
+    const controls = Array.from(
+      scope.querySelectorAll(ACTION_CONTROL_SELECTOR)
+    ) as HTMLElement[];
+
+    for (const control of controls) {
+      if (seen.has(control)) continue;
+      seen.add(control);
+
+      if (control === input || control.contains(input)) continue;
+      if (!isElementVisible(control)) continue;
+
+      const rect = control.getBoundingClientRect();
+      if (
+        rect.right < inputRect.left ||
+        rect.left > inputRect.right + 140 ||
+        rect.bottom < inputRect.top ||
+        rect.top > inputRect.bottom
+      ) {
+        continue;
+      }
+
+      rects.push(rect);
+      if (rects.length >= MAX_SCOPE_CONTROLS) {
+        return rects;
+      }
+    }
+  }
+
+  return rects;
+};
+
+/**
+ * 判断按钮交互是否被临时禁用。
+ */
+const isButtonInteractionDisabled = (button: HTMLElement): boolean => {
+  return button.getAttribute('aria-disabled') === 'true';
 };
 
 /**
@@ -111,6 +191,7 @@ export const createEnhanceButton = (onClick: () => void): ButtonState => {
   button.addEventListener('click', e => {
     e.preventDefault();
     e.stopPropagation();
+    if (isButtonInteractionDisabled(button)) return;
     onClick();
   });
 
@@ -124,6 +205,8 @@ export const createEnhanceButton = (onClick: () => void): ButtonState => {
   button.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
+      e.stopPropagation();
+      if (isButtonInteractionDisabled(button)) return;
       onClick();
     }
   });
@@ -163,8 +246,9 @@ export const setButtonLoading = (
     if (iconEl) iconEl.style.display = 'none';
     loader.style.display = 'block';
     button.classList.add('loading');
-    button.style.pointerEvents = 'none';
+    button.style.pointerEvents = 'auto';
     button.setAttribute('aria-busy', 'true');
+    button.setAttribute('aria-disabled', 'true');
     button.setAttribute('aria-label', t('btnAriaEnhancing'));
   } else {
     if (iconEl) iconEl.style.display = 'flex';
@@ -174,6 +258,7 @@ export const setButtonLoading = (
     button.classList.remove('generating');
     button.style.pointerEvents = 'auto';
     button.removeAttribute('aria-busy');
+    button.removeAttribute('aria-disabled');
     button.setAttribute('aria-label', t('btnAriaLabel'));
   }
 };
@@ -194,13 +279,15 @@ export const setButtonStreaming = (
     loader.style.display = 'none';
     button.classList.remove('loading');
     button.classList.add('streaming', 'generating');
-    button.style.pointerEvents = 'none';
+    button.style.pointerEvents = 'auto';
     button.setAttribute('aria-busy', 'true');
+    button.setAttribute('aria-disabled', 'true');
     button.setAttribute('aria-label', t('btnAriaGenerating'));
   } else {
     button.classList.remove('streaming', 'generating');
     button.style.pointerEvents = 'auto';
     button.removeAttribute('aria-busy');
+    button.removeAttribute('aria-disabled');
     button.setAttribute('aria-label', t('btnAriaLabel'));
   }
 };
@@ -249,7 +336,8 @@ export const positionButton = (
   const inputStyle = window.getComputedStyle(input);
   const paddingRight = Number.parseFloat(inputStyle.paddingRight || '0') || 0;
   const paddingBottom = Number.parseFloat(inputStyle.paddingBottom || '0') || 0;
-  const overlayInset = estimateRightOverlayInset(input, rect);
+  const actionControlRects = collectNearbyActionControlRects(input, rect);
+  const overlayInset = calculateRightOverlayInset(rect, actionControlRects);
   const rightInset = Math.max(
     baseMargin,
     Math.ceil(paddingRight) + 4,

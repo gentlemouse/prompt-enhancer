@@ -57,6 +57,14 @@ const STRUCTURE_MARKERS = [
   /你是一[个名位]/,
 ];
 
+/** 极短直接执行型输入模式 */
+const DIRECT_EXECUTION_SHORT_PATTERNS = [
+  /^(你好|您好|哈喽|hello\b|hi\b|hey\b)/i,
+  /^(帮我|请|请你|翻译|总结|概括|解释|介绍|分析|提取|列出|整理|改写|润色|写|生成)/,
+  /^(please |translate|summari[sz]e|explain|introduce|analy[sz]e|extract|list |rewrite|polish|write|generate)/i,
+  /^(what is|who is|how to|why |can you|could you|tell me)/i,
+];
+
 /**
  * 检测是否为修正/补充类指令
  */
@@ -96,6 +104,31 @@ const detectGoodStructure = (text: string): boolean => {
   }
   // 命中 2 个以上结构标记 → 用户已写了结构化 prompt
   return markerCount >= 2;
+};
+
+/**
+ * 检测是否为“易被模型直接执行”的极短 prompt
+ * 仅用于加强防误执行约束，不直接改变整体策略路由
+ */
+const detectDirectExecutionRisk = (
+  prompt: string,
+  taskType: TaskType
+): boolean => {
+  const trimmed = prompt.trim();
+  if (!trimmed) return false;
+  if (trimmed.length > 24) return false;
+
+  if (/[?？]$/.test(trimmed)) return true;
+  if (DIRECT_EXECUTION_SHORT_PATTERNS.some(pattern => pattern.test(trimmed))) {
+    return true;
+  }
+
+  // 极短非闲聊任务常常是可直接执行的命令句，如“翻译成英文”“写个函数”
+  if (trimmed.length <= 12 && taskType !== TaskType.CHAT) {
+    return true;
+  }
+
+  return false;
 };
 
 /**
@@ -219,6 +252,10 @@ export const analyzePrompt = (
   const isFollowUp = detectFollowUp(prompt, history);
   const isCorrection = detectCorrection(prompt);
   const hasGoodStructure = detectGoodStructure(prompt);
+  const hasDirectExecutionRisk = detectDirectExecutionRisk(
+    prompt,
+    detectedType
+  );
 
   // --- 推理模式 ---
   let reasoningMode = ReasoningMode.SIMPLE;
@@ -268,6 +305,7 @@ export const analyzePrompt = (
     isFollowUp,
     isCorrection,
     hasGoodStructure,
+    hasDirectExecutionRisk,
     historySummary,
   };
 };
