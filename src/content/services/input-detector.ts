@@ -114,7 +114,6 @@ const CHAT_CONTAINER_PATTERNS = [
   'chat',
   'message',
   'prompt',
-  'editor',
   'compose',
   'conversation',
   'dialog',
@@ -134,6 +133,15 @@ const SEND_ACTION_KEYWORDS = [
 /** 发送控件选择器 */
 const SEND_CONTROL_SELECTOR =
   'button,[role="button"],input[type="submit"],input[type="button"]';
+
+/** 非 AI 站点 contenteditable 检测信号 */
+export interface ContentEditableIntentSignals {
+  hasTextboxRole: boolean;
+  hasRichEditor: boolean;
+  hasTextHint: boolean;
+  hasChatContainer: boolean;
+  hasSendControl: boolean;
+}
 
 /**
  * 判断元素是否可见
@@ -314,8 +322,9 @@ const hasChatContainerContext = (el: HTMLElement): boolean => {
 /**
  * 检测输入框附近是否存在“发送/提交”按钮
  */
-const hasNearbySendControl = (el: HTMLInputElement): boolean => {
-  const scope = el.closest('form') || el.parentElement;
+const hasNearbySendControl = (el: HTMLElement): boolean => {
+  const scope =
+    el.closest('form,[role="dialog"],[role="group"]') || el.parentElement;
   if (!scope) return false;
 
   const inputRect = el.getBoundingClientRect();
@@ -363,6 +372,31 @@ const hasNearbySendControl = (el: HTMLInputElement): boolean => {
 };
 
 /**
+ * 非 AI 站点下，只有具备明确“聊天/提问意图”的 contenteditable 才应触发按钮。
+ * 结构信号（textbox / 富文本框架）仅用于辅助确认，不足以单独放行。
+ */
+export const shouldAcceptContentEditableForNonAISite = (
+  signals: ContentEditableIntentSignals
+): boolean => {
+  const {
+    hasTextboxRole,
+    hasRichEditor,
+    hasTextHint,
+    hasChatContainer,
+    hasSendControl,
+  } = signals;
+
+  const hasStructuralSignal = hasTextboxRole || hasRichEditor;
+  const hasIntentSignal = hasTextHint || hasSendControl;
+
+  if (hasTextHint && hasChatContainer) return true;
+  if (hasIntentSignal && hasStructuralSignal) return true;
+  if (hasSendControl && hasChatContainer) return true;
+
+  return false;
+};
+
+/**
  * 检测 contenteditable 元素是否为有效的文本输入区
  * @param el contenteditable 根元素
  */
@@ -381,28 +415,35 @@ const isValidContentEditable = (el: HTMLElement): boolean => {
 
   // 信号 1：role 属性
   const role = el.getAttribute('role')?.toLowerCase() || '';
-  if (TEXTBOX_ROLES.includes(role)) return true;
+  const hasTextboxRole = TEXTBOX_ROLES.includes(role);
 
   // 信号 2：匹配已知富文本编辑器框架
+  let hasRichEditor = false;
   for (const selector of RICH_EDITOR_SELECTORS) {
-    if (el.matches(selector) || el.querySelector(selector)) return true;
+    if (el.matches(selector) || el.querySelector(selector)) {
+      hasRichEditor = true;
+      break;
+    }
   }
 
   // 信号 3：aria-label / data-placeholder 包含文本输入关键词
   const hintText = getHintText(el);
-
-  if (hintText && TEXT_INPUT_KEYWORDS.some(kw => hintText.includes(kw))) {
-    return true;
-  }
+  const hasTextHint =
+    !!hintText && TEXT_INPUT_KEYWORDS.some(kw => hintText.includes(kw));
 
   // 信号 4：父级有聊天/消息相关的容器类名
-  const parentClasses = (el.parentElement?.className || '').toLowerCase();
-  if (CHAT_CONTAINER_PATTERNS.some(p => parentClasses.includes(p))) {
-    return true;
-  }
+  const hasChatContainer = hasChatContainerContext(el);
 
-  // 没有足够信号，拒绝
-  return false;
+  // 信号 5：附近存在发送/提交控件
+  const hasSendControl = hasNearbySendControl(el);
+
+  return shouldAcceptContentEditableForNonAISite({
+    hasTextboxRole,
+    hasRichEditor,
+    hasTextHint,
+    hasChatContainer,
+    hasSendControl,
+  });
 };
 
 // ==========================================================
