@@ -132,7 +132,7 @@
 - **10 次免费使用** — 无需配置，无需 API Key，安装即用
 - **自带 Key 模式** — 接入 OpenAI / Anthropic / DeepSeek / Kimi / MiniMax / 通义千问 / 智谱 / 自定义接口，无限使用
 - **50+ 平台** — ChatGPT、Claude、Gemini、DeepSeek、Kimi、通义千问等
-- **隐私优先** — 不采集任何提示词内容，API Key 加密本地存储，可关闭匿名统计
+- **隐私优先** — 仅在你主动触发时处理提示词，API Key 本地加密保存，匿名统计可关闭
 - **快捷键** — `Cmd/Ctrl+Shift+E` 优化 · `Ctrl+Z` 撤回
 
 ---
@@ -253,7 +253,7 @@ npm run type-check     # TypeScript 类型检查
 
 ## 隐私
 
-- **不采集任何提示词内容** — 你的提示词仅发送给你选择的 AI 提供商
+- **按需处理提示词** — 免费模式下提示词会发送到 Lynx 代理服务，自带 Key 模式下提示词会直接发送到你选择的 AI 提供商
 - **API Key 加密存储** — 保存在本地 `chrome.storage.local`，不同步到云端
 - **强制 HTTPS** — 自定义 API 地址必须使用 HTTPS
 - **可关闭的匿名统计** — 匿名使用数据可随时 opt-out

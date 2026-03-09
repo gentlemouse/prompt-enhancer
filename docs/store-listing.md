@@ -35,7 +35,7 @@ WHY INSTALL LYNX?
 • Get better AI answers without learning prompt engineering — Lynx adds structure, clarity, and the right constraints automatically.
 • Works everywhere: ChatGPT, Claude, Gemini, DeepSeek, Kimi, Qwen, and any site with a text input. Install once, use on all of them.
 • No setup required: 10 free enhancements out of the box. Optionally add your own API key (OpenAI, Anthropic, DeepSeek, etc.) for unlimited use.
-• Privacy-first: Your prompts are never stored or sent to us. API keys are encrypted and kept only on your device.
+• Privacy-first: prompts are processed only when you request enhancement. Free mode uses the Lynx proxy, and BYOK mode sends data directly to your chosen AI provider. API keys are encrypted and kept only on your device.
 
 HOW IT WORKS
 
@@ -61,9 +61,10 @@ FEATURES
 
 PRIVACY
 
-• No prompt content is collected or stored by us
-• API keys are encrypted and stored locally only
-• Optional anonymous usage stats (counts and strategy types only), can be disabled anytime
+• Prompt text is processed only when you explicitly trigger enhancement
+• Free mode sends prompt text to the Lynx proxy service; BYOK mode sends it directly to your chosen AI provider or custom endpoint
+• API keys are encrypted and stored locally only, never sent to Lynx servers in BYOK mode
+• Local anonymous usage stats can be disabled anytime
 
 Install Lynx once and get better AI replies everywhere — no prompt engineering required.
 ```
@@ -71,7 +72,7 @@ Install Lynx once and get better AI replies everywhere — no prompt engineering
 **说明简短版（若平台有字数限制，可选用）：**
 
 ```
-Lynx improves your prompts before you send them to ChatGPT, Claude, Gemini, DeepSeek, and 50+ AI platforms. Press Cmd/Ctrl+Shift+E to enhance any input — no prompt engineering needed. 10 free uses, then bring your own API key for unlimited use. Privacy-first: prompts never leave your device.
+Lynx improves your prompts before you send them to ChatGPT, Claude, Gemini, DeepSeek, and 50+ AI platforms. Press Cmd/Ctrl+Shift+E to enhance any input — no prompt engineering needed. 10 free uses via Lynx proxy, then bring your own API key for unlimited use. Privacy-first: prompt text is processed only to provide the enhancement you request.
 ```
 
 ---

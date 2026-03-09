@@ -132,7 +132,7 @@ The chosen strategy generates a **specialized system prompt** that instructs the
 - **10 Free Enhancements** — No setup, no API key required to get started
 - **BYOK Mode** — Bring your own key from OpenAI, Anthropic, DeepSeek, Kimi, MiniMax, Qwen, Zhipu, or any custom endpoint
 - **50+ Platforms** — ChatGPT, Claude, Gemini, DeepSeek, Kimi, Qwen, and many more
-- **Privacy First** — Zero prompt collection, API keys encrypted locally, opt-out analytics
+- **Privacy First** — Prompts are processed only when requested, API keys stay local, and analytics can be disabled
 - **Keyboard Shortcut** — `Cmd/Ctrl+Shift+E` to enhance · `Ctrl+Z` to undo
 
 ---
@@ -253,7 +253,7 @@ npm run type-check     # TypeScript check
 
 ## Privacy
 
-- **Zero prompt collection** — Your prompts are only sent to your chosen AI provider
+- **On-demand prompt processing** — In free mode, prompts are sent to the Lynx proxy; in BYOK mode, prompts are sent directly to your chosen AI provider
 - **Encrypted API keys** — Stored in `chrome.storage.local`, never synced to cloud
 - **HTTPS enforced** — Custom endpoints require HTTPS
 - **Opt-out analytics** — Anonymous usage data can be disabled anytime
