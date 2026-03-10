@@ -4,7 +4,7 @@
 
 After pushing the latest changes to GitHub, use this public URL in the Chrome Web Store dashboard:
 
-`https://github.com/gentlemouse/prompt-enhancer/blob/main/docs/privacy-policy.md`
+`https://github.com/gentlemouse/prompt-enhancer-docs/blob/main/privacy-policy.md`
 
 ## Privacy Practices Copy
 
@@ -118,7 +118,7 @@ What I changed:
 7. I updated the Chrome Web Store privacy form so it matches the extension's current behavior.
 
 Updated privacy policy URL:
-https://github.com/gentlemouse/prompt-enhancer/blob/main/docs/privacy-policy.md
+https://github.com/gentlemouse/prompt-enhancer-docs/blob/main/privacy-policy.md
 
 I believe the privacy disclosures now accurately reflect the extension's current implementation. Please re-review the item.
 
