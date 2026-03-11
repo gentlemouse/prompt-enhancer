@@ -8,8 +8,12 @@ import { getProviderAdapter, streamingCall } from './providers';
 import { getStorageConfig } from '@shared/storage';
 import { API_PROVIDERS } from '@shared/constants';
 import { trackEnhanceEvent } from '@shared/analytics';
-import { isTrialExpired, incrementTrialUsage } from '@shared/trial';
-import { TRIAL_EXPIRED_ERROR } from '@shared/quota-errors';
+import {
+  isTrialExpired,
+  incrementTrialUsage,
+  syncQuotaFromServer,
+} from '@shared/trial';
+import { TRIAL_EXPIRED_ERROR, getQuotaBlockReason } from '@shared/quota-errors';
 import type { APIProvider, HistoryItem } from '@shared/types';
 
 /**
@@ -33,6 +37,21 @@ const safeSendToTab = async (
  */
 export const updateTrialBadge = async (): Promise<void> => {
   chrome.action.setBadgeText({ text: '' });
+};
+
+/**
+ * 代理模式收到服务端额度耗尽后，立即回写本地额度状态。
+ */
+const syncQuotaAfterProxyFailure = async (
+  isProxyMode: boolean,
+  error: unknown
+): Promise<void> => {
+  if (!isProxyMode || getQuotaBlockReason(error) !== 'free_quota_exhausted') {
+    return;
+  }
+
+  await syncQuotaFromServer();
+  await updateTrialBadge();
 };
 
 /**
@@ -124,6 +143,7 @@ export const enhancePrompt = async (
 
     return result;
   } catch (error) {
+    await syncQuotaAfterProxyFailure(isProxyMode, error);
     trackEnhanceEvent({
       strategy: analysis.strategy,
       taskType: analysis.taskType,
@@ -199,6 +219,7 @@ export const enhancePromptStreaming = async (
         }
       },
       onError: error => {
+        void syncQuotaAfterProxyFailure(isProxyMode, error);
         void trackEnhanceEvent({
           strategy: analysis.strategy,
           taskType: analysis.taskType,

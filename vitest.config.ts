@@ -19,11 +19,13 @@ export default defineConfig({
       provider: 'v8',
       include: [
         'src/background/analyzer.ts',
+        'src/background/index.ts',
         'src/background/prompt-builder.ts',
         'src/content/services/session-memory.ts',
         'src/shared/utils/validation.ts',
         'src/shared/utils/retry.ts',
         'src/shared/analytics.ts',
+        'src/shared/storage.ts',
       ],
       thresholds: {
         statements: 80,

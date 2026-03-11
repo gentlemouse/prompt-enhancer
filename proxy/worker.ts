@@ -46,13 +46,23 @@ const corsHeaders = {
 };
 
 /**
- * 获取某个身份标识的已用额度
+ * 获取某个身份标识的已用额度。
+ *
+ * 有合法设备指纹时，以设备指纹为主身份，避免同一 IP 下其他用户
+ * 的历史消耗直接封死新安装用户。IP 仅作为无指纹请求的兜底限额。
  */
 async function getEffectiveCount(
   env: Env,
   clientIP: string,
   deviceFP: string
-): Promise<{ ipCount: number; fpCount: number; effectiveCount: number; ipKey: string; fpKey: string }> {
+): Promise<{
+  ipCount: number;
+  fpCount: number;
+  effectiveCount: number;
+  ipKey: string;
+  fpKey: string;
+  useFingerprint: boolean;
+}> {
   const ipHash = await hashIP(clientIP);
   const ipKey = getLimitKey(ipHash);
   const ipCount = parseInt((await env.RATE_LIMITER.get(ipKey)) || '0', 10);
@@ -64,7 +74,16 @@ async function getEffectiveCount(
     fpCount = parseInt((await env.RATE_LIMITER.get(fpKey)) || '0', 10);
   }
 
-  return { ipCount, fpCount, effectiveCount: Math.max(ipCount, fpCount), ipKey, fpKey };
+  const useFingerprint = Boolean(fpKey);
+
+  return {
+    ipCount,
+    fpCount,
+    effectiveCount: useFingerprint ? fpCount : ipCount,
+    ipKey,
+    fpKey,
+    useFingerprint,
+  };
 }
 
 export default {
@@ -115,7 +134,7 @@ export default {
       const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
       const deviceFP = request.headers.get('X-Device-FP') || '';
       const limit = parseInt(env.LIFETIME_LIMIT || '', 10) || DEFAULT_LIFETIME_LIMIT;
-      const { ipCount, fpCount, effectiveCount, ipKey, fpKey } =
+      const { ipCount, fpCount, effectiveCount, ipKey, fpKey, useFingerprint } =
         await getEffectiveCount(env, clientIP, deviceFP);
 
       if (effectiveCount >= limit) {
@@ -133,9 +152,16 @@ export default {
       }
 
       // ---- 递增计数（先扣后调，防止并发超发） ----
-      const putOps = [
-        env.RATE_LIMITER.put(ipKey, String(ipCount + 1), { expirationTtl: KV_TTL_SECONDS }),
-      ];
+      const putOps = [];
+
+      if (!useFingerprint) {
+        putOps.push(
+          env.RATE_LIMITER.put(ipKey, String(ipCount + 1), {
+            expirationTtl: KV_TTL_SECONDS,
+          })
+        );
+      }
+
       if (fpKey) {
         putOps.push(
           env.RATE_LIMITER.put(fpKey, String(fpCount + 1), { expirationTtl: KV_TTL_SECONDS })

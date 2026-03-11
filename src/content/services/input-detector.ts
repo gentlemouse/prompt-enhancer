@@ -143,6 +143,13 @@ export interface ContentEditableIntentSignals {
   hasSendControl: boolean;
 }
 
+/** 点击原生输入框时的回退判定信号 */
+export interface NativeFocusFallbackSignals {
+  isAISite: boolean;
+  focusedTagName: string | null;
+  eventTargetMatchesFocused: boolean;
+}
+
 /**
  * 判断元素是否可见
  */
@@ -394,6 +401,22 @@ export const shouldAcceptContentEditableForNonAISite = (
   if (hasSendControl && hasChatContainer) return true;
 
   return false;
+};
+
+/**
+ * AI 站点里，部分编辑器会把真实焦点放到隐藏的原生 input/textarea，
+ * 但点击事件目标仍然来自真正的可编辑区域。
+ * 仅在这种场景下，才回退到事件目标继续查找输入框。
+ */
+export const shouldFallbackToEventTargetAfterNativeFocus = (
+  signals: NativeFocusFallbackSignals
+): boolean => {
+  const { isAISite, focusedTagName, eventTargetMatchesFocused } = signals;
+
+  if (!isAISite) return false;
+  if (eventTargetMatchesFocused) return false;
+
+  return focusedTagName === 'INPUT' || focusedTagName === 'TEXTAREA';
 };
 
 /**
@@ -747,6 +770,7 @@ export const createInputDetector = (
 
   /** 处理点击（补充 focusin 的不足） */
   const handleClick = (e: MouseEvent): void => {
+    const eventTarget = getEventElement(e);
     const focused = getDeepActiveElement();
     if (focused) {
       const focusedEditable = findEditableElement(focused);
@@ -757,13 +781,30 @@ export const createInputDetector = (
       }
 
       // 若当前聚焦的是原生输入框但不符合 prompt 条件（如数字输入框），
-      // 则不再从点击目标向上回溯，避免误命中祖先 contenteditable 容器。
+      // 则默认不再从点击目标向上回溯，避免误命中祖先 contenteditable 容器。
+      // 但 AI 站点里的框架编辑器可能会把焦点留在隐藏 textarea/input，
+      // 这时允许基于真实点击目标再尝试一次。
+      if (
+        shouldFallbackToEventTargetAfterNativeFocus({
+          isAISite: isAIChatSite(),
+          focusedTagName: focused.tagName,
+          eventTargetMatchesFocused: eventTarget === focused,
+        })
+      ) {
+        const fallbackTarget = findEditableElement(eventTarget);
+        if (fallbackTarget) {
+          activeInput = fallbackTarget;
+          onFocus(fallbackTarget);
+        }
+        return;
+      }
+
       if (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA') {
         return;
       }
     }
 
-    const target = findEditableElement(getEventElement(e));
+    const target = findEditableElement(eventTarget);
     if (target) {
       activeInput = target;
       onFocus(target);

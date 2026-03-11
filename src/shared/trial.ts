@@ -133,7 +133,7 @@ export const isTrialExpired = async (): Promise<boolean> => {
  * 导致客户端显示 0 已用。通过查询服务端 IP hash + 设备指纹
  * 的实际计数来校准本地数据。
  *
- * 调用时机：Service Worker 启动时、Popup 打开时
+ * 调用时机：Service Worker 启动时、Popup 打开时、收到服务端额度耗尽后
  */
 export const syncQuotaFromServer = async (): Promise<void> => {
   try {
@@ -161,17 +161,29 @@ export const syncQuotaFromServer = async (): Promise<void> => {
     };
 
     const localData = await getTrialData();
+    const nextUsedCount = Math.max(localData.usedCount, serverData.used);
+    const nextMaxUses =
+      serverData.limit > 0
+        ? Math.max(localData.maxUses, serverData.limit)
+        : localData.maxUses;
 
-    if (serverData.used > localData.usedCount) {
-      localData.usedCount = serverData.used;
-      await Promise.all([
-        chrome.storage.local.set({ [STORAGE_KEYS.TRIAL_DATA]: localData }),
-        chrome.storage.sync
-          .set({ [STORAGE_KEYS.TRIAL_DATA]: localData })
-          .catch(() => {}),
-      ]);
+    if (
+      nextUsedCount === localData.usedCount &&
+      nextMaxUses === localData.maxUses
+    ) {
+      return;
     }
+
+    localData.usedCount = nextUsedCount;
+    localData.maxUses = nextMaxUses;
+
+    await Promise.all([
+      chrome.storage.local.set({ [STORAGE_KEYS.TRIAL_DATA]: localData }),
+      chrome.storage.sync
+        .set({ [STORAGE_KEYS.TRIAL_DATA]: localData })
+        .catch(() => {}),
+    ]);
   } catch {
-    // 网络不可用时静默失败，不影响正常使用
+    // 网络不可用时静默失败，不影响首次安装默认额度
   }
 };

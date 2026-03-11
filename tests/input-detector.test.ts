@@ -4,8 +4,11 @@ const mockLocation = { hostname: 'chatgpt.com' };
 
 vi.stubGlobal('window', { location: mockLocation });
 
-const { isAIChatSite, shouldAcceptContentEditableForNonAISite } =
-  await import('@content/services/input-detector');
+const {
+  isAIChatSite,
+  shouldAcceptContentEditableForNonAISite,
+  shouldFallbackToEventTargetAfterNativeFocus,
+} = await import('@content/services/input-detector');
 
 describe('input-detector isAIChatSite', () => {
   beforeEach(() => {
@@ -78,6 +81,38 @@ describe('shouldAcceptContentEditableForNonAISite', () => {
         hasTextHint: false,
         hasChatContainer: true,
         hasSendControl: false,
+      })
+    ).toBe(false);
+  });
+});
+
+describe('shouldFallbackToEventTargetAfterNativeFocus', () => {
+  it('allows AI sites to retry lookup when a hidden native input steals focus', () => {
+    expect(
+      shouldFallbackToEventTargetAfterNativeFocus({
+        isAISite: true,
+        focusedTagName: 'TEXTAREA',
+        eventTargetMatchesFocused: false,
+      })
+    ).toBe(true);
+  });
+
+  it('rejects fallback on non AI sites to avoid document editor regressions', () => {
+    expect(
+      shouldFallbackToEventTargetAfterNativeFocus({
+        isAISite: false,
+        focusedTagName: 'TEXTAREA',
+        eventTargetMatchesFocused: false,
+      })
+    ).toBe(false);
+  });
+
+  it('rejects fallback when the click really targets the same native input', () => {
+    expect(
+      shouldFallbackToEventTargetAfterNativeFocus({
+        isAISite: true,
+        focusedTagName: 'INPUT',
+        eventTargetMatchesFocused: true,
       })
     ).toBe(false);
   });

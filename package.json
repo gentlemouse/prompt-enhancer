@@ -15,12 +15,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "npm run build && playwright test",
+    "test:e2e:debug": "npm run build && node scripts/debug-extension-loading.mjs",
     "verify-apis": "npx tsx scripts/verify-apis.ts",
     "prepare": "husky",
     "package": "zip -r prompt-enhancer-v1.3.3.zip dist/"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.28",
+    "@playwright/test": "^1.58.2",
     "@types/chrome": "^0.0.287",
     "@types/node": "^25.1.0",
     "@typescript-eslint/eslint-plugin": "^8.24.0",
