@@ -1,4 +1,5 @@
 import { defineManifest } from '@crxjs/vite-plugin';
+import packageJson from '../package.json';
 
 /**
  * Chrome 扩展 Manifest 配置
@@ -9,7 +10,7 @@ import { defineManifest } from '@crxjs/vite-plugin';
 export default defineManifest({
   manifest_version: 3,
   name: '__MSG_extName__',
-  version: '1.3.4',
+  version: packageJson.version,
   description: '__MSG_extDescription__',
   default_locale: 'en',
 

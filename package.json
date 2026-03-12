@@ -19,7 +19,8 @@
     "test:e2e:debug": "npm run build && node scripts/debug-extension-loading.mjs",
     "verify-apis": "npx tsx scripts/verify-apis.ts",
     "prepare": "husky",
-    "package": "npm run build && zip -r prompt-enhancer-v1.3.4.zip dist/"
+    "package": "npm run build && zip -r prompt-enhancer-v$npm_package_version.zip dist/",
+    "release:package": "npm version patch --no-git-tag-version && npm run package"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.28",
