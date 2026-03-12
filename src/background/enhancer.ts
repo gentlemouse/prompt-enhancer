@@ -14,7 +14,8 @@ import {
   syncQuotaFromServer,
 } from '@shared/trial';
 import { TRIAL_EXPIRED_ERROR, getQuotaBlockReason } from '@shared/quota-errors';
-import type { APIProvider, HistoryItem } from '@shared/types';
+import { isByokConfigured } from '@shared/mode';
+import type { APIProvider } from '@shared/types';
 
 /**
  * 安全发送消息到 content script
@@ -77,7 +78,7 @@ const getConfigAndModel = async (): Promise<{
 }> => {
   const config = await getStorageConfig();
 
-  if (!config?.apiKey) {
+  if (!isByokConfigured(config)) {
     if (await isTrialExpired()) {
       throw new Error(TRIAL_EXPIRED_ERROR);
     }
@@ -106,17 +107,15 @@ const getConfigAndModel = async (): Promise<{
 /**
  * 增强 Prompt（非流式）
  * @param originalPrompt 原始 Prompt
- * @param history 会话历史
  * @returns 增强后的 Prompt
  */
 export const enhancePrompt = async (
-  originalPrompt: string,
-  history: HistoryItem[] = []
+  originalPrompt: string
 ): Promise<string> => {
   const { config, model, isProxyMode } = await getConfigAndModel();
   const provider = config.apiProvider || 'openai';
 
-  const analysis = analyzePrompt(originalPrompt, history);
+  const analysis = analyzePrompt(originalPrompt);
   const adapter = getProviderAdapter(provider, config.customEndpoint);
 
   try {
@@ -133,7 +132,6 @@ export const enhancePrompt = async (
       taskType: analysis.taskType,
       siteDomain: 'background',
       success: true,
-      isFollowUp: analysis.isFollowUp,
     });
 
     if (isProxyMode) {
@@ -149,7 +147,6 @@ export const enhancePrompt = async (
       taskType: analysis.taskType,
       siteDomain: 'background',
       success: false,
-      isFollowUp: analysis.isFollowUp,
     });
     throw error;
   }
@@ -160,19 +157,17 @@ export const enhancePrompt = async (
  * @param originalPrompt 原始 Prompt
  * @param tabId 标签页 ID
  * @param requestId 请求 ID
- * @param history 会话历史
  */
 export const enhancePromptStreaming = async (
   originalPrompt: string,
   tabId: number,
-  requestId: string,
-  history: HistoryItem[] = []
+  requestId: string
 ): Promise<void> => {
   try {
     const { config, model, isProxyMode } = await getConfigAndModel();
     const provider = config.apiProvider || 'openai';
 
-    const analysis = analyzePrompt(originalPrompt, history);
+    const analysis = analyzePrompt(originalPrompt);
     let receivedContent = false;
 
     await streamingCall({
@@ -188,7 +183,6 @@ export const enhancePromptStreaming = async (
             taskType: analysis.taskType,
             siteDomain: 'streaming',
             success: receivedContent,
-            isFollowUp: analysis.isFollowUp,
           });
 
           const endMessage: Record<string, unknown> = {
@@ -225,7 +219,6 @@ export const enhancePromptStreaming = async (
           taskType: analysis.taskType,
           siteDomain: 'streaming',
           success: false,
-          isFollowUp: analysis.isFollowUp,
         });
         void safeSendToTab(tabId, {
           action: 'streamError',

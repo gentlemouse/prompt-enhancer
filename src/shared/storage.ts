@@ -8,7 +8,12 @@
 
 import type { StorageConfig, LegacyStorageConfig, APIProvider } from './types';
 import { STORAGE_KEYS } from './constants';
-import { encryptApiKey, decryptApiKey, isEncryptedFormat } from './utils/crypto';
+import {
+  encryptApiKey,
+  decryptApiKey,
+  isEncryptedFormat,
+} from './utils/crypto';
+import { isByokConfigured } from './mode';
 
 /**
  * 从旧的 sync 存储迁移到新的 local 存储
@@ -86,14 +91,16 @@ export const getStorageConfig = async (): Promise<{
     apiKey = decryptApiKey(config.encryptedApiKey);
   }
 
-  return {
+  const runtimeConfig = {
     apiProvider: config.apiProvider,
-    apiKey,
+    apiKey: apiKey.trim(),
     model: config.model,
     customEndpoint: config.customEndpoint,
     customModel: config.customModel,
     anthropicWarningAcknowledged: config.anthropicWarningAcknowledged,
   };
+
+  return isByokConfigured(runtimeConfig) ? runtimeConfig : null;
 };
 
 /**
@@ -132,7 +139,7 @@ export const clearStorageConfig = async (): Promise<void> => {
  */
 export const hasApiKey = async (): Promise<boolean> => {
   const config = await getStorageConfig();
-  return !!config?.apiKey;
+  return isByokConfigured(config);
 };
 
 /**

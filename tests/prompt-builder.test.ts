@@ -2,9 +2,8 @@
  * Prompt 构建器测试
  *
  * 覆盖目标：
- * - 5 种策略模板生成
+ * - 4 种策略模板生成
  * - 语言适配（中/英）
- * - 会话历史注入
  * - 用户消息构建 + 安全提醒
  * - 任务类型自适应指导
  * - 推理模式引导
@@ -35,7 +34,6 @@ const makeAnalysis = (overrides: Partial<PromptAnalysis> = {}): PromptAnalysis =
   needsChainOfThought: false,
   needsReflection: false,
   originalPrompt: '测试 prompt',
-  isFollowUp: false,
   isCorrection: false,
   hasGoodStructure: false,
   hasDirectExecutionRisk: false,
@@ -107,36 +105,6 @@ describe('buildSystemPrompt', () => {
     });
   });
 
-  describe('INTENT_CLARIFY 意图澄清', () => {
-    it('应生成意图澄清模板', () => {
-      const analysis = makeAnalysis({
-        strategy: OptimizationStrategy.INTENT_CLARIFY,
-      });
-      const result = buildSystemPrompt(analysis);
-      expect(result).toContain('追问');
-      expect(result).toContain('多轮对话');
-    });
-
-    it('有历史时应包含历史块', () => {
-      const analysis = makeAnalysis({
-        strategy: OptimizationStrategy.INTENT_CLARIFY,
-        historySummary: '[第1轮] 之前的问题',
-      });
-      const result = buildSystemPrompt(analysis);
-      expect(result).toContain('<history>');
-      expect(result).toContain('[第1轮] 之前的问题');
-      expect(result).toContain('</history>');
-    });
-
-    it('无历史时不应包含历史块', () => {
-      const analysis = makeAnalysis({
-        strategy: OptimizationStrategy.INTENT_CLARIFY,
-      });
-      const result = buildSystemPrompt(analysis);
-      expect(result).not.toContain('<history>');
-    });
-  });
-
   describe('SHARPEN 微调锐化', () => {
     it('应生成微调锐化模板', () => {
       const analysis = makeAnalysis({
@@ -155,18 +123,9 @@ describe('buildSystemPrompt', () => {
         strategy: OptimizationStrategy.CONSTRAINT_APPEND,
       });
       const result = buildSystemPrompt(analysis);
-      expect(result).toContain('补充或修正');
-      expect(result).toContain('整合后的完整 prompt');
-    });
-
-    it('有历史时应包含历史块', () => {
-      const analysis = makeAnalysis({
-        strategy: OptimizationStrategy.CONSTRAINT_APPEND,
-        historySummary: '[第1轮] 原始请求',
-      });
-      const result = buildSystemPrompt(analysis);
-      expect(result).toContain('<history>');
-      expect(result).toContain('[第1轮] 原始请求');
+      expect(result).toContain('补充或修正类指令');
+      expect(result).toContain('可独立使用的完整 prompt');
+      expect(result).not.toContain('<history>');
     });
   });
 

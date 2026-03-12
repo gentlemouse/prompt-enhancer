@@ -24,8 +24,6 @@ export interface EnhanceEvent {
   siteDomain: string;
   /** 是否成功 */
   success: boolean;
-  /** 是否为追问 */
-  isFollowUp: boolean;
 }
 
 /** 日聚合数据 */
@@ -44,8 +42,6 @@ export interface DailyStats {
   taskTypeDistribution: Record<string, number>;
   /** 站点使用分布 */
   siteDistribution: Record<string, number>;
-  /** 追问占比计数 */
-  followUpCount: number;
 }
 
 /** 聚合统计数据 */
@@ -79,7 +75,6 @@ const createEmptyDailyStats = (date: string): DailyStats => ({
   strategyDistribution: {},
   taskTypeDistribution: {},
   siteDistribution: {},
-  followUpCount: 0,
 });
 
 /**
@@ -151,10 +146,6 @@ export const trackEnhanceEvent = async (event: EnhanceEvent): Promise<void> => {
       todayStats.successCount++;
     } else {
       todayStats.failCount++;
-    }
-
-    if (event.isFollowUp) {
-      todayStats.followUpCount++;
     }
 
     todayStats.strategyDistribution[event.strategy] =

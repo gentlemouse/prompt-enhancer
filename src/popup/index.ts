@@ -3,8 +3,10 @@
  * 处理设置页面的交互逻辑
  */
 
-import type { APIProvider, APIProviderConfig } from '@shared/types';
+import type { APIProvider, APIProviderConfig, TrialState } from '@shared/types';
 import { getStorageConfig, saveStorageConfig } from '@shared/storage';
+import { getTrialData } from '@shared/trial';
+import { isByokConfigured } from '@shared/mode';
 import { validateEndpoint, validateApiKey } from '@shared/utils/validation';
 import { API_PROVIDERS } from '@shared/constants';
 import { t, applyI18n } from '@shared/i18n';
@@ -290,6 +292,31 @@ apiKeyInput.addEventListener('keypress', e => {
 // P2-3.8: 引入 Onboarding
 import { showOnboarding, checkNeedsOnboarding } from './onboarding';
 
+const renderTrialBanner = (remaining: number, total: number): void => {
+  trialBanner.style.display = 'block';
+
+  const safeTotal = total > 0 ? total : 10;
+  const pct = Math.round((remaining / safeTotal) * 100);
+
+  trialLabel.textContent =
+    remaining > 0 ? t('trialBannerActive') : t('trialBannerExpired');
+  trialCount.textContent = t(
+    'trialRemaining',
+    String(remaining),
+    String(safeTotal)
+  );
+
+  trialFill.style.width = `${pct}%`;
+  trialFill.className = 'trial-banner-fill';
+  if (remaining <= 0) {
+    trialFill.classList.add('expired');
+  } else if (remaining <= 3) {
+    trialFill.classList.add('warning');
+  } else {
+    trialFill.classList.add('good');
+  }
+};
+
 /**
  * 更新试用横幅显示
  */
@@ -307,35 +334,33 @@ const updateTrialBanner = async (): Promise<void> => {
       return;
     }
 
-    trialBanner.style.display = 'block';
-
     const remaining = trialRemaining ?? 0;
     const total = trialTotal ?? 10;
-    const pct = Math.round((remaining / total) * 100);
-
-    trialLabel.textContent =
-      remaining > 0 ? t('trialBannerActive') : t('trialBannerExpired');
-    trialCount.textContent = t(
-      'trialRemaining',
-      String(remaining),
-      String(total)
-    );
-
-    trialFill.style.width = `${pct}%`;
-    trialFill.className = 'trial-banner-fill';
-    if (remaining <= 0) {
-      trialFill.classList.add('expired');
-    } else if (remaining <= 3) {
-      trialFill.classList.add('warning');
-    } else {
-      trialFill.classList.add('good');
-    }
+    renderTrialBanner(remaining, total);
 
     if (trialState === 'TRIAL_EXPIRED') {
       showTrialExpiredOverlay();
     }
   } catch {
-    // 试用状态查询失败不影响主流程
+    try {
+      // background 通道异常时兜底读取本地状态，避免免费额度展示空白
+      const config = await getStorageConfig();
+      if (isByokConfigured(config)) {
+        trialBanner.style.display = 'none';
+        return;
+      }
+
+      const trialData = await getTrialData();
+      const remaining = Math.max(0, trialData.maxUses - trialData.usedCount);
+      const state: TrialState =
+        remaining > 0 ? 'TRIAL_ACTIVE' : 'TRIAL_EXPIRED';
+      renderTrialBanner(remaining, trialData.maxUses);
+      if (state === 'TRIAL_EXPIRED') {
+        showTrialExpiredOverlay();
+      }
+    } catch {
+      // 最终兜底：不影响设置页主流程
+    }
   }
 };
 

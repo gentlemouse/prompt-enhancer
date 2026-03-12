@@ -2,12 +2,11 @@
  * Prompt 分析器模块
  *
  * 多维度特征检测 + 策略选择引擎
- * 根据输入长度、结构特征、上下文信号动态选择优化策略
+ * 根据当前输入的长度与结构特征动态选择优化策略
  */
 
 import {
   type PromptAnalysis,
-  type HistoryItem,
   TaskType,
   ReasoningMode,
   OptimizationStrategy,
@@ -24,15 +23,6 @@ const CORRECTION_PATTERNS = [
   /^(另外|还要|还需要|同时|并且|而且|除此之外)/,
   /^(不要|别|避免|禁止)/,
   /^(add|remove|change|replace|also|don't|avoid|include|exclude)/i,
-];
-
-/** 追问类关键词 */
-const FOLLOWUP_PATTERNS = [
-  /^(那|那么|所以|然后|接着|继续|请问|那个)/,
-  /^(具体|详细|展开|深入|进一步|更多|再|多)/,
-  /^(上面|上述|之前|刚才|前面|第[一二三四五六七八九十\d]+[点条个项])/,
-  /^(what about|how about|can you|could you|please also|and |also )/i,
-  /^(more |further |elaborate|expand|continue|go on)/i,
 ];
 
 /** 已有良好结构的检测（用户自己写了结构化 prompt） */
@@ -73,28 +63,6 @@ const detectCorrection = (text: string): boolean => {
 };
 
 /**
- * 检测是否为追问
- * @param text 当前输入
- * @param history 会话历史
- */
-const detectFollowUp = (text: string, history: HistoryItem[]): boolean => {
-  // 无历史则不可能是追问
-  if (history.length === 0) return false;
-
-  const trimmed = text.trim();
-
-  // 模式 1：以追问关键词开头
-  if (FOLLOWUP_PATTERNS.some(p => p.test(trimmed))) return true;
-
-  // 模式 2：极短文本（<50字）且与上一条时间间隔短（<3分钟）
-  const lastItem = history[history.length - 1];
-  const timeDiff = Date.now() - lastItem.timestamp;
-  if (trimmed.length < 50 && timeDiff < 3 * 60 * 1000) return true;
-
-  return false;
-};
-
-/**
  * 检测是否已有良好结构
  */
 const detectGoodStructure = (text: string): boolean => {
@@ -131,52 +99,29 @@ const detectDirectExecutionRisk = (
   return false;
 };
 
-/**
- * 生成会话历史摘要
- * @param history 会话历史
- */
-const buildHistorySummary = (history: HistoryItem[]): string | undefined => {
-  if (history.length === 0) return undefined;
-
-  // 取最近 3 条，每条截取前 80 字
-  const recent = history.slice(-3);
-  const lines = recent.map((item, i) => {
-    const preview =
-      item.text.length > 80 ? item.text.substring(0, 80) + '...' : item.text;
-    return `[第${i + 1}轮] ${preview}`;
-  });
-
-  return lines.join('\n');
-};
-
 // ==========================================================
 //  策略选择引擎
 // ==========================================================
 
 /**
  * 选择优化策略
- * 优先级：修正/补充 > 追问 > 轻润色 > 微调锐化 > 结构化重写
+ * 优先级：修正/补充 > 轻润色 > 微调锐化 > 结构化重写
  */
 const selectStrategy = (
-  _text: string,
   length: number,
-  isFollowUp: boolean,
   isCorrection: boolean,
   hasGoodStructure: boolean
 ): OptimizationStrategy => {
   // 1. 修正/补充类 → 约束追加
   if (isCorrection) return OptimizationStrategy.CONSTRAINT_APPEND;
 
-  // 2. 多轮追问 → 意图澄清
-  if (isFollowUp) return OptimizationStrategy.INTENT_CLARIFY;
-
-  // 3. 极短指令（<30字）→ 轻润色（30-50字进入结构化重写以获得更好效果）
+  // 2. 极短指令（<30字）→ 轻润色
   if (length < 30) return OptimizationStrategy.LIGHT_POLISH;
 
-  // 4. 已有良好结构 → 微调锐化
+  // 3. 已有良好结构 → 微调锐化
   if (hasGoodStructure) return OptimizationStrategy.SHARPEN;
 
-  // 5. 默认 → 结构化重写
+  // 4. 默认 → 结构化重写
   return OptimizationStrategy.STRUCTURAL_REWRITE;
 };
 
@@ -187,13 +132,9 @@ const selectStrategy = (
 /**
  * 分析 Prompt 并确定优化策略
  * @param prompt 用户输入的原始 Prompt
- * @param history 会话历史（来自 session-memory）
  * @returns 分析结果
  */
-export const analyzePrompt = (
-  prompt: string,
-  history: HistoryItem[] = []
-): PromptAnalysis => {
+export const analyzePrompt = (prompt: string): PromptAnalysis => {
   const text = prompt.toLowerCase();
   const length = prompt.length;
 
@@ -249,7 +190,6 @@ export const analyzePrompt = (
   const hasNumberedList = /\d+[.、)）]/.test(prompt);
 
   // --- 多维特征检测 ---
-  const isFollowUp = detectFollowUp(prompt, history);
   const isCorrection = detectCorrection(prompt);
   const hasGoodStructure = detectGoodStructure(prompt);
   const hasDirectExecutionRisk = detectDirectExecutionRisk(
@@ -277,16 +217,7 @@ export const analyzePrompt = (
   }
 
   // --- 策略选择 ---
-  const strategy = selectStrategy(
-    prompt,
-    length,
-    isFollowUp,
-    isCorrection,
-    hasGoodStructure
-  );
-
-  // --- 会话历史摘要 ---
-  const historySummary = buildHistorySummary(history);
+  const strategy = selectStrategy(length, isCorrection, hasGoodStructure);
 
   return {
     taskType: detectedType,
@@ -302,10 +233,8 @@ export const analyzePrompt = (
     needsChainOfThought,
     needsReflection,
     originalPrompt: prompt,
-    isFollowUp,
     isCorrection,
     hasGoodStructure,
     hasDirectExecutionRisk,
-    historySummary,
   };
 };

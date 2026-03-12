@@ -30,13 +30,8 @@ import {
   getInputValue,
   type EditableElement,
 } from './services/input-detector';
+import { resolveStreamErrorUiAction } from './services/stream-error';
 import { tryUndo, saveOriginalContent } from './services/enhance-handler';
-import {
-  initSessionMemory,
-  pushHistory,
-  updateLastEnhanced,
-  getHistory,
-} from './services/session-memory';
 
 /** 当前活跃的输入框 */
 let activeInput: EditableElement | null = null;
@@ -462,9 +457,6 @@ const handleStreamingEnhance = async (
   // 首次增强 → 标记引导完成
   markOnboardingSeen();
 
-  // 记录到会话历史
-  pushHistory(originalText);
-
   // 生成请求 ID
   currentRequestId = Date.now().toString();
   streamingInput = input;
@@ -480,14 +472,13 @@ const handleStreamingEnhance = async (
   scheduleButtonPosition();
   showToast(t('toastEnhancing'));
 
-  // 发送流式请求（附带会话历史）
+  // 发送流式请求
   try {
     const response = await chrome.runtime.sendMessage({
       action: 'enhancePromptStreaming',
       prompt: originalText,
       tabId: 0,
       requestId: currentRequestId,
-      history: getHistory(),
     });
 
     if (!response?.success) {
@@ -579,9 +570,6 @@ const showTrialToast = (
  * 初始化
  */
 const init = (): void => {
-  // 初始化会话记忆
-  initSessionMemory();
-
   // 创建按钮
   buttonState = createEnhanceButton(handleButtonClick);
   bindButtonInteractions(buttonState);
@@ -722,10 +710,6 @@ const init = (): void => {
 
     // 流式完成
     if (req.action === 'streamEnd' && req.requestId === currentRequestId) {
-      if (streamingText) {
-        updateLastEnhanced(streamingText);
-      }
-
       const isMac = navigator.platform.toUpperCase().includes('MAC');
       const remaining = req.trialRemaining as number | undefined;
       const total = req.trialTotal as number | undefined;
@@ -743,13 +727,21 @@ const init = (): void => {
 
     // 流式错误
     if (req.action === 'streamError' && req.requestId === currentRequestId) {
-      // 如果已有部分内容，保留它
-      if (streamingText) {
+      const action = resolveStreamErrorUiAction({
+        hasPartialContent: Boolean(streamingText),
+        error: req.error,
+        fallbackMessage: t('statusUnknownError'),
+      });
+
+      if (action.type === 'show_partial_kept') {
         showToast(t('toastPartialKept'));
       } else if (streamingInput) {
-        // 没有内容时，尝试恢复原始内容
         tryUndo(streamingInput);
-        showToast('✗ ' + (req.error || t('statusUnknownError')));
+        if (action.type === 'show_quota_prompt') {
+          showTrialExpiredPrompt(action.reason);
+        } else {
+          showToast('✗ ' + action.message);
+        }
       }
       resetStreamingState();
       sendResponse({ success: true });

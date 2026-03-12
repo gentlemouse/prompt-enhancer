@@ -11,6 +11,7 @@ import {
 import { API_PROVIDERS, TRIAL_MAX_USES } from '@shared/constants';
 import { getTrialData, syncQuotaFromServer } from '@shared/trial';
 import { getStorageConfig } from '@shared/storage';
+import { isByokConfigured } from '@shared/mode';
 import type {
   ExtensionMessage,
   MessageResponse,
@@ -155,13 +156,11 @@ chrome.runtime.onMessage.addListener(
           if (!tabId) {
             return { success: false, error: 'Cannot get tab ID' };
           }
-          // 流式处理（传递会话历史）
+          // 流式处理
           enhancePromptStreaming(
             request.prompt,
             tabId,
-            request.requestId || Date.now().toString(),
-            ((request as unknown as Record<string, unknown>)
-              .history as import('@shared/types').HistoryItem[]) || []
+            request.requestId || Date.now().toString()
           );
           return { success: true };
         }
@@ -207,7 +206,7 @@ chrome.runtime.onMessage.addListener(
 
         case 'getTrialStatus': {
           const config = await getStorageConfig();
-          if (config?.apiKey) {
+          if (isByokConfigured(config)) {
             return {
               success: true,
               trialState: 'API_CONFIGURED' as TrialState,

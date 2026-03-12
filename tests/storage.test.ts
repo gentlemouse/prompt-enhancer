@@ -178,6 +178,21 @@ describe('storage', () => {
     expect(syncGetMock).toHaveBeenCalledTimes(1);
   });
 
+  it('treats legacy proxy placeholder config as free mode', async () => {
+    localStorageState[STORAGE_KEYS.CONFIG] = {
+      apiProvider: 'proxy',
+      encryptedApiKey: 'proxy-mode',
+      model: 'deepseek-chat',
+      customEndpoint: '',
+      customModel: '',
+    };
+
+    const { getStorageConfig, hasApiKey } = await import('@shared/storage');
+
+    await expect(getStorageConfig()).resolves.toBeNull();
+    await expect(hasApiKey()).resolves.toBe(false);
+  });
+
   it('removes config and reports api key presence correctly', async () => {
     const { saveStorageConfig, clearStorageConfig, hasApiKey } = await import(
       '@shared/storage'

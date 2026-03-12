@@ -30,10 +30,9 @@ Most "prompt enhancers" just make your prompt longer. Lynx is different: it **un
 | | Generic Tools | Lynx |
 |---|---|---|
 | Short commands like `"translate this"` | Bloat them with unnecessary structure | Light polish — just fills the gaps |
-| Complex requests | Apply one fixed template | Selects from 5 strategies based on 15+ signal dimensions |
+| Complex requests | Apply one fixed template | Selects from 4 strategies based on 15+ signal dimensions |
 | Your carefully written prompt | Rewrite it anyway | Detects good structure, only fine-tunes |
-| Follow-up questions like `"can you elaborate?"` | Treat as a standalone new prompt | Understands it's a follow-up, resolves the vague reference |
-| Corrections like `"also make it async"` | Ignore the correction context | Merges your new constraint into the original request |
+| Correction-style inputs like `"also make it async"` | Treat them as incomplete edits | Expands them into standalone executable prompts |
 | Bilingual users | Pick one language | Auto-detects Chinese/English, preserves your language |
 
 ---
@@ -52,20 +51,17 @@ Every prompt is analyzed across **5 dimensions simultaneously:**
 |-----------|-----------------|
 | **Task Type** | One of 8 categories: Code, Writing, Analysis, Q&A, Planning, Research, Chat, Extraction |
 | **Complexity** | Detects chain-of-thought signals, multi-part questions, reflection markers |
-| **Context** | New topic, follow-up, or correction — using a 5-turn session memory |
+| **Instruction Pattern** | Whether this is a correction-style instruction, short command, or fully structured request |
 | **Structure** | Does the prompt already have role/task/constraints? |
 | **Language** | Chinese or English — preserved throughout |
 
 ### Stage 2 · Strategy Selection
 
-Based on the analysis, one of **5 strategies** is chosen — each built for a different scenario:
+Based on the analysis, one of **4 strategies** is chosen — each built for a different scenario:
 
 ```
 Is it a correction? ("also add...", "remove...", "change...")
-  → CONSTRAINT APPEND  — merges new requirements into original
-
-Is it a follow-up? (references prior context)
-  → INTENT CLARIFY     — resolves ambiguous references, stays conversational
+  → CONSTRAINT APPEND  — rewrites the instruction into a complete standalone prompt
 
 Is the prompt very short? (< 30 chars)
   → LIGHT POLISH       — fills critical gaps without over-expanding
@@ -99,13 +95,6 @@ The chosen strategy generates a **specialized system prompt** that instructs the
 | **Before** | `Help me write a Python web scraper for news sites` |
 | **After** | `Role: Senior Python developer experienced with web scraping.`<br><br>`Task: Build a configurable news site scraper that extracts: title, publish date, author, body text. Handle pagination automatically.`<br><br>`Constraints: Use requests + BeautifulSoup. Rate-limit to 1 req/sec. Graceful error handling — log and skip on failure, don't abort.`<br><br>`Output: Complete, runnable Python script with a usage example.` |
 
-### Intent Clarify — Vague follow-ups become precise
-
-| | |
-|---|---|
-| **Before** | `Can you go into more detail on that?` |
-| **After** | `Please elaborate on the "data storage architecture" section from your previous response. Specifically, compare the trade-offs between SQL and NoSQL for this use case and give a recommendation.` |
-
 ### Sharpen — Already good prompts get polished
 
 | | |
@@ -124,10 +113,9 @@ The chosen strategy generates a **specialized system prompt** that instructs the
 
 ## Features at a Glance
 
-- **5 Dynamic Strategies** — Automatically matched to each prompt's characteristics
+- **4 Dynamic Strategies** — Automatically matched to each prompt's characteristics
 - **8 Task Types** — Code, Writing, Analysis, Q&A, Planning, Research, Chat, Extraction
 - **3 Reasoning Modes** — Simple / Deep Thinking / Expert, selected by complexity signals
-- **5-Turn Session Memory** — Tracks conversation context for accurate follow-up handling
 - **Anti-Injection Protection** — Prevents prompt injection attacks during optimization
 - **10 Free Enhancements** — No setup, no API key required to get started
 - **BYOK Mode** — Bring your own key from OpenAI, Anthropic, DeepSeek, Kimi, MiniMax, Qwen, Zhipu, or any custom endpoint
@@ -189,13 +177,12 @@ Install → visit any AI chat page → press `Cmd+Shift+E` or click the ✦ butt
 src/
 ├── background/
 │   ├── analyzer.ts         # Multi-dimensional analysis engine (5 dims, 15+ signals)
-│   ├── prompt-builder.ts   # 5 strategy templates with task-type guidance
+│   ├── prompt-builder.ts   # 4 strategy templates with task-type guidance
 │   ├── enhancer.ts         # Orchestrator
 │   └── providers/          # API adapters: OpenAI / Anthropic / DeepSeek / Proxy
 ├── content/
 │   ├── services/
 │   │   ├── input-detector.ts   # Detects input fields on 50+ platforms
-│   │   └── session-memory.ts   # 5-turn sliding window session memory
 │   └── ui/                     # Shadow DOM isolated UI components
 ├── shared/
 │   ├── analytics.ts        # Anonymous, opt-out usage analytics
@@ -216,7 +203,6 @@ Core module test coverage: **97.99%** across 146 test cases.
 |--------|-----------|----------|-----------|-------|
 | analyzer.ts | 98.83% | 98.11% | 100% | 98.64% |
 | prompt-builder.ts | 100% | 80% | 100% | 100% |
-| session-memory.ts | 100% | 100% | 100% | 100% |
 | analytics.ts | 95% | 86.11% | 100% | 94.52% |
 | validation.ts | 100% | 100% | 100% | 100% |
 | retry.ts | 96.96% | 91.3% | 100% | 96.55% |

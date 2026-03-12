@@ -57,7 +57,6 @@ describe('Analytics', () => {
         taskType: TaskType.CODE,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
 
       const data = await getAnalyticsData();
@@ -74,25 +73,11 @@ describe('Analytics', () => {
         taskType: TaskType.WRITING,
         siteDomain: 'claude.ai',
         success: false,
-        isFollowUp: false,
       });
 
       const data = await getAnalyticsData();
       expect(data.dailyStats[0].failCount).toBe(1);
       expect(data.dailyStats[0].successCount).toBe(0);
-    });
-
-    it('应记录追问计数', async () => {
-      await trackEnhanceEvent({
-        strategy: OptimizationStrategy.INTENT_CLARIFY,
-        taskType: TaskType.QA,
-        siteDomain: 'chatgpt.com',
-        success: true,
-        isFollowUp: true,
-      });
-
-      const data = await getAnalyticsData();
-      expect(data.dailyStats[0].followUpCount).toBe(1);
     });
 
     it('应累计策略分布', async () => {
@@ -101,21 +86,18 @@ describe('Analytics', () => {
         taskType: TaskType.CHAT,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
       await trackEnhanceEvent({
         strategy: OptimizationStrategy.LIGHT_POLISH,
         taskType: TaskType.CHAT,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
       await trackEnhanceEvent({
         strategy: OptimizationStrategy.SHARPEN,
         taskType: TaskType.CHAT,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
 
       const data = await getAnalyticsData();
@@ -133,14 +115,12 @@ describe('Analytics', () => {
         taskType: TaskType.CHAT,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
       await trackEnhanceEvent({
         strategy: OptimizationStrategy.LIGHT_POLISH,
         taskType: TaskType.CHAT,
         siteDomain: 'claude.ai',
         success: true,
-        isFollowUp: false,
       });
 
       const data = await getAnalyticsData();
@@ -154,14 +134,12 @@ describe('Analytics', () => {
         taskType: TaskType.CODE,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
       await trackEnhanceEvent({
         strategy: OptimizationStrategy.STRUCTURAL_REWRITE,
         taskType: TaskType.WRITING,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
 
       const data = await getAnalyticsData();
@@ -184,7 +162,6 @@ describe('Analytics', () => {
         taskType: TaskType.CHAT,
         siteDomain: 'test.com',
         success: true,
-        isFollowUp: false,
       });
 
       const data = await getAnalyticsData();
@@ -197,7 +174,6 @@ describe('Analytics', () => {
         taskType: TaskType.CHAT,
         siteDomain: 'test.com',
         success: true,
-        isFollowUp: false,
       });
 
       await setAnalyticsOptOut(true);
@@ -225,7 +201,6 @@ describe('Analytics', () => {
           taskType: TaskType.CHAT,
           siteDomain: 'chatgpt.com',
           success: true,
-          isFollowUp: false,
         });
       }
       await trackEnhanceEvent({
@@ -233,7 +208,6 @@ describe('Analytics', () => {
         taskType: TaskType.CHAT,
         siteDomain: 'chatgpt.com',
         success: false,
-        isFollowUp: false,
       });
 
       const summary = await getAnalyticsSummary();
@@ -247,21 +221,18 @@ describe('Analytics', () => {
         taskType: TaskType.CHAT,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
       await trackEnhanceEvent({
         strategy: OptimizationStrategy.LIGHT_POLISH,
         taskType: TaskType.CHAT,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
       await trackEnhanceEvent({
         strategy: OptimizationStrategy.LIGHT_POLISH,
         taskType: TaskType.CHAT,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
 
       const summary = await getAnalyticsSummary();
@@ -274,21 +245,18 @@ describe('Analytics', () => {
         taskType: TaskType.CHAT,
         siteDomain: 'claude.ai',
         success: true,
-        isFollowUp: false,
       });
       await trackEnhanceEvent({
         strategy: OptimizationStrategy.LIGHT_POLISH,
         taskType: TaskType.CHAT,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
       await trackEnhanceEvent({
         strategy: OptimizationStrategy.LIGHT_POLISH,
         taskType: TaskType.CHAT,
         siteDomain: 'chatgpt.com',
         success: true,
-        isFollowUp: false,
       });
 
       const summary = await getAnalyticsSummary();

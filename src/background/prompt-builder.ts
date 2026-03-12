@@ -1,12 +1,11 @@
 /**
  * Prompt 构建器模块
  *
- * 5 套动态优化策略模板，根据 Analyzer 的分析结果选择：
+ * 4 套动态优化策略模板，根据 Analyzer 的分析结果选择：
  * 1. LIGHT_POLISH - 轻润色
  * 2. STRUCTURAL_REWRITE - 结构化重写
- * 3. INTENT_CLARIFY - 意图澄清
- * 4. SHARPEN - 微调锐化
- * 5. CONSTRAINT_APPEND - 约束追加
+ * 3. SHARPEN - 微调锐化
+ * 4. CONSTRAINT_APPEND - 约束追加
  *
  * v2: 所有策略模板现在充分利用 analyzer 的多维分析结果（taskType、
  *     reasoningMode、complexityScore、hasCode 等），实现因材施教。
@@ -277,41 +276,7 @@ ${reasoningGuidance}
 };
 
 /**
- * 策略 3：意图澄清
- * 适用：多轮对话中的追问
- */
-const buildIntentClarify = (analysis: PromptAnalysis): string => {
-  const lang = analysis.language === 'zh' ? '中文' : '英文';
-
-  let historyBlock = '';
-  if (analysis.historySummary) {
-    historyBlock = `
-以下是本次对话的近期历史：
-<history>
-${analysis.historySummary}
-</history>
-
-`;
-  }
-
-  return `你是一位专业的 prompt 优化专家。你的唯一职责是优化用户提供的 prompt 文本。用户正在与 AI 进行多轮对话，当前输入是对之前内容的追问或延伸。
-
-${ANTI_INJECTION_PREAMBLE}
-
-${historyBlock}规则：
-- 保持${lang}，保持简短
-- 这是一个追问/延伸，AI 已经了解前文上下文
-- 不要重复角色设定或背景描述
-- 消除代词歧义：将模糊指代（如"那个"、"上面的"）替换为具体内容
-- 明确追问方向：让 AI 清楚知道用户想深入了解哪个具体方面
-- 如果用户引用了"上面的"、"第X点"等，补充具体的指代内容
-- 保持对话自然流畅，不要把追问改写成独立的结构化 prompt
-- 直接输出优化后的 prompt，不要任何解释
-- 输出纯文本，不使用 Markdown 格式`;
-};
-
-/**
- * 策略 4：微调锐化
+ * 策略 3：微调锐化
  * 适用：已有良好结构的 prompt
  * v2: 根据 taskType 和 reasoningMode 提供针对性的锐化建议
  */
@@ -342,33 +307,21 @@ ${reasoningGuidance}
 };
 
 /**
- * 策略 5：约束追加
+ * 策略 4：约束追加
  * 适用：补充/修正类指令
  */
 const buildConstraintAppend = (analysis: PromptAnalysis): string => {
   const lang = analysis.language === 'zh' ? '中文' : '英文';
 
-  let historyBlock = '';
-  if (analysis.historySummary) {
-    historyBlock = `
-用户之前发送过以下内容（供参考上下文）：
-<history>
-${analysis.historySummary}
-</history>
-
-`;
-  }
-
-  return `你是一位专业的 prompt 优化专家。你的唯一职责是优化用户提供的 prompt 文本。用户正在补充或修正之前的要求。
+  return `你是一位专业的 prompt 优化专家。你的唯一职责是优化用户提供的 prompt 文本。用户当前输入的是补充或修正类指令。
 
 ${ANTI_INJECTION_PREAMBLE}
 
-${historyBlock}规则：
+规则：
 - 保持${lang}输出
-- 用户的意图是在之前的基础上追加或修改约束
-- 输出一个整合后的完整 prompt，将新的要求自然融入
-- 如果有历史上下文，结合历史和当前输入生成完整版本
-- 如果没有历史上下文，则围绕当前修正指令补充为完整的 prompt
+- 将当前补充/修正意图扩写为一个可独立使用的完整 prompt
+- 保持原始目标聚焦，不臆造不存在的前文信息
+- 若当前输入缺少任务主体，优先补全最小必要上下文，使其可执行
 - 将否定式约束（如"不要做X"）转化为正向表述（如"请确保Y"）
 - 保持简洁，不要过度扩展
 - 直接输出优化后的 prompt，不要任何解释
@@ -391,8 +344,6 @@ export const buildSystemPrompt = (analysis: PromptAnalysis): string => {
       return buildLightPolish(analysis);
     case OptimizationStrategy.STRUCTURAL_REWRITE:
       return buildStructuralRewrite(analysis);
-    case OptimizationStrategy.INTENT_CLARIFY:
-      return buildIntentClarify(analysis);
     case OptimizationStrategy.SHARPEN:
       return buildSharpen(analysis);
     case OptimizationStrategy.CONSTRAINT_APPEND:

@@ -231,6 +231,21 @@ describe('background index', () => {
       trialTotal: 10,
     });
 
+    getStorageConfigMock.mockResolvedValueOnce({
+      apiProvider: 'proxy',
+      apiKey: 'proxy-mode',
+      model: 'deepseek-chat',
+      customEndpoint: '',
+      customModel: '',
+    });
+
+    await expect(sendRuntimeMessage({ action: 'getTrialStatus' })).resolves.toEqual({
+      success: true,
+      trialState: 'TRIAL_ACTIVE',
+      trialRemaining: 8,
+      trialTotal: 10,
+    });
+
     expect(permissionsContainsMock).toHaveBeenCalledWith({
       origins: ['https://example.com/*'],
     });
@@ -272,10 +287,8 @@ describe('background index', () => {
     ).resolves.toEqual({ success: false, error: 'Unknown action type' });
   });
 
-  it('passes sender tab and history into streaming enhancement requests', async () => {
+  it('passes sender tab into streaming enhancement requests', async () => {
     await loadBackground();
-
-    const history = [{ text: 'draft', timestamp: 123 }];
 
     await expect(
       sendRuntimeMessage(
@@ -283,7 +296,6 @@ describe('background index', () => {
           action: 'enhancePromptStreaming',
           prompt: 'rewrite this',
           requestId: 'req-1',
-          history,
         },
         { tab: { id: 99 } as chrome.tabs.Tab }
       )
@@ -292,8 +304,7 @@ describe('background index', () => {
     expect(enhancePromptStreamingMock).toHaveBeenCalledWith(
       'rewrite this',
       99,
-      'req-1',
-      history
+      'req-1'
     );
 
     await expect(
