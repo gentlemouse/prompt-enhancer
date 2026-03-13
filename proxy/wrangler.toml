@@ -12,13 +12,13 @@ LIFETIME_LIMIT = "10"
 # 多 key 池化（逗号分隔），第一期建议先放 10 个 key
 # 注意：包含敏感信息，建议优先用 wrangler secret put 方式维护
 # DEEPSEEK_API_KEYS = "sk-key1,sk-key2,...,sk-key10"
-GATEWAY_RPM_LIMIT = "500"
+GATEWAY_RPM_LIMIT = "350"
 UPSTREAM_MAX_RETRIES = "2"
-QUEUE_MAX_WAIT_MS = "2500"
+QUEUE_MAX_WAIT_MS = "3500"
 QUEUE_POLL_INTERVAL_MS = "120"
 CIRCUIT_BREAKER_THRESHOLD = "3"
 CIRCUIT_BREAKER_COOLDOWN_MS = "30000"
-KEY_MAX_INFLIGHT = "8"
+KEY_MAX_INFLIGHT = "6"
 
 # Secret: DEEPSEEK_API_KEY (set via wrangler secret put)
 # Secret: DEEPSEEK_API_KEYS (optional, recommended for pool mode)
