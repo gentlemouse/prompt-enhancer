@@ -9,11 +9,24 @@ import { showToast } from '../ui/toast';
 import { t } from '@shared/i18n';
 import type { ButtonState } from '../ui/button';
 import { setButtonLoading } from '../ui/button';
-import { getQuotaBlockReason } from '@shared/quota-errors';
+import { getQuotaBlockReason, PROXY_NETWORK_ERROR } from '@shared/quota-errors';
 import { showTrialExpiredPrompt } from '../ui/trial-prompt';
 
 /** 原始内容存储 */
 const originalContents = new WeakMap<EditableElement, string>();
+
+/**
+ * 将内部错误码转换为用户可读提示
+ */
+const toUserFacingErrorMessage = (error: unknown): string => {
+  if (error === PROXY_NETWORK_ERROR) {
+    return t('toastProxyNetworkBlocked');
+  }
+  if (typeof error === 'string' && error.trim()) {
+    return error;
+  }
+  return t('toastRequestFailed');
+};
 
 /**
  * 检查扩展 context 是否有效
@@ -65,7 +78,10 @@ export const handleEnhance = async (
 
   // 显示加载状态
   setButtonLoading(buttonState, true);
-  showToast(t('toastEnhancing'));
+  showToast({
+    message: t('toastEnhancing'),
+    anchor: input,
+  });
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -76,13 +92,17 @@ export const handleEnhance = async (
     if (response?.success) {
       setInputValue(input, response.enhanced);
       const isMac = navigator.platform.toUpperCase().includes('MAC');
-      showToast(isMac ? t('toastDoneMac') : t('toastDone'));
+      showToast({
+        message: isMac ? t('toastDoneMac') : t('toastDone'),
+        duration: 3600,
+        anchor: input,
+      });
     } else {
       const quotaBlockReason = getQuotaBlockReason(response?.error);
       if (quotaBlockReason) {
         showTrialExpiredPrompt(quotaBlockReason);
       } else {
-        showToast('✗ ' + (response?.error || t('toastRequestFailed')));
+        showToast('✗ ' + toUserFacingErrorMessage(response?.error));
       }
     }
   } catch (error) {
@@ -95,7 +115,7 @@ export const handleEnhance = async (
     } else if (errorMessage.includes('Extension context invalidated')) {
       showToast(t('toastRefreshPage'));
     } else {
-      showToast('✗ ' + errorMessage);
+      showToast('✗ ' + toUserFacingErrorMessage(errorMessage));
     }
   } finally {
     setButtonLoading(buttonState, false);

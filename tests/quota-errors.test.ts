@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   FREE_QUOTA_EXHAUSTED_ERROR,
+  PROXY_NETWORK_ERROR,
   TRIAL_EXPIRED_ERROR,
   getQuotaBlockReason,
+  isProxyNetworkError,
+  normalizeProxyNetworkError,
   normalizeProxyError,
 } from '../src/shared/quota-errors';
 
@@ -33,5 +36,14 @@ describe('quota errors', () => {
     );
 
     expect(error.message).toBe('internal server error');
+  });
+
+  it('normalizes failed-to-fetch errors to proxy network code', () => {
+    const error = normalizeProxyNetworkError(new TypeError('Failed to fetch'));
+    expect(error.message).toBe(PROXY_NETWORK_ERROR);
+  });
+
+  it('detects proxy network code', () => {
+    expect(isProxyNetworkError(PROXY_NETWORK_ERROR)).toBe(true);
   });
 });

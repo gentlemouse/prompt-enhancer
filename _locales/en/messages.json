@@ -206,6 +206,9 @@
   "toastRequestFailed": {
     "message": "Request failed"
   },
+  "toastProxyNetworkBlocked": {
+    "message": "Network cannot reach free proxy. Try another network or configure your own API Key."
+  },
   "toastUndone": {
     "message": "Undone"
   },

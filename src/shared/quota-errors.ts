@@ -4,6 +4,7 @@
 
 export const TRIAL_EXPIRED_ERROR = 'TRIAL_EXPIRED';
 export const FREE_QUOTA_EXHAUSTED_ERROR = 'FREE_QUOTA_EXHAUSTED';
+export const PROXY_NETWORK_ERROR = 'PROXY_NETWORK_ERROR';
 
 export type QuotaBlockReason = 'trial_expired' | 'free_quota_exhausted';
 
@@ -20,6 +21,14 @@ const FREE_QUOTA_PATTERNS = [
   '试用额度',
   '用完',
   '耗尽',
+];
+
+const PROXY_NETWORK_PATTERNS = [
+  'failed to fetch',
+  'networkerror',
+  'network error',
+  'load failed',
+  'the internet connection appears to be offline',
 ];
 
 const extractErrorMessage = (body: string): string => {
@@ -67,6 +76,35 @@ export const getQuotaBlockReason = (
   if (isTrialExpiredError(error)) return 'trial_expired';
   if (isFreeQuotaExhaustedError(error)) return 'free_quota_exhausted';
   return null;
+};
+
+/**
+ * 归一化代理网络错误（企业网络拦截、DNS 失败、TLS 拦截等）
+ */
+export const normalizeProxyNetworkError = (error: unknown): Error => {
+  const message = toMessage(error).trim();
+  const normalized = message.toLowerCase();
+
+  if (
+    message.includes(PROXY_NETWORK_ERROR) ||
+    PROXY_NETWORK_PATTERNS.some(pattern => normalized.includes(pattern))
+  ) {
+    return new Error(PROXY_NETWORK_ERROR);
+  }
+
+  return error instanceof Error ? error : new Error(message || String(error));
+};
+
+/**
+ * 判断是否为代理网络层错误
+ */
+export const isProxyNetworkError = (error: unknown): boolean => {
+  const message = toMessage(error).trim();
+  const normalized = message.toLowerCase();
+  return (
+    message.includes(PROXY_NETWORK_ERROR) ||
+    PROXY_NETWORK_PATTERNS.some(pattern => normalized.includes(pattern))
+  );
 };
 
 export const normalizeProxyError = (status: number, body: string): Error => {

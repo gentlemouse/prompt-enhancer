@@ -5,7 +5,9 @@ import packageJson from '../package.json';
  * Chrome 扩展 Manifest 配置
  * P0-1.1: 权限最小化改进
  * - 移除默认全站注入，改为 activeTab
- * - host_permissions 改为 optional，按需授权
+ * - 页面访问权限按需请求
+ * P0-1.6: 免费模式网络修复
+ * - 免费代理域名设为必需 host_permissions，避免商店版在受管网络下出现 Failed to fetch
  */
 export default defineManifest({
   manifest_version: 3,
@@ -25,7 +27,12 @@ export default defineManifest({
   // P0-1.1: 可选权限 - 按需请求
   optional_permissions: ['tabs'],
 
-  // P0-1.1: 可选主机权限 - 仅在用户首次使用时请求
+  // P0-1.6: 免费代理域名设为必需权限（不依赖页面站点授权）
+  host_permissions: [
+    'https://prompt-enhancer-proxy.gentlemouse666.workers.dev/*',
+  ],
+
+  // P0-1.1: 可选页面主机权限 - 仅在用户首次使用时请求
   optional_host_permissions: ['<all_urls>'],
 
   // 移除默认全站 content_scripts 注入

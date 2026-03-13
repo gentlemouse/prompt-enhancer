@@ -205,6 +205,9 @@
   "toastRequestFailed": {
     "message": "请求失败"
   },
+  "toastProxyNetworkBlocked": {
+    "message": "当前网络无法访问免费代理，请切换网络或配置你自己的 API Key。"
+  },
   "toastUndone": {
     "message": "已撤回"
   },

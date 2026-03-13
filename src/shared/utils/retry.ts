@@ -26,6 +26,8 @@ const defaultShouldRetry = (error: Error, _attempt: number): boolean => {
   const message = error.message.toLowerCase();
   // 网络错误、超时、服务器错误应该重试
   const retryableErrors = [
+    'failed to fetch',
+    'networkerror',
     'network',
     'timeout',
     'econnreset',

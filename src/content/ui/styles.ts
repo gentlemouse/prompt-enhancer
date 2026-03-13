@@ -483,9 +483,11 @@ export const getStyles = (): string => `
 /* ─── Toast 提示 — Glassmorphism ─── */
 .prompt-enhancer-toast {
   position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(60px);
+  left: var(--pe-toast-left, 50%);
+  top: var(--pe-toast-top, 16px);
+  transform:
+    translateX(var(--pe-toast-translate-x, -50%))
+    translateY(var(--pe-toast-translate-y, -10px));
   background: rgba(39, 38, 37, 0.85); /* 适配钛金深灰 */
   color: var(--ai-text-primary);
   padding: 10px 20px;
@@ -506,7 +508,7 @@ export const getStyles = (): string => `
 }
 
 .prompt-enhancer-toast.show {
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(var(--pe-toast-translate-x, -50%)) translateY(0);
   opacity: 1;
 }
 

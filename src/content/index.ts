@@ -20,7 +20,7 @@ import { showToast } from './ui/toast';
 import { showTrialExpiredPrompt } from './ui/trial-prompt';
 import { onShadowHostRebuild } from './ui/shadow-host';
 import { t } from '@shared/i18n';
-import { getQuotaBlockReason } from '@shared/quota-errors';
+import { getQuotaBlockReason, PROXY_NETWORK_ERROR } from '@shared/quota-errors';
 import {
   createInputDetector,
   findEditableElement,
@@ -45,9 +45,34 @@ let currentRequestId: string | null = null;
 /** 当前流式输入框 */
 let streamingInput: EditableElement | null = null;
 
+type ToastAnchorRect = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  width: number;
+  height: number;
+};
+
+/** 同一轮流式提示的固定锚点矩形（避免 toast 跳位） */
+let streamingToastAnchorRect: ToastAnchorRect | null = null;
+
 /** 流式累积文本 */
 let streamingText = '';
 let streamingOriginalText = '';
+
+/**
+ * 将可读性差的错误码转换为用户可理解文案
+ */
+const toUserFacingErrorMessage = (error: unknown): string => {
+  if (error === PROXY_NETWORK_ERROR) {
+    return t('toastProxyNetworkBlocked');
+  }
+  if (typeof error === 'string' && error.trim()) {
+    return error;
+  }
+  return t('toastRequestFailed');
+};
 
 /** 流式无数据兜底超时（避免生成态卡死） */
 let streamingWatchdogTimer: number | null = null;
@@ -460,6 +485,15 @@ const handleStreamingEnhance = async (
   // 生成请求 ID
   currentRequestId = Date.now().toString();
   streamingInput = input;
+  const inputRect = input.getBoundingClientRect();
+  streamingToastAnchorRect = {
+    left: inputRect.left,
+    right: inputRect.right,
+    top: inputRect.top,
+    bottom: inputRect.bottom,
+    width: inputRect.width,
+    height: inputRect.height,
+  };
   streamingText = '';
   streamingOriginalText = originalText;
 
@@ -470,7 +504,11 @@ const handleStreamingEnhance = async (
   // 清空输入框，准备接收流式内容（静默写入，不创建 undo 记录）
   setInputValueDirect(input, '');
   scheduleButtonPosition();
-  showToast(t('toastEnhancing'));
+  showToast({
+    message: t('toastEnhancing'),
+    anchor: input,
+    anchorRect: streamingToastAnchorRect,
+  });
 
   // 发送流式请求
   try {
@@ -487,7 +525,7 @@ const handleStreamingEnhance = async (
       if (quotaBlockReason) {
         showTrialExpiredPrompt(quotaBlockReason);
       } else {
-        showToast('✗ ' + (response?.error || t('toastRequestFailed')));
+        showToast('✗ ' + toUserFacingErrorMessage(response?.error));
       }
       resetStreamingState();
     }
@@ -517,6 +555,7 @@ const resetStreamingState = (): void => {
   }
   currentRequestId = null;
   streamingInput = null;
+  streamingToastAnchorRect = null;
   streamingText = '';
   streamingOriginalText = '';
   collapseButtonForIdle();
@@ -538,7 +577,9 @@ const handleButtonClick = (): void => {
 const showTrialToast = (
   remaining: number,
   total: number,
-  isMac: boolean
+  isMac: boolean,
+  anchor: EditableElement | null,
+  anchorRect: ToastAnchorRect | null
 ): void => {
   const undoKey = isMac ? '⌘Z' : 'Ctrl+Z';
   const doneBase = `✓ ${t('popupUndo')} ${undoKey}`;
@@ -547,21 +588,29 @@ const showTrialToast = (
     showToast({
       message: `${doneBase}  ·  ${t('trialRemaining', String(remaining), String(total))}`,
       duration: 3000,
+      anchor,
+      anchorRect,
     });
   } else if (remaining > 3) {
     showToast({
       message: `${doneBase}  ·  ${t('trialRemaining', String(remaining), String(total))}`,
       duration: 4000,
+      anchor,
+      anchorRect,
     });
   } else if (remaining > 0) {
     showToast({
       message: `⚠ ${t('trialLow', String(remaining))}  (${undoKey})`,
       duration: 5000,
+      anchor,
+      anchorRect,
     });
   } else {
     showToast({
       message: `✓ ${t('trialExpired')}`,
       duration: 4000,
+      anchor,
+      anchorRect,
     });
   }
 };
@@ -713,11 +762,18 @@ const init = (): void => {
       const isMac = navigator.platform.toUpperCase().includes('MAC');
       const remaining = req.trialRemaining as number | undefined;
       const total = req.trialTotal as number | undefined;
+      const toastAnchor = streamingInput;
+      const toastAnchorRect = streamingToastAnchorRect;
 
       if (remaining !== undefined && total !== undefined) {
-        showTrialToast(remaining, total, isMac);
+        showTrialToast(remaining, total, isMac, toastAnchor, toastAnchorRect);
       } else {
-        showToast(t(isMac ? 'toastDoneMac' : 'toastDone'));
+        showToast({
+          message: t(isMac ? 'toastDoneMac' : 'toastDone'),
+          duration: 3600,
+          anchor: toastAnchor,
+          anchorRect: toastAnchorRect,
+        });
       }
 
       resetStreamingState();
@@ -729,7 +785,7 @@ const init = (): void => {
     if (req.action === 'streamError' && req.requestId === currentRequestId) {
       const action = resolveStreamErrorUiAction({
         hasPartialContent: Boolean(streamingText),
-        error: req.error,
+        error: toUserFacingErrorMessage(req.error),
         fallbackMessage: t('statusUnknownError'),
       });
 

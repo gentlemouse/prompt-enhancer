@@ -22,7 +22,10 @@ import {
 } from './streaming';
 import { API_PROVIDERS } from '@shared/constants';
 import { getDeviceFingerprint } from '@shared/fingerprint';
-import { normalizeProxyError } from '@shared/quota-errors';
+import {
+  normalizeProxyError,
+  normalizeProxyNetworkError,
+} from '@shared/quota-errors';
 import { buildSystemPrompt, buildUserMessage } from '../prompt-builder';
 import { withRetry, fetchWithTimeout } from '@shared/utils/retry';
 
@@ -47,37 +50,42 @@ const proxyAdapter: APIProviderAdapter = {
     const userMessage = buildUserMessage(analysis.originalPrompt, analysis);
     const fp = await getDeviceFingerprint();
 
-    const response = await withRetry(
-      async () => {
-        const res = await fetchWithTimeout(
-          API_PROVIDERS.proxy.endpoint,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Device-FP': fp,
+    let response: Response;
+    try {
+      response = await withRetry(
+        async () => {
+          const res = await fetchWithTimeout(
+            API_PROVIDERS.proxy.endpoint,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Device-FP': fp,
+              },
+              body: JSON.stringify({
+                model,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userMessage },
+                ],
+                temperature: 0.5,
+                max_tokens: 2000,
+              }),
             },
-            body: JSON.stringify({
-              model,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userMessage },
-              ],
-              temperature: 0.5,
-              max_tokens: 2000,
-            }),
-          },
-          30000
-        );
+            30000
+          );
 
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw normalizeProxyError(res.status, errorText);
-        }
-        return res;
-      },
-      { maxRetries: 2 }
-    );
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw normalizeProxyError(res.status, errorText);
+          }
+          return res;
+        },
+        { maxRetries: 2 }
+      );
+    } catch (error) {
+      throw normalizeProxyNetworkError(error);
+    }
 
     const data = (await response.json()) as ProxyResponse;
     return data.choices[0].message.content;
