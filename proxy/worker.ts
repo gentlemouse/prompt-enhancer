@@ -16,11 +16,27 @@
 
 interface Env {
   DEEPSEEK_API_KEY: string;
+  DEEPSEEK_API_KEYS?: string;
   LIFETIME_LIMIT?: string;
+  GATEWAY_RPM_LIMIT?: string;
+  UPSTREAM_MAX_RETRIES?: string;
+  QUEUE_MAX_WAIT_MS?: string;
+  QUEUE_POLL_INTERVAL_MS?: string;
+  CIRCUIT_BREAKER_THRESHOLD?: string;
+  CIRCUIT_BREAKER_COOLDOWN_MS?: string;
+  KEY_MAX_INFLIGHT?: string;
   RATE_LIMITER: KVNamespace;
 }
 
 const DEFAULT_LIFETIME_LIMIT = 10;
+const DEFAULT_PER_KEY_RPM = 50;
+const DEFAULT_UPSTREAM_MAX_RETRIES = 2;
+const INITIAL_RETRY_DELAY_MS = 600;
+const DEFAULT_QUEUE_MAX_WAIT_MS = 2500;
+const DEFAULT_QUEUE_POLL_INTERVAL_MS = 120;
+const DEFAULT_CIRCUIT_BREAKER_THRESHOLD = 3;
+const DEFAULT_CIRCUIT_BREAKER_COOLDOWN_MS = 30000;
+const DEFAULT_KEY_MAX_INFLIGHT = 8;
 
 /** KV 过期时间：180 天（足够长，定期清理不活跃用户） */
 const KV_TTL_SECONDS = 180 * 24 * 60 * 60;
@@ -43,6 +59,468 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-FP',
+};
+
+const SLO_METRIC_NAMES = [
+  'request_total',
+  'request_success',
+  'request_failed',
+  'upstream_call',
+  'upstream_429',
+  'upstream_timeout',
+  'queue_timeout',
+  'queue_wait_total_ms',
+  'queue_wait_count',
+] as const;
+
+type SloMetricName = (typeof SLO_METRIC_NAMES)[number];
+
+interface ApiKeyEntry {
+  id: string;
+  value: string;
+}
+
+interface KeyRuntimeState {
+  failures: number;
+  openedUntil: number;
+  inFlight: number;
+}
+
+const keyStates = new Map<string, KeyRuntimeState>();
+let roundRobinCursor = 0;
+
+/**
+ * 读取正整数环境变量（非法值回退默认值）
+ */
+const getEnvInt = (value: string | undefined, fallback: number): number => {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
+/**
+ * 当前分钟桶（UTC，精确到分钟）
+ */
+const getMinuteBucket = (timestampMs: number = Date.now()): string => {
+  const iso = new Date(timestampMs).toISOString();
+  return iso.slice(0, 16);
+};
+
+/**
+ * 生成 SLO 计数 key
+ */
+const getSloMetricKey = (minuteBucket: string, metricName: SloMetricName): string =>
+  `slo:${minuteBucket}:${metricName}`;
+
+/**
+ * 增量记录 SLO 指标（KV 非原子，自然近似）
+ */
+const incrementSloMetric = async (
+  env: Env,
+  metricName: SloMetricName,
+  delta: number = 1
+): Promise<void> => {
+  const minute = getMinuteBucket();
+  const metricKey = getSloMetricKey(minute, metricName);
+  const current = Number.parseInt((await env.RATE_LIMITER.get(metricKey)) || '0', 10) || 0;
+  await env.RATE_LIMITER.put(metricKey, String(current + delta), {
+    expirationTtl: 3 * 24 * 60 * 60,
+  });
+};
+
+/**
+ * 读取 SLO 指标（不存在时返回 0）
+ */
+const readSloMetric = async (
+  env: Env,
+  minuteBucket: string,
+  metricName: SloMetricName
+): Promise<number> =>
+  Number.parseInt(
+    (await env.RATE_LIMITER.get(getSloMetricKey(minuteBucket, metricName))) || '0',
+    10
+  ) || 0;
+
+/**
+ * 解析可用的 DeepSeek key 池（支持单 key + 多 key）
+ */
+const getApiKeyPool = (env: Env): ApiKeyEntry[] => {
+  const pooled = (env.DEEPSEEK_API_KEYS || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+
+  const allKeys = pooled.length > 0 ? pooled : [env.DEEPSEEK_API_KEY].filter(Boolean);
+
+  const toStableSuffix = (value: string): string => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i++) {
+      hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+    }
+    return hash.toString(16);
+  };
+
+  return allKeys.map((value, index) => ({
+    id: `key_${index + 1}_${toStableSuffix(value)}`,
+    value,
+  }));
+};
+
+/**
+ * 获取 key 运行时状态
+ */
+const getKeyState = (keyId: string): KeyRuntimeState => {
+  const existing = keyStates.get(keyId);
+  if (existing) return existing;
+  const created: KeyRuntimeState = { failures: 0, openedUntil: 0, inFlight: 0 };
+  keyStates.set(keyId, created);
+  return created;
+};
+
+/**
+ * 选出当前可用 key（轮询 + inFlight 限制 + 熔断）
+ */
+const pickKey = (
+  pool: ApiKeyEntry[],
+  now: number,
+  keyMaxInFlight: number
+): ApiKeyEntry | null => {
+  if (pool.length === 0) return null;
+
+  for (let i = 0; i < pool.length; i++) {
+    const idx = (roundRobinCursor + i) % pool.length;
+    const candidate = pool[idx];
+    const state = getKeyState(candidate.id);
+    if (state.openedUntil > now) continue;
+    if (state.inFlight >= keyMaxInFlight) continue;
+    roundRobinCursor = (idx + 1) % pool.length;
+    return candidate;
+  }
+
+  // 半开探测：当所有 key 都在熔断窗口时，选最早恢复的 key 试探一次
+  let probeCandidate: ApiKeyEntry | null = null;
+  let earliestOpenUntil = Number.MAX_SAFE_INTEGER;
+  for (const candidate of pool) {
+    const state = getKeyState(candidate.id);
+    if (state.inFlight >= keyMaxInFlight) continue;
+    if (state.openedUntil < earliestOpenUntil) {
+      earliestOpenUntil = state.openedUntil;
+      probeCandidate = candidate;
+    }
+  }
+  if (probeCandidate) return probeCandidate;
+
+  return null;
+};
+
+/**
+ * 熔断失败计数
+ */
+const markKeyFailure = (
+  keyId: string,
+  threshold: number,
+  cooldownMs: number
+): void => {
+  const state = getKeyState(keyId);
+  state.failures += 1;
+  if (state.failures >= threshold) {
+    state.openedUntil = Date.now() + cooldownMs;
+    state.failures = 0;
+  }
+};
+
+/**
+ * 熔断成功恢复
+ */
+const markKeySuccess = (keyId: string): void => {
+  const state = getKeyState(keyId);
+  state.failures = 0;
+  state.openedUntil = 0;
+};
+
+/**
+ * 延迟函数
+ */
+const sleep = async (ms: number): Promise<void> =>
+  new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * 计算指数退避时间（含轻微随机抖动）
+ */
+const getRetryDelayMs = (attempt: number): number => {
+  const base = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+  const jitter = Math.floor(Math.random() * 200);
+  return base + jitter;
+};
+
+/**
+ * 判断上游错误是否可重试
+ */
+const isRetryableUpstreamStatus = (status: number): boolean =>
+  status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+
+/**
+ * 网关令牌桶 + 队列：获取一个上游请求配额
+ */
+const acquireGatewaySlot = async (
+  env: Env,
+  keyCount: number
+): Promise<{ granted: true; waitMs: number } | { granted: false; waitMs: number }> => {
+  const rpmLimit = getEnvInt(
+    env.GATEWAY_RPM_LIMIT,
+    Math.max(1, keyCount) * DEFAULT_PER_KEY_RPM
+  );
+  const maxWaitMs = getEnvInt(env.QUEUE_MAX_WAIT_MS, DEFAULT_QUEUE_MAX_WAIT_MS);
+  const pollIntervalMs = Math.max(
+    20,
+    getEnvInt(env.QUEUE_POLL_INTERVAL_MS, DEFAULT_QUEUE_POLL_INTERVAL_MS)
+  );
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt <= maxWaitMs) {
+    const minuteBucket = getMinuteBucket();
+    const bucketKey = `tb:${minuteBucket}`;
+    const current = Number.parseInt((await env.RATE_LIMITER.get(bucketKey)) || '0', 10) || 0;
+
+    if (current < rpmLimit) {
+      await env.RATE_LIMITER.put(bucketKey, String(current + 1), {
+        expirationTtl: 2 * 60,
+      });
+      return { granted: true, waitMs: Date.now() - startedAt };
+    }
+
+    await sleep(pollIntervalMs);
+  }
+
+  return { granted: false, waitMs: Date.now() - startedAt };
+};
+
+/**
+ * 统一调用 DeepSeek（多 Key 池化 + 拥塞重试 + 熔断）
+ */
+async function callDeepSeekWithPool(
+  env: Env,
+  payload: {
+    model?: string;
+    messages: Array<{ role: string; content: string }>;
+    stream: boolean;
+    temperature?: number;
+    max_tokens?: number;
+  }
+): Promise<Response> {
+  const keyPool = getApiKeyPool(env);
+  if (keyPool.length === 0) {
+    return new Response(JSON.stringify({ error: 'No upstream API key configured' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const maxRetries = getEnvInt(env.UPSTREAM_MAX_RETRIES, DEFAULT_UPSTREAM_MAX_RETRIES);
+  const breakerThreshold = getEnvInt(
+    env.CIRCUIT_BREAKER_THRESHOLD,
+    DEFAULT_CIRCUIT_BREAKER_THRESHOLD
+  );
+  const breakerCooldownMs = getEnvInt(
+    env.CIRCUIT_BREAKER_COOLDOWN_MS,
+    DEFAULT_CIRCUIT_BREAKER_COOLDOWN_MS
+  );
+  const keyMaxInFlight = Math.max(
+    1,
+    getEnvInt(env.KEY_MAX_INFLIGHT, DEFAULT_KEY_MAX_INFLIGHT)
+  );
+  const totalAttempts = Math.max(maxRetries + 1, keyPool.length);
+
+  let lastResponse: Response | null = null;
+
+  for (let attempt = 1; attempt <= totalAttempts; attempt++) {
+    const picked = pickKey(keyPool, Date.now(), keyMaxInFlight);
+    if (!picked) {
+      await sleep(80);
+      continue;
+    }
+
+    const state = getKeyState(picked.id);
+    state.inFlight += 1;
+
+    try {
+      void incrementSloMetric(env, 'upstream_call');
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${picked.value}`,
+        },
+        body: JSON.stringify({
+          model: payload.model || 'deepseek-chat',
+          messages: payload.messages,
+          max_tokens: payload.max_tokens || 2048,
+          temperature: payload.temperature ?? 0.7,
+          stream: payload.stream,
+        }),
+      });
+
+      if (response.ok) {
+        markKeySuccess(picked.id);
+        return response;
+      }
+
+      lastResponse = response;
+      if (response.status === 429) {
+        void incrementSloMetric(env, 'upstream_429');
+      }
+
+      markKeyFailure(picked.id, breakerThreshold, breakerCooldownMs);
+
+      if (attempt < totalAttempts) {
+        // key 权限类错误：直接切到其他 key
+        if (response.status === 401 || response.status === 403) {
+          continue;
+        }
+
+        // 可重试错误：退避重试
+        if (isRetryableUpstreamStatus(response.status)) {
+          const retryAfter = response.headers.get('Retry-After');
+          const retryDelay = retryAfter
+            ? Number.parseInt(retryAfter, 10) * 1000
+            : getRetryDelayMs(attempt);
+          await sleep(
+            Number.isFinite(retryDelay) && retryDelay > 0
+              ? retryDelay
+              : getRetryDelayMs(attempt)
+          );
+          continue;
+        }
+
+        // 其他错误：如果有多 key，尝试切换一次
+        if (keyPool.length > 1) {
+          continue;
+        }
+      }
+
+      return response;
+    } catch {
+      void incrementSloMetric(env, 'upstream_timeout');
+      markKeyFailure(picked.id, breakerThreshold, breakerCooldownMs);
+      if (attempt >= totalAttempts) {
+        return new Response(JSON.stringify({ error: 'Upstream request timeout' }), {
+          status: 504,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    } finally {
+      const latest = getKeyState(picked.id);
+      latest.inFlight = Math.max(0, latest.inFlight - 1);
+    }
+  }
+
+  return lastResponse
+    ? lastResponse
+    : new Response(JSON.stringify({ error: 'Upstream unavailable' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      });
+}
+
+/**
+ * 在上游成功后再持久化用量，减少并发拥塞场景的误扣
+ */
+async function persistUsage(
+  env: Env,
+  options: {
+    useFingerprint: boolean;
+    ipKey: string;
+    ipCount: number;
+    fpKey: string;
+    fpCount: number;
+  }
+): Promise<void> {
+  const putOps: Promise<void>[] = [];
+
+  if (!options.useFingerprint) {
+    putOps.push(
+      env.RATE_LIMITER.put(options.ipKey, String(options.ipCount + 1), {
+        expirationTtl: KV_TTL_SECONDS,
+      })
+    );
+  }
+
+  if (options.fpKey) {
+    putOps.push(
+      env.RATE_LIMITER.put(options.fpKey, String(options.fpCount + 1), {
+        expirationTtl: KV_TTL_SECONDS,
+      })
+    );
+  }
+
+  await Promise.all(putOps);
+}
+
+/**
+ * 拉取最近 N 分钟 SLO 指标
+ */
+const getRecentSloMetrics = async (
+  env: Env,
+  minutes: number
+): Promise<
+  Array<{
+    minute: string;
+    request_total: number;
+    request_success: number;
+    request_failed: number;
+    upstream_429: number;
+    upstream_timeout: number;
+    queue_timeout: number;
+    throughput_per_minute: number;
+    avg_queue_wait_ms: number;
+    rate_429: number;
+    rate_timeout: number;
+  }>
+> => {
+  const rows: Array<{
+    minute: string;
+    request_total: number;
+    request_success: number;
+    request_failed: number;
+    upstream_429: number;
+    upstream_timeout: number;
+    queue_timeout: number;
+    throughput_per_minute: number;
+    avg_queue_wait_ms: number;
+    rate_429: number;
+    rate_timeout: number;
+  }> = [];
+
+  for (let i = minutes - 1; i >= 0; i--) {
+    const minute = getMinuteBucket(Date.now() - i * 60 * 1000);
+    const values = await Promise.all(
+      SLO_METRIC_NAMES.map(metricName => readSloMetric(env, minute, metricName))
+    );
+    const data = Object.fromEntries(
+      SLO_METRIC_NAMES.map((metricName, idx) => [metricName, values[idx]])
+    ) as Record<SloMetricName, number>;
+    const requestTotal = data.request_total || 0;
+    const queueWaitCount = data.queue_wait_count || 0;
+    const queueWaitTotal = data.queue_wait_total_ms || 0;
+
+    rows.push({
+      minute,
+      request_total: requestTotal,
+      request_success: data.request_success || 0,
+      request_failed: data.request_failed || 0,
+      upstream_429: data.upstream_429 || 0,
+      upstream_timeout: data.upstream_timeout || 0,
+      queue_timeout: data.queue_timeout || 0,
+      throughput_per_minute: data.request_success || 0,
+      avg_queue_wait_ms: queueWaitCount > 0 ? queueWaitTotal / queueWaitCount : 0,
+      rate_429: requestTotal > 0 ? (data.upstream_429 || 0) / requestTotal : 0,
+      rate_timeout:
+        requestTotal > 0
+          ? ((data.upstream_timeout || 0) + (data.queue_timeout || 0)) / requestTotal
+          : 0,
+    });
+  }
+
+  return rows;
 };
 
 /**
@@ -115,6 +593,70 @@ export default {
       }
     }
 
+    // ---- GET /v1/slo — 查询最近 SLO 指标 ----
+    if (request.method === 'GET' && url.pathname === '/v1/slo') {
+      try {
+        const requested = Number.parseInt(url.searchParams.get('minutes') || '10', 10);
+        const minutes = Math.min(60, Math.max(1, Number.isFinite(requested) ? requested : 10));
+        const timeline = await getRecentSloMetrics(env, minutes);
+        const summary = timeline.reduce(
+          (acc, item) => {
+            acc.request_total += item.request_total;
+            acc.request_success += item.request_success;
+            acc.request_failed += item.request_failed;
+            acc.upstream_429 += item.upstream_429;
+            acc.upstream_timeout += item.upstream_timeout;
+            acc.queue_timeout += item.queue_timeout;
+            acc.throughput += item.throughput_per_minute;
+            acc.queue_wait_ms_weighted +=
+              item.avg_queue_wait_ms * Math.max(0, item.request_total - item.queue_timeout);
+            acc.queue_samples += Math.max(0, item.request_total - item.queue_timeout);
+            return acc;
+          },
+          {
+            request_total: 0,
+            request_success: 0,
+            request_failed: 0,
+            upstream_429: 0,
+            upstream_timeout: 0,
+            queue_timeout: 0,
+            throughput: 0,
+            queue_wait_ms_weighted: 0,
+            queue_samples: 0,
+          }
+        );
+
+        return new Response(
+          JSON.stringify({
+            window_minutes: minutes,
+            summary: {
+              ...summary,
+              avg_queue_wait_ms:
+                summary.queue_samples > 0
+                  ? summary.queue_wait_ms_weighted / summary.queue_samples
+                  : 0,
+              rate_429:
+                summary.request_total > 0
+                  ? summary.upstream_429 / summary.request_total
+                  : 0,
+              rate_timeout:
+                summary.request_total > 0
+                  ? (summary.upstream_timeout + summary.queue_timeout) /
+                    summary.request_total
+                  : 0,
+            },
+            timeline,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        return new Response(
+          JSON.stringify({ error: error instanceof Error ? error.message : 'Internal error' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     if (request.method !== 'POST') {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
         status: 405,
@@ -151,23 +693,7 @@ export default {
         );
       }
 
-      // ---- 递增计数（先扣后调，防止并发超发） ----
-      const putOps = [];
-
-      if (!useFingerprint) {
-        putOps.push(
-          env.RATE_LIMITER.put(ipKey, String(ipCount + 1), {
-            expirationTtl: KV_TTL_SECONDS,
-          })
-        );
-      }
-
-      if (fpKey) {
-        putOps.push(
-          env.RATE_LIMITER.put(fpKey, String(fpCount + 1), { expirationTtl: KV_TTL_SECONDS })
-        );
-      }
-      await Promise.all(putOps);
+      void incrementSloMetric(env, 'request_total');
 
       // ---- 解析请求 ----
       const body = (await request.json()) as {
@@ -179,28 +705,39 @@ export default {
       };
 
       const wantStream = body.stream === true;
-      const remaining = limit - effectiveCount - 1;
 
-      // ---- 调用 DeepSeek API ----
-      const apiResponse = await fetch(
-        'https://api.deepseek.com/v1/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${env.DEEPSEEK_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: body.model || 'deepseek-chat',
-            messages: body.messages,
-            max_tokens: body.max_tokens || 2048,
-            temperature: body.temperature ?? 0.7,
-            stream: wantStream,
+      // ---- 网关令牌桶 + 队列 ----
+      const keyPool = getApiKeyPool(env);
+      const slot = await acquireGatewaySlot(env, keyPool.length);
+      if (!slot.granted) {
+        void incrementSloMetric(env, 'queue_timeout');
+        void incrementSloMetric(env, 'request_failed');
+        return new Response(
+          JSON.stringify({
+            error: '系统繁忙，请稍后重试',
+            code: 'GATEWAY_BUSY',
+            queueWaitMs: slot.waitMs,
           }),
-        }
-      );
+          {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      void incrementSloMetric(env, 'queue_wait_total_ms', slot.waitMs);
+      void incrementSloMetric(env, 'queue_wait_count');
+
+      // ---- 调用 DeepSeek API（含拥塞重试） ----
+      const apiResponse = await callDeepSeekWithPool(env, {
+        model: body.model,
+        messages: body.messages,
+        max_tokens: body.max_tokens,
+        temperature: body.temperature,
+        stream: wantStream,
+      });
 
       if (!apiResponse.ok) {
+        void incrementSloMetric(env, 'request_failed');
         const errorText = await apiResponse.text();
         return new Response(
           JSON.stringify({ error: `API error: ${apiResponse.status}`, details: errorText }),
@@ -210,6 +747,18 @@ export default {
           }
         );
       }
+
+      // ---- 上游成功后再扣额度（避免拥塞失败误扣） ----
+      await persistUsage(env, {
+        useFingerprint,
+        ipKey,
+        ipCount,
+        fpKey,
+        fpCount,
+      });
+      void incrementSloMetric(env, 'request_success');
+
+      const remaining = Math.max(0, limit - effectiveCount - 1);
 
       // ---- 流式响应透传 ----
       if (wantStream) {
