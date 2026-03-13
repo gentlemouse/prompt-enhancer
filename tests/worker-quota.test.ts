@@ -314,4 +314,44 @@ describe('proxy worker quota identity', () => {
     expect(body.code).toBe('GATEWAY_BUSY');
     expect(kv.read('lifetime:pe_busy_user')).toBe('0');
   });
+
+  it('serves dashboard HTML for monitoring page', async () => {
+    const kv = new MockKVNamespace();
+    const response = await worker.fetch(
+      new Request('https://example.com/dashboard', { method: 'GET' }),
+      {
+        DEEPSEEK_API_KEY: 'test-key',
+        RATE_LIMITER: kv as unknown as KVNamespace,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toContain('text/html');
+    const html = await response.text();
+    expect(html).toContain('Lynx SLO Dashboard');
+    expect(html).toContain('/v1/slo?minutes=');
+  });
+
+  it('returns slo summary payload', async () => {
+    const kv = new MockKVNamespace();
+    const response = await worker.fetch(
+      new Request('https://example.com/v1/slo?minutes=1', { method: 'GET' }),
+      {
+        DEEPSEEK_API_KEY: 'test-key',
+        RATE_LIMITER: kv as unknown as KVNamespace,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      window_minutes: number;
+      summary: { request_total: number; rate_429: number; rate_timeout: number };
+      timeline: unknown[];
+    };
+    expect(body.window_minutes).toBe(1);
+    expect(typeof body.summary.request_total).toBe('number');
+    expect(typeof body.summary.rate_429).toBe('number');
+    expect(typeof body.summary.rate_timeout).toBe('number');
+    expect(Array.isArray(body.timeline)).toBe(true);
+  });
 });

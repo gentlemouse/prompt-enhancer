@@ -61,6 +61,233 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-FP',
 };
 
+/**
+ * 监控看板 HTML（极简版）
+ */
+const SLO_DASHBOARD_HTML = `<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lynx SLO Dashboard</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1220;
+        --card: #111a2c;
+        --ok: #22c55e;
+        --warn: #f59e0b;
+        --bad: #ef4444;
+        --text: #e5e7eb;
+        --sub: #94a3b8;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 20px auto;
+        padding: 0 16px;
+      }
+      h1 { margin: 0 0 12px; font-size: 22px; }
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      button {
+        border: 1px solid #334155;
+        background: #0f172a;
+        color: var(--text);
+        border-radius: 8px;
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+      button.active { border-color: #38bdf8; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 12px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid #1f2937;
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .label { color: var(--sub); font-size: 12px; margin-bottom: 6px; }
+      .value { font-size: 24px; font-weight: 700; }
+      .ok .value { color: var(--ok); }
+      .warn .value { color: var(--warn); }
+      .bad .value { color: var(--bad); }
+      .sub { color: var(--sub); font-size: 12px; margin-top: 6px; }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+        background: var(--card);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      th, td {
+        padding: 10px;
+        border-bottom: 1px solid #1f2937;
+        text-align: right;
+        font-size: 12px;
+      }
+      th:first-child, td:first-child { text-align: left; }
+      .hint { color: var(--sub); font-size: 12px; margin-top: 10px; }
+      .error { color: var(--bad); margin-top: 12px; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Lynx SLO Dashboard</h1>
+      <div class="toolbar">
+        <span>窗口：</span>
+        <button data-minutes="10" class="active">10 分钟</button>
+        <button data-minutes="30">30 分钟</button>
+        <button data-minutes="60">60 分钟</button>
+        <span id="refreshAt" class="hint"></span>
+      </div>
+
+      <div class="grid">
+        <div class="card" id="cardReq">
+          <div class="label">请求总量</div>
+          <div class="value" id="requestTotal">-</div>
+        </div>
+        <div class="card" id="cardTps">
+          <div class="label">平均吞吐（每分钟）</div>
+          <div class="value" id="throughput">-</div>
+        </div>
+        <div class="card" id="card429">
+          <div class="label">429 比率</div>
+          <div class="value" id="rate429">-</div>
+        </div>
+        <div class="card" id="cardTimeout">
+          <div class="label">超时比率</div>
+          <div class="value" id="rateTimeout">-</div>
+        </div>
+        <div class="card" id="cardQueue">
+          <div class="label">平均排队时长</div>
+          <div class="value" id="queueWait">-</div>
+        </div>
+        <div class="card" id="cardFail">
+          <div class="label">失败总量</div>
+          <div class="value" id="requestFailed">-</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>分钟</th>
+            <th>请求</th>
+            <th>成功</th>
+            <th>失败</th>
+            <th>429%</th>
+            <th>Timeout%</th>
+            <th>排队(ms)</th>
+            <th>吞吐</th>
+          </tr>
+        </thead>
+        <tbody id="timelineBody"></tbody>
+      </table>
+
+      <div class="hint">
+        阈值：429 &gt; 3% 红色；Timeout &gt; 2% 红色；平均排队时长 &gt; 2000ms 红色，&gt; 1200ms 黄色。
+      </div>
+      <div id="error" class="error"></div>
+    </div>
+
+    <script>
+      const state = { minutes: 10 };
+      const fmtPct = value => (value * 100).toFixed(2) + "%";
+      const fmtNum = value => Number(value || 0).toLocaleString("en-US");
+      const byId = id => document.getElementById(id);
+
+      function setCardLevel(cardId, level) {
+        const card = byId(cardId);
+        card.classList.remove("ok", "warn", "bad");
+        card.classList.add(level);
+      }
+
+      function levelByRate(rate, warn, bad) {
+        if (rate > bad) return "bad";
+        if (rate > warn) return "warn";
+        return "ok";
+      }
+
+      function levelByMs(ms, warn, bad) {
+        if (ms > bad) return "bad";
+        if (ms > warn) return "warn";
+        return "ok";
+      }
+
+      async function load() {
+        byId("error").textContent = "";
+        try {
+          const res = await fetch("/v1/slo?minutes=" + state.minutes);
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          const summary = data.summary || {};
+          const timeline = data.timeline || [];
+
+          byId("requestTotal").textContent = fmtNum(summary.request_total);
+          byId("requestFailed").textContent = fmtNum(summary.request_failed);
+          byId("throughput").textContent = (
+            (summary.throughput || 0) / Math.max(1, Number(data.window_minutes || 1))
+          ).toFixed(1);
+          byId("rate429").textContent = fmtPct(summary.rate_429 || 0);
+          byId("rateTimeout").textContent = fmtPct(summary.rate_timeout || 0);
+          byId("queueWait").textContent = Math.round(summary.avg_queue_wait_ms || 0) + " ms";
+
+          setCardLevel("cardReq", "ok");
+          setCardLevel("cardFail", summary.request_failed > 0 ? "warn" : "ok");
+          setCardLevel("cardTps", "ok");
+          setCardLevel("card429", levelByRate(summary.rate_429 || 0, 0.015, 0.03));
+          setCardLevel("cardTimeout", levelByRate(summary.rate_timeout || 0, 0.01, 0.02));
+          setCardLevel("cardQueue", levelByMs(summary.avg_queue_wait_ms || 0, 1200, 2000));
+
+          const body = byId("timelineBody");
+          body.innerHTML = timeline
+            .map(item => "<tr>" +
+              "<td>" + item.minute.slice(11,16) + "</td>" +
+              "<td>" + fmtNum(item.request_total) + "</td>" +
+              "<td>" + fmtNum(item.request_success) + "</td>" +
+              "<td>" + fmtNum(item.request_failed) + "</td>" +
+              "<td>" + fmtPct(item.rate_429 || 0) + "</td>" +
+              "<td>" + fmtPct(item.rate_timeout || 0) + "</td>" +
+              "<td>" + Math.round(item.avg_queue_wait_ms || 0) + "</td>" +
+              "<td>" + fmtNum(item.throughput_per_minute || 0) + "</td>" +
+              "</tr>")
+            .join("");
+
+          byId("refreshAt").textContent = "最后刷新: " + new Date().toLocaleTimeString();
+        } catch (error) {
+          byId("error").textContent = "加载失败: " + (error && error.message ? error.message : String(error));
+        }
+      }
+
+      document.querySelectorAll("button[data-minutes]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("button[data-minutes]").forEach(x => x.classList.remove("active"));
+          btn.classList.add("active");
+          state.minutes = Number(btn.dataset.minutes || "10");
+          load();
+        });
+      });
+
+      load();
+      setInterval(load, 10000);
+    </script>
+  </body>
+</html>`;
+
 const SLO_METRIC_NAMES = [
   'request_total',
   'request_success',
@@ -571,6 +798,19 @@ export default {
     }
 
     const url = new URL(request.url);
+
+    // ---- GET /dashboard - 运行状态看板 ----
+    if (
+      request.method === 'GET' &&
+      (url.pathname === '/dashboard' || url.pathname === '/')
+    ) {
+      return new Response(SLO_DASHBOARD_HTML, {
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
 
     // ---- GET /v1/quota — 查询剩余额度 ----
     if (request.method === 'GET' && url.pathname === '/v1/quota') {
