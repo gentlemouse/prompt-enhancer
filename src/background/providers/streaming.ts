@@ -6,6 +6,13 @@
 import type { PromptAnalysis } from '@shared/types';
 import { buildSystemPrompt, buildUserMessage } from '../prompt-builder';
 import { fetchWithTimeout } from '@shared/utils/retry';
+import {
+  buildOpenAICompatibleBody,
+  extractOpenAICompatibleContent,
+  MINIMAX_DOMESTIC_ENDPOINT,
+  MINIMAX_GLOBAL_ENDPOINT,
+  type OpenAICompatibleProvider,
+} from './openai';
 
 /** 流式回调函数类型 */
 export type StreamCallback = (
@@ -19,6 +26,7 @@ export interface StreamingOptions {
   model: string;
   analysis: PromptAnalysis;
   endpoint: string;
+  provider?: OpenAICompatibleProvider;
   onChunk: StreamCallback;
   onError: (error: Error) => void | Promise<void>;
   /** 附加请求头（代理模式用于传递设备指纹） */
@@ -72,7 +80,7 @@ const parseSSELine = (line: string): string | null => {
 const extractFromJSONResponse = (text: string): string | null => {
   try {
     const json = JSON.parse(text);
-    const content = json?.choices?.[0]?.message?.content;
+    const content = extractOpenAICompatibleContent(json);
     if (typeof content === 'string' && content.length > 0) {
       return content;
     }
@@ -94,6 +102,7 @@ export const streamOpenAI = async (
     model,
     analysis,
     endpoint,
+    provider,
     onChunk,
     onError,
     extraHeaders,
@@ -103,16 +112,14 @@ export const streamOpenAI = async (
   const userMessage = buildUserMessage(analysis.originalPrompt, analysis);
 
   try {
-    const response = await fetchWithTimeout(
-      endpoint,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-          ...extraHeaders,
-        },
-        body: JSON.stringify({
+    const requestBody = provider
+      ? buildOpenAICompatibleBody(provider, {
+          model,
+          systemPrompt,
+          userMessage,
+          stream: true,
+        })
+      : {
           model,
           messages: [
             { role: 'system', content: systemPrompt },
@@ -121,16 +128,58 @@ export const streamOpenAI = async (
           temperature: 0.5,
           max_tokens: 2000,
           stream: true,
-        }),
-      },
-      60000
-    );
+        };
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw errorTransformer
-        ? errorTransformer(response.status, errorText)
-        : new Error(errorText || `API 调用失败: ${response.status}`);
+    const endpointCandidates =
+      provider === 'minimax' && endpoint === MINIMAX_DOMESTIC_ENDPOINT
+        ? [MINIMAX_DOMESTIC_ENDPOINT, MINIMAX_GLOBAL_ENDPOINT]
+        : [endpoint];
+
+    let response: Response | null = null;
+    let responseError: Error | null = null;
+
+    for (const candidateEndpoint of endpointCandidates) {
+      const res = await fetchWithTimeout(
+        candidateEndpoint,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+            ...extraHeaders,
+          },
+          body: JSON.stringify(requestBody),
+        },
+        60000
+      );
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        const shouldFallback =
+          provider === 'minimax' &&
+          candidateEndpoint === MINIMAX_DOMESTIC_ENDPOINT &&
+          /invalid api key|authorized_error|2049/i.test(errorText);
+
+        if (shouldFallback) {
+          continue;
+        }
+
+        responseError = errorTransformer
+          ? errorTransformer(res.status, errorText)
+          : new Error(errorText || `API 调用失败: ${res.status}`);
+        break;
+      }
+
+      response = res;
+      break;
+    }
+
+    if (responseError) {
+      throw responseError;
+    }
+
+    if (!response) {
+      throw new Error('API 调用失败');
     }
 
     const contentType = response.headers.get('content-type') || '';

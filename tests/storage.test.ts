@@ -218,7 +218,7 @@ describe('storage', () => {
     localStorageState[STORAGE_KEYS.CONFIG] = {
       apiProvider: 'anthropic',
       encryptedApiKey: 'plain-text-key',
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-4-0',
       customEndpoint: '',
       customModel: '',
     };

@@ -115,7 +115,7 @@ export const getProviderAdapter = (
   customEndpoint?: string
 ): APIProviderAdapter => {
   if (provider === 'custom' && customEndpoint) {
-    return createOpenAIAdapter('Custom', customEndpoint);
+    return createOpenAIAdapter('openai', 'Custom', customEndpoint);
   }
 
   return adapters[provider as Exclude<APIProvider, 'custom'>] || openaiAdapter;
@@ -166,6 +166,10 @@ export const streamingCall = async (
   } else if (provider === 'proxy') {
     const fp = await getDeviceFingerprint();
     await streamOpenAI({
+      provider: provider as Exclude<
+        APIProvider,
+        'anthropic' | 'proxy' | 'custom'
+      >,
       apiKey,
       model,
       analysis,
@@ -177,6 +181,10 @@ export const streamingCall = async (
     });
   } else {
     await streamOpenAI({
+      provider: provider as Exclude<
+        APIProvider,
+        'anthropic' | 'proxy' | 'custom'
+      >,
       apiKey,
       model,
       analysis,

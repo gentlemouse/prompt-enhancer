@@ -66,17 +66,17 @@ async function testProxyEnhance(): Promise<boolean> {
 
 function printProviderConfigs(): void {
   const configs: Record<string, { model: string; endpoint: string }> = {
-    openai: { model: 'gpt-4o-mini', endpoint: 'https://api.openai.com/v1/chat/completions' },
-    anthropic: { model: 'claude-sonnet-4-6', endpoint: 'https://api.anthropic.com/v1/messages' },
+    openai: { model: 'gpt-5.2-chat-latest', endpoint: 'https://api.openai.com/v1/chat/completions' },
+    anthropic: { model: 'claude-sonnet-4-0', endpoint: 'https://api.anthropic.com/v1/messages' },
     deepseek: { model: 'deepseek-chat', endpoint: 'https://api.deepseek.com/v1/chat/completions' },
     gemini: {
-      model: 'gemini-3.1-flash',
+      model: 'gemini-2.5-flash',
       endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
     },
-    kimi: { model: 'kimi-k2.5', endpoint: 'https://api.moonshot.ai/v1/chat/completions' },
-    minimax: { model: 'abab7-chat', endpoint: 'https://api.minimax.io/v1/text/chatcompletion_v2' },
-    qwen: { model: 'qwen-plus-latest', endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions' },
-    zhipu: { model: 'glm-4-flash', endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions' },
+    kimi: { model: 'moonshot-v1-auto', endpoint: 'https://api.moonshot.cn/v1/chat/completions' },
+    minimax: { model: 'MiniMax-M2.5', endpoint: 'https://api.minimaxi.com/v1/chat/completions' },
+    qwen: { model: 'qwen3-max', endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions' },
+    zhipu: { model: 'glm-5', endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions' },
   };
   console.log('\n--- Provider configs ---');
   for (const [p, cfg] of Object.entries(configs)) {
