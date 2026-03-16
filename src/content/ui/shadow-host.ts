@@ -6,6 +6,9 @@
 
 import { getStyles } from './styles';
 
+/** Shadow Host DOM id */
+export const SHADOW_HOST_ID = 'prompt-enhancer-shadow-host';
+
 /** Shadow Host 实例 */
 let shadowHost: HTMLElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
@@ -32,7 +35,7 @@ export const onShadowHostRebuild = (cb: RebuildCallback): (() => void) => {
 const createShadowHost = (): { host: HTMLElement; root: ShadowRoot } => {
   // 创建宿主元素
   const host = document.createElement('div');
-  host.id = 'prompt-enhancer-shadow-host';
+  host.id = SHADOW_HOST_ID;
   host.style.cssText = `
     position: fixed;
     top: 0;
@@ -140,4 +143,3 @@ export const cleanupShadowHost = (): void => {
   shadowHost = null;
   shadowRoot = null;
 };
-

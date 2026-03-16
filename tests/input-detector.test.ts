@@ -8,6 +8,7 @@ const {
   isAIChatSite,
   shouldAcceptContentEditableForNonAISite,
   shouldFallbackToEventTargetAfterNativeFocus,
+  shouldIgnoreDetectorEvent,
 } = await import('@content/services/input-detector');
 
 describe('input-detector isAIChatSite', () => {
@@ -113,6 +114,35 @@ describe('shouldFallbackToEventTargetAfterNativeFocus', () => {
         isAISite: true,
         focusedTagName: 'INPUT',
         eventTargetMatchesFocused: true,
+      })
+    ).toBe(false);
+  });
+});
+
+describe('shouldIgnoreDetectorEvent', () => {
+  it('ignores clicks retargeted to the enhancer shadow host', () => {
+    expect(
+      shouldIgnoreDetectorEvent({
+        eventTargetId: 'prompt-enhancer-shadow-host',
+        composedPathIds: ['prompt-enhancer-shadow-host'],
+      })
+    ).toBe(true);
+  });
+
+  it('ignores events when the composed path contains the enhancer host', () => {
+    expect(
+      shouldIgnoreDetectorEvent({
+        eventTargetId: 'prompt-textarea',
+        composedPathIds: ['prompt-textarea', 'prompt-enhancer-shadow-host'],
+      })
+    ).toBe(true);
+  });
+
+  it('keeps normal page events eligible for input detection', () => {
+    expect(
+      shouldIgnoreDetectorEvent({
+        eventTargetId: 'prompt-textarea',
+        composedPathIds: ['prompt-textarea', 'composer'],
       })
     ).toBe(false);
   });

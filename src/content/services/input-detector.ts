@@ -18,6 +18,8 @@
  */
 
 import { AI_CHAT_DOMAINS } from '@shared/constants';
+import { SHADOW_HOST_ID } from '../ui/shadow-host';
+import { getSiteInputAdapter } from './site-adapters';
 
 /** 可编辑元素类型 */
 export type EditableElement =
@@ -150,6 +152,12 @@ export interface NativeFocusFallbackSignals {
   eventTargetMatchesFocused: boolean;
 }
 
+/** 输入框检测事件忽略信号 */
+export interface DetectorEventIgnoreSignals {
+  eventTargetId: string | null;
+  composedPathIds: Array<string | null>;
+}
+
 /**
  * 判断元素是否可见
  */
@@ -192,6 +200,42 @@ const getEventElement = (e: Event): Element | null => {
     }
   }
   return e.target instanceof Element ? e.target : null;
+};
+
+/**
+ * 判断事件是否来自扩展自身 UI。
+ * 若来自 enhancer，则不应再参与宿主页面输入框检测。
+ */
+export const shouldIgnoreDetectorEvent = (
+  signals: DetectorEventIgnoreSignals
+): boolean => {
+  if (signals.eventTargetId === SHADOW_HOST_ID) return true;
+  return signals.composedPathIds.includes(SHADOW_HOST_ID);
+};
+
+/**
+ * 从真实事件提取"是否应忽略"所需信号。
+ */
+const extractDetectorEventIgnoreSignals = (
+  e: Event
+): DetectorEventIgnoreSignals => {
+  const eventTarget = getEventElement(e);
+  const composedPathIds: Array<string | null> = [];
+
+  if (typeof e.composedPath === 'function') {
+    for (const node of e.composedPath()) {
+      if (node instanceof Element) {
+        composedPathIds.push(node.id || null);
+      } else if (node instanceof ShadowRoot) {
+        composedPathIds.push(node.host.id || null);
+      }
+    }
+  }
+
+  return {
+    eventTargetId: eventTarget?.id || null,
+    composedPathIds,
+  };
 };
 
 /**
@@ -566,6 +610,11 @@ const isValidTextInput = (el: HTMLInputElement): boolean => {
 export const isValidInput = (el: Element | null): el is EditableElement => {
   if (!el) return false;
 
+  const siteAdapter = getSiteInputAdapter(el);
+  if (siteAdapter) {
+    return siteAdapter.isValidElement(el);
+  }
+
   const tag = el.tagName;
 
   if (tag === 'TEXTAREA') {
@@ -603,6 +652,11 @@ export const findEditableElement = (
     current !== document.body &&
     current !== document.documentElement
   ) {
+    const siteAdapter = getSiteInputAdapter(current);
+    if (siteAdapter && siteAdapter.isValidElement(current)) {
+      return current as EditableElement;
+    }
+
     // textarea：直接验证
     if (current.tagName === 'TEXTAREA') {
       return isValidTextarea(current as HTMLTextAreaElement)
@@ -640,6 +694,11 @@ export const findEditableElement = (
  * @param el 输入框元素
  */
 export const getInputValue = (el: EditableElement): string => {
+  const siteAdapter = getSiteInputAdapter(el);
+  if (siteAdapter) {
+    return siteAdapter.readValue(el);
+  }
+
   if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
     return (el as HTMLTextAreaElement | HTMLInputElement).value;
   }
@@ -656,6 +715,11 @@ export const setInputValueDirect = (
   el: EditableElement,
   value: string
 ): void => {
+  const siteAdapter = getSiteInputAdapter(el);
+  if (siteAdapter?.writeValue(el, value, 'direct')) {
+    return;
+  }
+
   if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
     const input = el as HTMLTextAreaElement | HTMLInputElement;
     const proto =
@@ -703,6 +767,11 @@ export const setInputValueDirect = (
  * @param value 要设置的值
  */
 export const setInputValue = (el: EditableElement, value: string): void => {
+  const siteAdapter = getSiteInputAdapter(el);
+  if (siteAdapter?.writeValue(el, value, 'replace')) {
+    return;
+  }
+
   if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
     const input = el as HTMLTextAreaElement | HTMLInputElement;
     input.focus();
@@ -750,6 +819,8 @@ export const createInputDetector = (
 
   /** 处理焦点获取 */
   const handleFocusIn = (e: FocusEvent): void => {
+    if (shouldIgnoreDetectorEvent(extractDetectorEventIgnoreSignals(e))) return;
+
     const target = findEditableElement(getEventElement(e));
     if (target) {
       activeInput = target;
@@ -770,6 +841,8 @@ export const createInputDetector = (
 
   /** 处理点击（补充 focusin 的不足） */
   const handleClick = (e: MouseEvent): void => {
+    if (shouldIgnoreDetectorEvent(extractDetectorEventIgnoreSignals(e))) return;
+
     const eventTarget = getEventElement(e);
     const focused = getDeepActiveElement();
     if (focused) {
@@ -813,6 +886,8 @@ export const createInputDetector = (
 
   /** 处理输入事件（捕获新出现的输入框） */
   const handleInput = (e: Event): void => {
+    if (shouldIgnoreDetectorEvent(extractDetectorEventIgnoreSignals(e))) return;
+
     const target = findEditableElement(getEventElement(e));
     if (target && target !== activeInput) {
       activeInput = target;
