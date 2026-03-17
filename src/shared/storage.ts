@@ -73,6 +73,7 @@ export const getStorageConfig = async (): Promise<{
   customEndpoint: string;
   customModel: string;
   anthropicWarningAcknowledged?: boolean;
+  anthropicRelayEnabled?: boolean;
 } | null> => {
   // 先尝试迁移旧数据（仅首次）
   await migrateLegacyStorage();
@@ -98,6 +99,10 @@ export const getStorageConfig = async (): Promise<{
     customEndpoint: config.customEndpoint,
     customModel: config.customModel,
     anthropicWarningAcknowledged: config.anthropicWarningAcknowledged,
+    anthropicRelayEnabled:
+      config.anthropicRelayEnabled === undefined
+        ? true
+        : config.anthropicRelayEnabled,
   };
 
   return isByokConfigured(runtimeConfig) ? runtimeConfig : null;
@@ -114,6 +119,7 @@ export const saveStorageConfig = async (config: {
   customEndpoint: string;
   customModel: string;
   anthropicWarningAcknowledged?: boolean;
+  anthropicRelayEnabled?: boolean;
 }): Promise<void> => {
   const storageConfig: StorageConfig = {
     apiProvider: config.apiProvider,
@@ -122,6 +128,10 @@ export const saveStorageConfig = async (config: {
     customEndpoint: config.customEndpoint,
     customModel: config.customModel,
     anthropicWarningAcknowledged: config.anthropicWarningAcknowledged,
+    anthropicRelayEnabled:
+      config.anthropicRelayEnabled === undefined
+        ? true
+        : config.anthropicRelayEnabled,
   };
 
   await chrome.storage.local.set({ [STORAGE_KEYS.CONFIG]: storageConfig });

@@ -7,8 +7,25 @@ compatibility_date = "2024-12-01"
 binding = "RATE_LIMITER"
 id = "84f01a690bc24a018b6d6d27f3051106"
 
+[[durable_objects.bindings]]
+name = "QUOTA_COORDINATOR"
+class_name = "QuotaIdentityCoordinator"
+
+[[durable_objects.bindings]]
+name = "GATEWAY_COORDINATOR"
+class_name = "GatewayCoordinator"
+
+[[migrations]]
+tag = "v2-stable-operable"
+new_classes = ["QuotaIdentityCoordinator", "GatewayCoordinator"]
+
 [vars]
 LIFETIME_LIMIT = "10"
+SESSION_TTL_SECONDS = "300"
+SESSION_ISSUE_RPM_LIMIT = "12"
+ALLOW_DEV_EXTENSION_ORIGIN = "true"
+# 生产环境请设置为正式扩展 origin，多个值用逗号分隔
+# ALLOWED_EXTENSION_ORIGINS = "chrome-extension://your-extension-id"
 # 多 key 池化（逗号分隔），第一期建议先放 10 个 key
 # 注意：包含敏感信息，建议优先用 wrangler secret put 方式维护
 # DEEPSEEK_API_KEYS = "sk-key1,sk-key2,...,sk-key10"
@@ -22,3 +39,4 @@ KEY_MAX_INFLIGHT = "6"
 
 # Secret: DEEPSEEK_API_KEY (set via wrangler secret put)
 # Secret: DEEPSEEK_API_KEYS (optional, recommended for pool mode)
+# Secret: SESSION_SIGNING_SECRET (required for free-session auth)

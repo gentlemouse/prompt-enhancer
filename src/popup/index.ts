@@ -7,6 +7,7 @@ import type { APIProvider, APIProviderConfig, TrialState } from '@shared/types';
 import { getStorageConfig, saveStorageConfig } from '@shared/storage';
 import { getTrialData } from '@shared/trial';
 import { isByokConfigured } from '@shared/mode';
+import { normalizeAnthropicModel } from '@shared/provider-models';
 import { validateEndpoint, validateApiKey } from '@shared/utils/validation';
 import { API_PROVIDERS } from '@shared/constants';
 import { t, applyI18n } from '@shared/i18n';
@@ -48,6 +49,9 @@ const anthropicWarning = document.getElementById(
 ) as HTMLElement;
 const anthropicAck = document.getElementById(
   'anthropicAck'
+) as HTMLInputElement;
+const anthropicRelayEnabled = document.getElementById(
+  'anthropicRelayEnabled'
 ) as HTMLInputElement;
 const endpointHint = document.getElementById('endpointHint') as HTMLElement;
 const shortcutEnhance = document.getElementById(
@@ -104,7 +108,13 @@ const toggleCustomEndpoint = (provider: APIProvider): void => {
 
   // P0-1.3: 显示/隐藏 Anthropic 警告
   if (provider === 'anthropic') {
-    anthropicWarning.style.display = 'block';
+    anthropicWarning.style.display = 'flex';
+    const directWarning = document.getElementById('anthropicDirectWarning');
+    if (directWarning) {
+      directWarning.style.display = anthropicRelayEnabled.checked
+        ? 'none'
+        : 'flex';
+    }
   } else {
     anthropicWarning.style.display = 'none';
   }
@@ -158,7 +168,10 @@ const loadSettings = async (): Promise<void> => {
     }
 
     if (config?.model) {
-      modelSelect.value = config.model;
+      modelSelect.value =
+        config.apiProvider === 'anthropic'
+          ? normalizeAnthropicModel(config.model)
+          : config.model;
     }
 
     if (config?.apiKey) {
@@ -175,6 +188,14 @@ const loadSettings = async (): Promise<void> => {
 
     if (config?.anthropicWarningAcknowledged) {
       anthropicAck.checked = true;
+    }
+
+    anthropicRelayEnabled.checked = config?.anthropicRelayEnabled ?? true;
+    const directWarning = document.getElementById('anthropicDirectWarning');
+    if (directWarning) {
+      directWarning.style.display = anthropicRelayEnabled.checked
+        ? 'none'
+        : 'flex';
     }
 
     const source = pageParams.get('source');
@@ -221,8 +242,10 @@ const saveSettings = async (): Promise<void> => {
   }
 
   if (apiProvider === 'anthropic' && !anthropicAck.checked) {
-    showStatus(t('statusConfirmAnthropic'), 'error');
-    return;
+    if (!anthropicRelayEnabled.checked) {
+      showStatus(t('statusConfirmAnthropic'), 'error');
+      return;
+    }
   }
 
   // 自定义提供商使用自定义模型名
@@ -237,7 +260,11 @@ const saveSettings = async (): Promise<void> => {
       customEndpoint: apiProvider === 'custom' ? customEndpoint : '',
       customModel: apiProvider === 'custom' ? customModel : '',
       anthropicWarningAcknowledged:
-        apiProvider === 'anthropic' ? anthropicAck.checked : undefined,
+        apiProvider === 'anthropic' && !anthropicRelayEnabled.checked
+          ? anthropicAck.checked
+          : undefined,
+      anthropicRelayEnabled:
+        apiProvider === 'anthropic' ? anthropicRelayEnabled.checked : undefined,
     });
     showStatus(t('statusSaved'), 'success');
   } catch (error) {
@@ -270,6 +297,18 @@ providerSelect.addEventListener('change', e => {
   const provider = (e.target as HTMLSelectElement).value as APIProvider;
   updateModelList(provider);
   toggleCustomEndpoint(provider);
+});
+
+anthropicRelayEnabled.addEventListener('change', () => {
+  const directWarning = document.getElementById('anthropicDirectWarning');
+  if (directWarning) {
+    directWarning.style.display = anthropicRelayEnabled.checked
+      ? 'none'
+      : 'flex';
+  }
+  if (anthropicRelayEnabled.checked) {
+    anthropicAck.checked = false; // Reset ack when relay is enabled
+  }
 });
 
 // P0-1.4: 实时验证 Endpoint
@@ -427,6 +466,7 @@ const injectCurrentTabContentScript = async (): Promise<void> => {
  */
 const initialize = async (): Promise<void> => {
   applyI18n();
+  document.title = t('extName');
   updateShortcutDisplay();
   await injectCurrentTabContentScript();
 

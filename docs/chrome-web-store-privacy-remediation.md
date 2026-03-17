@@ -13,7 +13,7 @@ Paste the following text into the Chrome Web Store privacy form.
 ### Single purpose
 
 ```text
-Lynx is a prompt enhancement extension. When the user explicitly triggers enhancement, it reads the current prompt or selected text, analyzes it, and rewrites it into a clearer and more effective prompt for use on AI chat platforms. In free mode, the prompt is sent to the Lynx proxy service to generate the enhanced result and enforce trial limits. In BYOK mode, the prompt is sent directly to the AI provider or custom endpoint chosen by the user. That is the extension's single purpose.
+Lynx is a prompt enhancement extension. When the user explicitly triggers enhancement, it reads the current prompt or selected text, analyzes it, and rewrites it into a clearer and more effective prompt for use on AI chat platforms. In free mode, the prompt is sent to the Lynx proxy service through a protected short-lived session to generate the enhanced result and enforce trial limits. In BYOK mode, the prompt is sent directly to the AI provider or custom endpoint chosen by the user, except Anthropic relay mode which is enabled by default and can be turned off manually. That is the extension's single purpose.
 ```
 
 ### Why `storage` is required
@@ -93,9 +93,9 @@ When the user explicitly triggers enhancement, the extension reads prompt text, 
 
 The privacy policy and the dashboard selections must stay consistent with the current implementation:
 
-- free mode uses the Lynx proxy service;
-- BYOK mode sends prompt text directly to the selected AI provider or custom endpoint;
-- API keys are stored locally and are not sent to Lynx servers in BYOK mode;
+- free mode uses the Lynx proxy service through a protected session;
+- BYOK mode sends prompt text directly to the selected AI provider or custom endpoint, except Anthropic relay mode which is enabled by default;
+- API keys are stored locally and are not sent to Lynx servers in BYOK mode, except Anthropic relay forwards the key only for the current request;
 - free-trial counters and the random device fingerprint may be stored in both `chrome.storage.local` and `chrome.storage.sync`;
 - local anonymous statistics are stored locally and can be disabled.
 
@@ -110,9 +110,9 @@ I have updated the extension and its privacy disclosures to address the Purple N
 
 What I changed:
 1. I rewrote the privacy policy so it now explicitly describes data collection, processing, storage, retention, and sharing.
-2. I clearly disclosed that, in free mode, prompt text is sent to the Lynx proxy service for prompt enhancement and quota enforcement.
-3. I clearly disclosed that, in BYOK mode, prompt text is sent directly to the AI provider or custom endpoint selected by the user.
-4. I disclosed that API keys are stored locally in encrypted form and are not sent to Lynx servers in BYOK mode.
+2. I clearly disclosed that, in free mode, prompt text is sent to the Lynx proxy service through a protected session for prompt enhancement and quota enforcement.
+3. I clearly disclosed that, in BYOK mode, prompt text is sent directly to the AI provider or custom endpoint selected by the user, except Anthropic relay mode which is enabled by default.
+4. I disclosed that API keys are stored locally in encrypted form and are not sent to Lynx servers in BYOK mode, except Anthropic relay forwards the key only for the current request and does not intentionally persist it.
 5. I disclosed that free-trial counters and a random device fingerprint may be stored in chrome.storage.local and chrome.storage.sync for quota management.
 6. I disclosed local anonymous usage statistics and the user opt-out behavior.
 7. I updated the Chrome Web Store privacy form so it matches the extension's current behavior.

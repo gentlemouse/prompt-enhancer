@@ -45,7 +45,7 @@ export const showTrialExpiredPrompt = (
   prompt.setAttribute('role', 'alert');
 
   prompt.innerHTML = `
-    <button class="prompt-enhancer-trial-expired-close" aria-label="Close">×</button>
+    <button class="prompt-enhancer-trial-expired-close" aria-label="${t('previewClose')}">×</button>
     <div class="prompt-enhancer-trial-expired-icon">${isFreeQuotaExhausted ? '⚠️' : '🔒'}</div>
     <div class="prompt-enhancer-trial-expired-title">${t(
       isFreeQuotaExhausted ? 'freeQuotaExhaustedTitle' : 'trialExpired'

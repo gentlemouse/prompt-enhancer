@@ -8,8 +8,8 @@ Lynx (灵犀) is a browser extension that rewrites or improves text prompts for 
 
 The extension works in two different modes:
 
-- **Free mode**: your prompt is sent to the Lynx proxy service to generate the enhanced result and enforce free-trial limits.
-- **Bring Your Own Key (BYOK) mode**: your prompt is sent directly to the AI provider or custom endpoint that you configure.
+- **Free mode**: your prompt is sent to the Lynx proxy service through a short-lived protected session to generate the enhanced result and enforce free-trial limits.
+- **Bring Your Own Key (BYOK) mode**: your prompt is sent directly to the AI provider or custom endpoint that you configure, except Anthropic relay mode which is enabled by default and can be turned off manually.
 
 If you enter personal data, confidential business information, or other sensitive content into a prompt, that content may be processed according to the mode you use.
 
@@ -34,6 +34,7 @@ The extension stores the following settings on your device:
 - custom API endpoint and custom model, if you configure them;
 - encrypted API key;
 - onboarding and warning acknowledgment flags.
+- Anthropic relay preference.
 
 ### C. Free-trial and anti-abuse data
 
@@ -111,7 +112,8 @@ If you use the built-in free mode, the extension sends the following data to the
 
 - your prompt text and generated system instructions needed to create the enhanced prompt;
 - selected model and request parameters;
-- random device fingerprint in the `X-Device-FP` request header for quota enforcement.
+- random device fingerprint in the `X-Device-FP` request header for quota enforcement;
+- extension-origin metadata and a short-lived proxy session token used to protect the free mode endpoints.
 
 The extension may also send the random device fingerprint to the Lynx quota endpoint to check or sync remaining free-trial usage.
 
@@ -129,7 +131,7 @@ If you configure your own API key, the extension sends your prompt text and requ
 - Zhipu GLM;
 - a custom OpenAI-compatible endpoint that you configure.
 
-In BYOK mode, the extension does not send your API key to the Lynx proxy service. Your API key is sent only to the provider or endpoint you chose in order to authenticate your request.
+In BYOK mode, the extension does not send your API key to the Lynx proxy service, except when Anthropic relay mode is enabled. In Anthropic relay mode, your Anthropic API key is forwarded only for that request and is not intentionally stored in Lynx persistent storage.
 
 ### C. What we do not share
 

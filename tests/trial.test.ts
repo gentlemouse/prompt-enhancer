@@ -36,6 +36,37 @@ const { getTrialRemaining, isTrialExpired, syncQuotaFromServer, getTrialData } =
   await import('@shared/trial');
 
 describe('trial quota sync', () => {
+  const mockSessionAndQuota = (quota: {
+    limit: number;
+    used: number;
+    remaining: number;
+  }): void => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/v1/session')) {
+        return new Response(
+          JSON.stringify({
+            token: 'test-free-session',
+            expiresAt: Date.now() + 60_000,
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      if (url.endsWith('/v1/quota')) {
+        return new Response(JSON.stringify(quota), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      throw new Error(`Unexpected fetch url: ${url}`);
+    });
+  };
+
   beforeEach(() => {
     for (const key of Object.keys(localStorageState)) {
       delete localStorageState[key];
@@ -55,12 +86,7 @@ describe('trial quota sync', () => {
   });
 
   it('adopts a higher server usage count when syncing quota', async () => {
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ limit: 10, used: 6, remaining: 4 }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
+    mockSessionAndQuota({ limit: 10, used: 6, remaining: 4 });
 
     await syncQuotaFromServer();
 
@@ -77,12 +103,7 @@ describe('trial quota sync', () => {
       usageTimestamps: [],
     };
 
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ limit: 5, used: 1, remaining: 4 }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
+    mockSessionAndQuota({ limit: 5, used: 1, remaining: 4 });
 
     await syncQuotaFromServer();
 

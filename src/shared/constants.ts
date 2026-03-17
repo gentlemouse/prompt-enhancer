@@ -37,13 +37,8 @@ export const API_PROVIDERS: Record<APIProvider, APIProviderConfig> = {
   anthropic: {
     name: 'Anthropic',
     endpoint: 'https://api.anthropic.com/v1/messages',
-    defaultModel: 'claude-sonnet-4-0',
-    models: [
-      'claude-opus-4-1',
-      'claude-opus-4-0',
-      'claude-sonnet-4-0',
-      'claude-3-5-haiku-latest',
-    ],
+    defaultModel: 'claude-sonnet-4-6',
+    models: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
     // P0-1.3: 安全警告
     securityWarning:
       '注意：Anthropic API 在浏览器中直接调用需要启用特殊访问模式，' +
@@ -441,6 +436,7 @@ export const RETRY_CONFIG = {
 export const STORAGE_KEYS = {
   CONFIG: 'prompt_enhancer_config',
   TRIAL_DATA: 'prompt_enhancer_trial',
+  FREE_SESSION: 'prompt_enhancer_free_session',
   LEGACY_API_KEY: 'apiKey',
   LEGACY_PROVIDER: 'apiProvider',
   LEGACY_MODEL: 'model',

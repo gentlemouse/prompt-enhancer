@@ -139,8 +139,26 @@ export const analyzePrompt = (prompt: string): PromptAnalysis => {
   const length = prompt.length;
 
   // --- 语言检测 ---
-  const isChinese = /[\u4e00-\u9fa5]/.test(prompt);
-  const language = isChinese ? 'zh' : 'en';
+  const chineseCharCount = (prompt.match(/[\u4e00-\u9fa5]/g) || []).length;
+  const englishWordCount = (prompt.match(/\b[a-z]{2,}(?:'[a-z]+)?\b/gi) || [])
+    .length;
+  const firstLanguageToken = prompt.match(/[\u4e00-\u9fa5]+|[a-z]+/i)?.[0];
+
+  let language: 'zh' | 'en';
+  if (chineseCharCount === 0) {
+    language = 'en';
+  } else if (englishWordCount === 0) {
+    language = 'zh';
+  } else if (chineseCharCount > englishWordCount * 3) {
+    language = 'zh';
+  } else if (englishWordCount > chineseCharCount * 3) {
+    language = 'en';
+  } else {
+    language =
+      firstLanguageToken && /[\u4e00-\u9fa5]/.test(firstLanguageToken)
+        ? 'zh'
+        : 'en';
+  }
 
   // --- 任务类型检测 ---
   let detectedType: TaskType = TaskType.CHAT;

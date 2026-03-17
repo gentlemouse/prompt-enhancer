@@ -28,6 +28,16 @@ describe('analyzePrompt', () => {
       const result = analyzePrompt('帮我写一个 Python script');
       expect(result.language).toBe('zh');
     });
+
+    it('英文主导的中英混合输入应识别为英文', () => {
+      const result = analyzePrompt('Please help me rewrite 这封邮件');
+      expect(result.language).toBe('en');
+    });
+
+    it('中文起始且未明显被英文压倒时应保持中文', () => {
+      const result = analyzePrompt('请 explain this code');
+      expect(result.language).toBe('zh');
+    });
   });
 
   describe('任务类型检测', () => {

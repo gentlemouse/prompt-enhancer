@@ -10,7 +10,7 @@
  */
 
 import { STORAGE_KEYS, TRIAL_MAX_USES, API_PROVIDERS } from './constants';
-import { getDeviceFingerprint } from './fingerprint';
+import { fetchWithFreeSession } from './free-session';
 
 /** 试用状态枚举 */
 export type TrialState = 'TRIAL_ACTIVE' | 'TRIAL_EXPIRED' | 'API_CONFIGURED';
@@ -139,18 +139,13 @@ export const syncQuotaFromServer = async (): Promise<void> => {
   try {
     const proxyEndpoint = API_PROVIDERS.proxy.endpoint;
     const quotaUrl = proxyEndpoint.replace('/v1/enhance', '/v1/quota');
-
-    const fp = await getDeviceFingerprint();
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-    const response = await fetch(quotaUrl, {
-      method: 'GET',
-      headers: { 'X-Device-FP': fp },
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    const response = await fetchWithFreeSession(
+      quotaUrl,
+      {
+        method: 'GET',
+      },
+      5000
+    );
 
     if (!response.ok) return;
 

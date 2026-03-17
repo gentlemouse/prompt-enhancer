@@ -3,7 +3,7 @@
  *
  * 功能：
  * - 为免费用户代理 AI API 调用（无需自备 API Key）
- * - IP hash + 设备指纹双重终身限额控制
+ * - 基于 session + 设备指纹的免费额度控制
  * - 流式/非流式响应透传
  * - CORS 支持 Chrome 扩展调用
  *
@@ -18,6 +18,12 @@ interface Env {
   DEEPSEEK_API_KEY: string;
   DEEPSEEK_API_KEYS?: string;
   LIFETIME_LIMIT?: string;
+  SESSION_SIGNING_SECRET?: string;
+  ALLOWED_EXTENSION_ORIGINS?: string;
+  ALLOW_DEV_EXTENSION_ORIGIN?: string;
+  SESSION_TTL_SECONDS?: string;
+  SESSION_ISSUE_RPM_LIMIT?: string;
+  OPS_DASHBOARD_TOKEN?: string;
   GATEWAY_RPM_LIMIT?: string;
   UPSTREAM_MAX_RETRIES?: string;
   QUEUE_MAX_WAIT_MS?: string;
@@ -26,6 +32,8 @@ interface Env {
   CIRCUIT_BREAKER_COOLDOWN_MS?: string;
   KEY_MAX_INFLIGHT?: string;
   RATE_LIMITER: KVNamespace;
+  QUOTA_COORDINATOR: DurableObjectNamespaceLike;
+  GATEWAY_COORDINATOR: DurableObjectNamespaceLike;
 }
 
 const DEFAULT_LIFETIME_LIMIT = 10;
@@ -37,18 +45,12 @@ const DEFAULT_QUEUE_POLL_INTERVAL_MS = 120;
 const DEFAULT_CIRCUIT_BREAKER_THRESHOLD = 3;
 const DEFAULT_CIRCUIT_BREAKER_COOLDOWN_MS = 30000;
 const DEFAULT_KEY_MAX_INFLIGHT = 8;
+const DEFAULT_SESSION_TTL_SECONDS = 5 * 60;
+const DEFAULT_SESSION_ISSUE_RPM_LIMIT = 12;
+const OPS_COOKIE_NAME = 'lynx_ops_session';
 
 /** KV 过期时间：180 天（足够长，定期清理不活跃用户） */
 const KV_TTL_SECONDS = 180 * 24 * 60 * 60;
-
-/** 将 IP 哈希为匿名标识 */
-async function hashIP(ip: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(ip + '-prompt-enhancer-salt');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-}
 
 /** 生成终身限额 KV key */
 function getLimitKey(identifier: string): string {
@@ -58,7 +60,269 @@ function getLimitKey(identifier: string): string {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-FP',
+  'Access-Control-Allow-Headers':
+    'Content-Type, Authorization, X-Device-FP, X-Extension-Origin',
+};
+
+interface SessionPayload {
+  sid: string;
+  fpHash: string;
+  issuedAt: number;
+  expiresAt: number;
+  origin: string;
+}
+
+interface DurableObjectStubLike {
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+}
+
+interface DurableObjectNamespaceLike {
+  idFromName(name: string): unknown;
+  get(id: unknown): DurableObjectStubLike;
+}
+
+interface DurableObjectStateLike {
+  storage: {
+    get<T = unknown>(key: string): Promise<T | undefined>;
+    put<T = unknown>(key: string, value: T): Promise<void>;
+  };
+}
+
+const SESSION_SIGNATURE_PREFIX = 'v1';
+
+const encoder = new TextEncoder();
+
+const hashIdentifier = async (
+  value: string,
+  salt: string
+): Promise<string> => {
+  const data = encoder.encode(value + salt);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+const base64UrlEncode = (value: string): string =>
+  btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+
+const base64UrlDecode = (value: string): string => {
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+  return atob(padded);
+};
+
+const createHmacSignature = async (
+  secret: string,
+  message: string
+): Promise<string> => {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(message)
+  );
+  return Array.from(new Uint8Array(signature))
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
+};
+
+const parseAllowedOrigins = (env: Env): Set<string> =>
+  new Set(
+    (env.ALLOWED_EXTENSION_ORIGINS || '')
+      .split(',')
+      .map(origin => origin.trim())
+      .filter(Boolean)
+  );
+
+const resolveExtensionOrigin = async (request: Request): Promise<string> => {
+  const headerOrigin =
+    request.headers.get('X-Extension-Origin') || request.headers.get('Origin');
+  if (headerOrigin) {
+    return headerOrigin;
+  }
+
+  try {
+    const body = (await request.clone().json()) as { origin?: string };
+    return body.origin || '';
+  } catch {
+    return '';
+  }
+};
+
+const isAllowedExtensionOrigin = (origin: string, env: Env): boolean => {
+  if (!origin) return false;
+
+  const allowedOrigins = parseAllowedOrigins(env);
+  if (allowedOrigins.has(origin)) {
+    return true;
+  }
+
+  return (
+    env.ALLOW_DEV_EXTENSION_ORIGIN === 'true' &&
+    origin.startsWith('chrome-extension://')
+  );
+};
+
+const getSessionSecret = (env: Env): string | null =>
+  env.SESSION_SIGNING_SECRET?.trim() || null;
+
+const buildSessionToken = async (
+  env: Env,
+  payload: SessionPayload
+): Promise<string> => {
+  const secret = getSessionSecret(env);
+  if (!secret) {
+    throw new Error('SESSION_SIGNING_SECRET is not configured');
+  }
+
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  const message = `${SESSION_SIGNATURE_PREFIX}.${encodedPayload}`;
+  const signature = await createHmacSignature(secret, message);
+  return `${SESSION_SIGNATURE_PREFIX}.${encodedPayload}.${signature}`;
+};
+
+const readBearerToken = (request: Request): string | null => {
+  const authorization = request.headers.get('Authorization') || '';
+  const prefix = 'Bearer ';
+  return authorization.startsWith(prefix)
+    ? authorization.slice(prefix.length).trim()
+    : null;
+};
+
+const verifySessionToken = async (
+  env: Env,
+  token: string
+): Promise<SessionPayload | null> => {
+  const secret = getSessionSecret(env);
+  if (!secret) return null;
+
+  const [version, encodedPayload, signature] = token.split('.');
+  if (
+    version !== SESSION_SIGNATURE_PREFIX ||
+    !encodedPayload ||
+    !signature
+  ) {
+    return null;
+  }
+
+  const message = `${version}.${encodedPayload}`;
+  const expectedSignature = await createHmacSignature(secret, message);
+  if (expectedSignature !== signature) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(base64UrlDecode(encodedPayload)) as SessionPayload;
+    if (
+      !payload.sid ||
+      !payload.fpHash ||
+      !payload.origin ||
+      !payload.issuedAt ||
+      !payload.expiresAt
+    ) {
+      return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+};
+
+const unauthorizedResponse = (message: string): Response =>
+  new Response(JSON.stringify({ error: message }), {
+    status: 401,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
+const jsonResponse = (
+  payload: unknown,
+  status: number = 200,
+  extraHeaders: Record<string, string> = {}
+): Response =>
+  new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/json',
+      ...extraHeaders,
+    },
+  });
+
+const readCookie = (request: Request, name: string): string | null => {
+  const cookieHeader = request.headers.get('Cookie') || '';
+  const cookies = cookieHeader.split(';').map(item => item.trim());
+  for (const cookie of cookies) {
+    const [key, ...rest] = cookie.split('=');
+    if (key === name) {
+      return rest.join('=');
+    }
+  }
+  return null;
+};
+
+const isOpsAuthorized = (request: Request, env: Env): boolean => {
+  const expected = env.OPS_DASHBOARD_TOKEN?.trim();
+  if (!expected) return false;
+  return readCookie(request, OPS_COOKIE_NAME) === expected;
+};
+
+const unauthorizedOpsResponse = (): Response =>
+  new Response('Unauthorized', {
+    status: 401,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  });
+
+const validateFreeSession = async (
+  request: Request,
+  env: Env
+): Promise<{ ok: true; payload: SessionPayload } | { ok: false; response: Response }> => {
+  const token = readBearerToken(request);
+  if (!token) {
+    return {
+      ok: false,
+      response: unauthorizedResponse('Missing free session token'),
+    };
+  }
+
+  const payload = await verifySessionToken(env, token);
+  if (!payload) {
+    return {
+      ok: false,
+      response: unauthorizedResponse('Invalid free session token'),
+    };
+  }
+
+  if (payload.expiresAt <= Date.now()) {
+    return {
+      ok: false,
+      response: unauthorizedResponse('Free session token expired'),
+    };
+  }
+
+  const origin = await resolveExtensionOrigin(request);
+  if (origin !== payload.origin || !isAllowedExtensionOrigin(origin, env)) {
+    return {
+      ok: false,
+      response: unauthorizedResponse('Extension origin is not authorized'),
+    };
+  }
+
+  const deviceFP = request.headers.get('X-Device-FP') || '';
+  const fpHash = await hashIdentifier(deviceFP, '-prompt-enhancer-session-salt');
+  if (!deviceFP || fpHash !== payload.fpHash) {
+    return {
+      ok: false,
+      response: unauthorizedResponse('Device fingerprint does not match session'),
+    };
+  }
+
+  return { ok: true, payload };
 };
 
 /**
@@ -649,40 +913,6 @@ async function callDeepSeekWithPool(
 }
 
 /**
- * 在上游成功后再持久化用量，减少并发拥塞场景的误扣
- */
-async function persistUsage(
-  env: Env,
-  options: {
-    useFingerprint: boolean;
-    ipKey: string;
-    ipCount: number;
-    fpKey: string;
-    fpCount: number;
-  }
-): Promise<void> {
-  const putOps: Promise<void>[] = [];
-
-  if (!options.useFingerprint) {
-    putOps.push(
-      env.RATE_LIMITER.put(options.ipKey, String(options.ipCount + 1), {
-        expirationTtl: KV_TTL_SECONDS,
-      })
-    );
-  }
-
-  if (options.fpKey) {
-    putOps.push(
-      env.RATE_LIMITER.put(options.fpKey, String(options.fpCount + 1), {
-        expirationTtl: KV_TTL_SECONDS,
-      })
-    );
-  }
-
-  await Promise.all(putOps);
-}
-
-/**
  * 拉取最近 N 分钟 SLO 指标
  */
 const getRecentSloMetrics = async (
@@ -750,45 +980,378 @@ const getRecentSloMetrics = async (
   return rows;
 };
 
-/**
- * 获取某个身份标识的已用额度。
- *
- * 有合法设备指纹时，以设备指纹为主身份，避免同一 IP 下其他用户
- * 的历史消耗直接封死新安装用户。IP 仅作为无指纹请求的兜底限额。
- */
-async function getEffectiveCount(
+const getQuotaCoordinatorStub = (
   env: Env,
-  clientIP: string,
-  deviceFP: string
-): Promise<{
-  ipCount: number;
-  fpCount: number;
-  effectiveCount: number;
-  ipKey: string;
-  fpKey: string;
-  useFingerprint: boolean;
-}> {
-  const ipHash = await hashIP(clientIP);
-  const ipKey = getLimitKey(ipHash);
-  const ipCount = parseInt((await env.RATE_LIMITER.get(ipKey)) || '0', 10);
+  identifier: string
+): DurableObjectStubLike => {
+  const id = env.QUOTA_COORDINATOR.idFromName(identifier);
+  return env.QUOTA_COORDINATOR.get(id);
+};
 
-  let fpCount = 0;
-  let fpKey = '';
-  if (deviceFP && deviceFP.startsWith('pe_')) {
-    fpKey = getLimitKey(deviceFP);
-    fpCount = parseInt((await env.RATE_LIMITER.get(fpKey)) || '0', 10);
+const getGatewayCoordinatorStub = (env: Env): DurableObjectStubLike => {
+  const id = env.GATEWAY_COORDINATOR.idFromName('global-gateway');
+  return env.GATEWAY_COORDINATOR.get(id);
+};
+
+export class QuotaIdentityCoordinator {
+  private static readonly RESERVATIONS_KEY = 'quota:reservations';
+  private static readonly RESERVATION_TTL_MS = 2 * 60 * 1000;
+
+  constructor(
+    private readonly state: DurableObjectStateLike,
+    private readonly env: Env
+  ) {}
+
+  private async readSessionIssueCount(minuteBucket: string): Promise<number> {
+    return (
+      (await this.state.storage.get<number>(`session:${minuteBucket}`)) || 0
+    );
   }
 
-  const useFingerprint = Boolean(fpKey);
+  private async readReservations(): Promise<Record<string, number>> {
+    return (
+      (await this.state.storage.get<Record<string, number>>(
+        QuotaIdentityCoordinator.RESERVATIONS_KEY
+      )) || {}
+    );
+  }
 
-  return {
-    ipCount,
-    fpCount,
-    effectiveCount: useFingerprint ? fpCount : ipCount,
-    ipKey,
-    fpKey,
-    useFingerprint,
-  };
+  private async getActiveReservations(): Promise<Record<string, number>> {
+    const now = Date.now();
+    const reservations = await this.readReservations();
+    const activeEntries = Object.entries(reservations).filter(
+      ([, timestamp]) =>
+        now - timestamp <= QuotaIdentityCoordinator.RESERVATION_TTL_MS
+    );
+    const activeReservations = Object.fromEntries(activeEntries);
+
+    if (activeEntries.length !== Object.keys(reservations).length) {
+      await this.state.storage.put(
+        QuotaIdentityCoordinator.RESERVATIONS_KEY,
+        activeReservations
+      );
+    }
+
+    return activeReservations;
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const body = (await request.json()) as {
+      identifier: string;
+      limit: number;
+      issueRpmLimit?: number;
+      reservationId?: string;
+    };
+
+    const usageKey = getLimitKey(body.identifier);
+    const currentUsed =
+      Number.parseInt((await this.env.RATE_LIMITER.get(usageKey)) || '0', 10) ||
+      0;
+    const limit = body.limit || DEFAULT_LIFETIME_LIMIT;
+    const activeReservations = await this.getActiveReservations();
+    const pendingCount = Object.keys(activeReservations).length;
+    const effectiveUsed = currentUsed + pendingCount;
+
+    if (url.pathname === '/session') {
+      const minuteBucket = getMinuteBucket();
+      const currentSessionCount =
+        await this.readSessionIssueCount(minuteBucket);
+      const issueRpmLimit =
+        body.issueRpmLimit || DEFAULT_SESSION_ISSUE_RPM_LIMIT;
+
+      if (currentSessionCount >= issueRpmLimit) {
+        return new Response(
+          JSON.stringify({ error: 'Too many session issues', code: 'SESSION_RATE_LIMITED' }),
+          {
+            status: 429,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      await this.state.storage.put(
+        `session:${minuteBucket}`,
+        currentSessionCount + 1
+      );
+
+      return new Response(JSON.stringify({ granted: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (url.pathname === '/quota') {
+      return new Response(
+        JSON.stringify({
+          used: effectiveUsed,
+          committedUsed: currentUsed,
+          pending: pendingCount,
+          remaining: Math.max(0, limit - effectiveUsed),
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    if (url.pathname === '/reserve') {
+      if (effectiveUsed >= limit) {
+        return new Response(
+          JSON.stringify({
+            error: 'Free quota exhausted',
+            used: effectiveUsed,
+            remaining: 0,
+          }),
+          {
+            status: 429,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      const reservationId = crypto.randomUUID();
+      const nextReservations = {
+        ...activeReservations,
+        [reservationId]: Date.now(),
+      };
+      await this.state.storage.put(
+        QuotaIdentityCoordinator.RESERVATIONS_KEY,
+        nextReservations
+      );
+
+      return new Response(
+        JSON.stringify({
+          reservationId,
+          used: currentUsed + Object.keys(nextReservations).length,
+          remaining: Math.max(
+            0,
+            limit - (currentUsed + Object.keys(nextReservations).length)
+          ),
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    if (url.pathname === '/commit') {
+      if (!body.reservationId || !activeReservations[body.reservationId]) {
+        return new Response(
+          JSON.stringify({ error: 'Reservation not found' }),
+          {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      delete activeReservations[body.reservationId];
+      await this.state.storage.put(
+        QuotaIdentityCoordinator.RESERVATIONS_KEY,
+        activeReservations
+      );
+
+      const nextUsed = Math.min(limit, currentUsed + 1);
+      await this.env.RATE_LIMITER.put(usageKey, String(nextUsed), {
+        expirationTtl: KV_TTL_SECONDS,
+      });
+
+      return new Response(
+        JSON.stringify({
+          used: nextUsed + Object.keys(activeReservations).length,
+          committedUsed: nextUsed,
+          pending: Object.keys(activeReservations).length,
+          remaining: Math.max(
+            0,
+            limit - (nextUsed + Object.keys(activeReservations).length)
+          ),
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    if (url.pathname === '/release') {
+      if (body.reservationId && activeReservations[body.reservationId]) {
+        delete activeReservations[body.reservationId];
+        await this.state.storage.put(
+          QuotaIdentityCoordinator.RESERVATIONS_KEY,
+          activeReservations
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          used: currentUsed + Object.keys(activeReservations).length,
+          committedUsed: currentUsed,
+          pending: Object.keys(activeReservations).length,
+          remaining: Math.max(
+            0,
+            limit - (currentUsed + Object.keys(activeReservations).length)
+          ),
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    return new Response(JSON.stringify({ error: 'Not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+export class GatewayCoordinator {
+  constructor(
+    private readonly state: DurableObjectStateLike,
+    private readonly env: Env
+  ) {
+    void this.state;
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+
+    if (request.method === 'GET' && url.pathname === '/slo') {
+      const requested = Number.parseInt(url.searchParams.get('minutes') || '10', 10);
+      const minutes = Math.min(60, Math.max(1, Number.isFinite(requested) ? requested : 10));
+      const timeline = await getRecentSloMetrics(this.env, minutes);
+      const summary = timeline.reduce(
+        (acc, item) => {
+          acc.request_total += item.request_total;
+          acc.request_success += item.request_success;
+          acc.request_failed += item.request_failed;
+          acc.upstream_429 += item.upstream_429;
+          acc.upstream_timeout += item.upstream_timeout;
+          acc.queue_timeout += item.queue_timeout;
+          acc.throughput += item.throughput_per_minute;
+          acc.queue_wait_ms_weighted +=
+            item.avg_queue_wait_ms * Math.max(0, item.request_total - item.queue_timeout);
+          acc.queue_samples += Math.max(0, item.request_total - item.queue_timeout);
+          return acc;
+        },
+        {
+          request_total: 0,
+          request_success: 0,
+          request_failed: 0,
+          upstream_429: 0,
+          upstream_timeout: 0,
+          queue_timeout: 0,
+          throughput: 0,
+          queue_wait_ms_weighted: 0,
+          queue_samples: 0,
+        }
+      );
+
+      return new Response(
+        JSON.stringify({
+          window_minutes: minutes,
+          summary: {
+            ...summary,
+            avg_queue_wait_ms:
+              summary.queue_samples > 0
+                ? summary.queue_wait_ms_weighted / summary.queue_samples
+                : 0,
+            rate_429:
+              summary.request_total > 0
+                ? summary.upstream_429 / summary.request_total
+                : 0,
+            rate_timeout:
+              summary.request_total > 0
+                ? (summary.upstream_timeout + summary.queue_timeout) /
+                  summary.request_total
+                : 0,
+          },
+          timeline,
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    if (request.method !== 'POST' || url.pathname !== '/enhance') {
+      return new Response(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = (await request.json()) as {
+      model?: string;
+      messages: Array<{ role: string; content: string }>;
+      stream?: boolean;
+      temperature?: number;
+      max_tokens?: number;
+    };
+    const wantStream = body.stream === true;
+
+    void incrementSloMetric(this.env, 'request_total');
+
+    const keyPool = getApiKeyPool(this.env);
+    const slot = await acquireGatewaySlot(this.env, keyPool.length);
+    if (!slot.granted) {
+      void incrementSloMetric(this.env, 'queue_timeout');
+      void incrementSloMetric(this.env, 'request_failed');
+      return new Response(
+        JSON.stringify({
+          error: '系统繁忙，请稍后重试',
+          code: 'GATEWAY_BUSY',
+          queueWaitMs: slot.waitMs,
+        }),
+        {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    void incrementSloMetric(this.env, 'queue_wait_total_ms', slot.waitMs);
+    void incrementSloMetric(this.env, 'queue_wait_count');
+
+    const upstreamResponse = await callDeepSeekWithPool(this.env, {
+      model: body.model,
+      messages: body.messages,
+      max_tokens: body.max_tokens,
+      temperature: body.temperature,
+      stream: wantStream,
+    });
+
+    if (!upstreamResponse.ok) {
+      void incrementSloMetric(this.env, 'request_failed');
+      const errorText = await upstreamResponse.text();
+      return new Response(
+        JSON.stringify({
+          error: `API error: ${upstreamResponse.status}`,
+          details: errorText,
+        }),
+        {
+          status: upstreamResponse.status,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    void incrementSloMetric(this.env, 'request_success');
+
+    if (wantStream) {
+      return new Response(upstreamResponse.body, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        },
+      });
+    }
+
+    const result = await upstreamResponse.json();
+    return new Response(JSON.stringify(result), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 }
 
 export default {
@@ -804,6 +1367,26 @@ export default {
       request.method === 'GET' &&
       (url.pathname === '/dashboard' || url.pathname === '/')
     ) {
+      const dashboardToken = env.OPS_DASHBOARD_TOKEN?.trim();
+      if (!dashboardToken) {
+        return unauthorizedOpsResponse();
+      }
+
+      const queryToken = url.searchParams.get('token');
+      if (queryToken === dashboardToken) {
+        return new Response(SLO_DASHBOARD_HTML, {
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-store',
+            'Set-Cookie': `${OPS_COOKIE_NAME}=${dashboardToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=3600`,
+          },
+        });
+      }
+
+      if (!isOpsAuthorized(request, env)) {
+        return unauthorizedOpsResponse();
+      }
+
       return new Response(SLO_DASHBOARD_HTML, {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
@@ -815,20 +1398,134 @@ export default {
     // ---- GET /v1/quota — 查询剩余额度 ----
     if (request.method === 'GET' && url.pathname === '/v1/quota') {
       try {
-        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const authResult = await validateFreeSession(request, env);
+        if (!authResult.ok) {
+          return authResult.response;
+        }
+
         const deviceFP = request.headers.get('X-Device-FP') || '';
         const limit = parseInt(env.LIFETIME_LIMIT || '', 10) || DEFAULT_LIFETIME_LIMIT;
-        const { effectiveCount } = await getEffectiveCount(env, clientIP, deviceFP);
-        const remaining = Math.max(0, limit - effectiveCount);
+        const quotaResponse = await getQuotaCoordinatorStub(env, deviceFP).fetch(
+          new Request('https://quota.internal/quota', {
+            method: 'POST',
+            body: JSON.stringify({
+              identifier: deviceFP,
+              limit,
+            }),
+          })
+        );
+        const quota = (await quotaResponse.json()) as {
+          used: number;
+          remaining: number;
+        };
 
         return new Response(
-          JSON.stringify({ limit, used: effectiveCount, remaining }),
+          JSON.stringify({
+            limit,
+            used: quota.used,
+            remaining: quota.remaining,
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } catch (error) {
         return new Response(
           JSON.stringify({ error: error instanceof Error ? error.message : 'Internal error' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // ---- POST /v1/session — 签发免费模式会话 ----
+    if (request.method === 'POST' && url.pathname === '/v1/session') {
+      try {
+        const secret = getSessionSecret(env);
+        if (!secret) {
+          return new Response(
+            JSON.stringify({ error: 'SESSION_SIGNING_SECRET is not configured' }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
+          );
+        }
+
+        const origin = await resolveExtensionOrigin(request);
+        if (!isAllowedExtensionOrigin(origin, env)) {
+          return new Response(
+            JSON.stringify({ error: 'Extension origin is not allowed' }),
+            {
+              status: 403,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
+          );
+        }
+
+        const deviceFP = request.headers.get('X-Device-FP') || '';
+        if (!deviceFP || !deviceFP.startsWith('pe_')) {
+          return new Response(
+            JSON.stringify({ error: 'Valid device fingerprint is required' }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
+          );
+        }
+
+        const now = Date.now();
+        const ttlSeconds =
+          getEnvInt(env.SESSION_TTL_SECONDS, DEFAULT_SESSION_TTL_SECONDS);
+        const issueGate = await getQuotaCoordinatorStub(env, deviceFP).fetch(
+          new Request('https://quota.internal/session', {
+            method: 'POST',
+            body: JSON.stringify({
+              identifier: deviceFP,
+              limit:
+                parseInt(env.LIFETIME_LIMIT || '', 10) || DEFAULT_LIFETIME_LIMIT,
+              issueRpmLimit: getEnvInt(
+                env.SESSION_ISSUE_RPM_LIMIT,
+                DEFAULT_SESSION_ISSUE_RPM_LIMIT
+              ),
+            }),
+          })
+        );
+        if (!issueGate.ok) {
+          const errorPayload = await issueGate.text();
+          return new Response(errorPayload, {
+            status: issueGate.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const payload: SessionPayload = {
+          sid: crypto.randomUUID(),
+          fpHash: await hashIdentifier(
+            deviceFP,
+            '-prompt-enhancer-session-salt'
+          ),
+          issuedAt: now,
+          expiresAt: now + ttlSeconds * 1000,
+          origin,
+        };
+        const token = await buildSessionToken(env, payload);
+
+        return new Response(
+          JSON.stringify({
+            token,
+            expiresAt: payload.expiresAt,
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      } catch (error) {
+        return new Response(
+          JSON.stringify({
+            error: error instanceof Error ? error.message : 'Internal error',
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
         );
       }
     }
@@ -836,59 +1533,21 @@ export default {
     // ---- GET /v1/slo — 查询最近 SLO 指标 ----
     if (request.method === 'GET' && url.pathname === '/v1/slo') {
       try {
-        const requested = Number.parseInt(url.searchParams.get('minutes') || '10', 10);
-        const minutes = Math.min(60, Math.max(1, Number.isFinite(requested) ? requested : 10));
-        const timeline = await getRecentSloMetrics(env, minutes);
-        const summary = timeline.reduce(
-          (acc, item) => {
-            acc.request_total += item.request_total;
-            acc.request_success += item.request_success;
-            acc.request_failed += item.request_failed;
-            acc.upstream_429 += item.upstream_429;
-            acc.upstream_timeout += item.upstream_timeout;
-            acc.queue_timeout += item.queue_timeout;
-            acc.throughput += item.throughput_per_minute;
-            acc.queue_wait_ms_weighted +=
-              item.avg_queue_wait_ms * Math.max(0, item.request_total - item.queue_timeout);
-            acc.queue_samples += Math.max(0, item.request_total - item.queue_timeout);
-            return acc;
-          },
-          {
-            request_total: 0,
-            request_success: 0,
-            request_failed: 0,
-            upstream_429: 0,
-            upstream_timeout: 0,
-            queue_timeout: 0,
-            throughput: 0,
-            queue_wait_ms_weighted: 0,
-            queue_samples: 0,
-          }
-        );
+        if (!isOpsAuthorized(request, env)) {
+          return unauthorizedOpsResponse();
+        }
 
-        return new Response(
-          JSON.stringify({
-            window_minutes: minutes,
-            summary: {
-              ...summary,
-              avg_queue_wait_ms:
-                summary.queue_samples > 0
-                  ? summary.queue_wait_ms_weighted / summary.queue_samples
-                  : 0,
-              rate_429:
-                summary.request_total > 0
-                  ? summary.upstream_429 / summary.request_total
-                  : 0,
-              rate_timeout:
-                summary.request_total > 0
-                  ? (summary.upstream_timeout + summary.queue_timeout) /
-                    summary.request_total
-                  : 0,
-            },
-            timeline,
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        const sloResponse = await getGatewayCoordinatorStub(env).fetch(
+          new Request(
+            `https://gateway.internal/slo?minutes=${url.searchParams.get('minutes') || '10'}`,
+            { method: 'GET' }
+          )
         );
+        const payload = await sloResponse.text();
+        return new Response(payload, {
+          status: sloResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       } catch (error) {
         return new Response(
           JSON.stringify({ error: error instanceof Error ? error.message : 'Internal error' }),
@@ -897,43 +1556,97 @@ export default {
       }
     }
 
+    if (
+      request.method === 'POST' &&
+      url.pathname === '/v1/byok/anthropic/messages'
+    ) {
+      try {
+        const apiKey = request.headers.get('X-Anthropic-Key') || '';
+        if (!apiKey.trim()) {
+          return jsonResponse({ error: 'Missing Anthropic API key' }, 400);
+        }
+
+        const body = (await request.json()) as {
+          model: string;
+          max_tokens: number;
+          temperature?: number;
+          system: string;
+          messages: Array<{ role: string; content: string }>;
+        };
+
+        const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify(body),
+        });
+
+        const responseText = await upstream.text();
+        return new Response(responseText, {
+          status: upstream.status,
+          headers: {
+            ...corsHeaders,
+            'Content-Type':
+              upstream.headers.get('Content-Type') || 'application/json',
+          },
+        });
+      } catch (error) {
+        return jsonResponse(
+          { error: error instanceof Error ? error.message : 'Internal error' },
+          500
+        );
+      }
+    }
+
     if (request.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-        status: 405,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Method not allowed' }, 405);
     }
 
     if (url.pathname !== '/v1/enhance') {
-      return new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Not found' }, 404);
     }
 
     try {
+      const authResult = await validateFreeSession(request, env);
+      if (!authResult.ok) {
+        return authResult.response;
+      }
+
       // ---- 终身限额检查 ----
-      const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
       const deviceFP = request.headers.get('X-Device-FP') || '';
       const limit = parseInt(env.LIFETIME_LIMIT || '', 10) || DEFAULT_LIFETIME_LIMIT;
-      const { ipCount, fpCount, effectiveCount, ipKey, fpKey, useFingerprint } =
-        await getEffectiveCount(env, clientIP, deviceFP);
+      const quotaStub = getQuotaCoordinatorStub(env, deviceFP);
+      const reservationResponse = await quotaStub.fetch(
+        new Request('https://quota.internal/reserve', {
+          method: 'POST',
+          body: JSON.stringify({
+            identifier: deviceFP,
+            limit,
+          }),
+        })
+      );
+      const reservationPayload = (await reservationResponse.json()) as {
+        used: number;
+        remaining: number;
+        reservationId?: string;
+      };
 
-      if (effectiveCount >= limit) {
+      if (!reservationResponse.ok || !reservationPayload.reservationId) {
         return new Response(
           JSON.stringify({
             error: '免费额度已用完，请配置自己的 API Key 解锁无限使用',
             limit,
-            used: effectiveCount,
+            used: reservationPayload.used,
           }),
           {
-            status: 429,
+            status: reservationResponse.status || 429,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
       }
-
-      void incrementSloMetric(env, 'request_total');
 
       // ---- 解析请求 ----
       const body = (await request.json()) as {
@@ -946,41 +1659,44 @@ export default {
 
       const wantStream = body.stream === true;
 
-      // ---- 网关令牌桶 + 队列 ----
-      const keyPool = getApiKeyPool(env);
-      const slot = await acquireGatewaySlot(env, keyPool.length);
-      if (!slot.granted) {
-        void incrementSloMetric(env, 'queue_timeout');
-        void incrementSloMetric(env, 'request_failed');
-        return new Response(
-          JSON.stringify({
-            error: '系统繁忙，请稍后重试',
-            code: 'GATEWAY_BUSY',
-            queueWaitMs: slot.waitMs,
+      const apiResponse = await getGatewayCoordinatorStub(env).fetch(
+        new Request('https://gateway.internal/enhance', {
+          method: 'POST',
+          body: JSON.stringify({
+            model: body.model,
+            messages: body.messages,
+            max_tokens: body.max_tokens,
+            temperature: body.temperature,
+            stream: wantStream,
           }),
-          {
-            status: 503,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      }
-      void incrementSloMetric(env, 'queue_wait_total_ms', slot.waitMs);
-      void incrementSloMetric(env, 'queue_wait_count');
-
-      // ---- 调用 DeepSeek API（含拥塞重试） ----
-      const apiResponse = await callDeepSeekWithPool(env, {
-        model: body.model,
-        messages: body.messages,
-        max_tokens: body.max_tokens,
-        temperature: body.temperature,
-        stream: wantStream,
-      });
+        })
+      );
 
       if (!apiResponse.ok) {
-        void incrementSloMetric(env, 'request_failed');
+        await quotaStub.fetch(
+          new Request('https://quota.internal/release', {
+            method: 'POST',
+            body: JSON.stringify({
+              identifier: deviceFP,
+              limit,
+              reservationId: reservationPayload.reservationId,
+            }),
+          })
+        );
         const errorText = await apiResponse.text();
+        let errorPayload: string;
+
+        try {
+          errorPayload = JSON.stringify(JSON.parse(errorText));
+        } catch {
+          errorPayload = JSON.stringify({
+            error: `API error: ${apiResponse.status}`,
+            details: errorText,
+          });
+        }
+
         return new Response(
-          JSON.stringify({ error: `API error: ${apiResponse.status}`, details: errorText }),
+          errorPayload,
           {
             status: apiResponse.status,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -988,17 +1704,21 @@ export default {
         );
       }
 
-      // ---- 上游成功后再扣额度（避免拥塞失败误扣） ----
-      await persistUsage(env, {
-        useFingerprint,
-        ipKey,
-        ipCount,
-        fpKey,
-        fpCount,
-      });
-      void incrementSloMetric(env, 'request_success');
-
-      const remaining = Math.max(0, limit - effectiveCount - 1);
+      const consumeResponse = await quotaStub.fetch(
+        new Request('https://quota.internal/commit', {
+          method: 'POST',
+          body: JSON.stringify({
+            identifier: deviceFP,
+            limit,
+            reservationId: reservationPayload.reservationId,
+          }),
+        })
+      );
+      const consumePayload = (await consumeResponse.json()) as {
+        used: number;
+        remaining: number;
+      };
+      const remaining = consumePayload.remaining;
 
       // ---- 流式响应透传 ----
       if (wantStream) {

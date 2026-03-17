@@ -97,6 +97,8 @@ export interface StorageConfig {
   customModel: string;
   /** 用户是否已确认 Anthropic 安全警告 */
   anthropicWarningAcknowledged?: boolean;
+  /** Anthropic 是否优先走 Lynx relay */
+  anthropicRelayEnabled?: boolean;
 }
 
 /** 旧版存储配置（用于迁移） */

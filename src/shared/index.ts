@@ -10,6 +10,8 @@ export * from './constants';
 
 // 存储服务导出
 export * from './storage';
+export * from './free-session';
+export * from './provider-models';
 
 // 工具函数导出
 export * from './utils/crypto';

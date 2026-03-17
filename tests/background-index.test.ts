@@ -40,6 +40,15 @@ const contextMenusCreateMock = vi.fn();
 const runtimeGetManifestMock = vi.fn();
 const storageLocalGetMock = vi.fn();
 const storageLocalSetMock = vi.fn();
+const i18nMessages: Record<string, string> = {
+  contextMenuEnhance: 'Enhance Prompt',
+  errorMissingPrompt: 'Missing prompt parameter',
+  errorMissingTabId: 'Cannot get tab ID',
+  errorMissingRequestTabId: 'Missing tab ID parameter',
+  errorMissingOrigin: 'Missing origin parameter',
+  errorUnknownAction: 'Unknown action type',
+  statusUnknownError: 'Unknown error',
+};
 
 const localStorageState: Record<string, unknown> = {};
 
@@ -113,7 +122,7 @@ vi.stubGlobal('chrome', {
     },
   },
   i18n: {
-    getMessage: vi.fn(() => 'Enhance Prompt'),
+    getMessage: vi.fn((key: string) => i18nMessages[key] || key),
   },
 });
 
@@ -338,7 +347,7 @@ describe('background index', () => {
 
     await expect(
       sendRuntimeMessage({ action: 'injectContentScript' })
-    ).resolves.toEqual({ success: false, error: 'Missing tabId parameter' });
+    ).resolves.toEqual({ success: false, error: 'Missing tab ID parameter' });
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     runtimeGetManifestMock.mockReturnValueOnce({});

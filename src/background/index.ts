@@ -18,6 +18,8 @@ import type {
   TrialState,
 } from '@shared/types';
 
+const i18nMessage = (key: string): string => chrome.i18n.getMessage(key) || key;
+
 // Service Worker 启动时初始化
 syncQuotaFromServer().then(() => updateTrialBadge());
 
@@ -134,7 +136,7 @@ chrome.runtime.onMessage.addListener(
       switch (request.action) {
         case 'enhancePrompt': {
           if (!request.prompt) {
-            return { success: false, error: 'Missing prompt parameter' };
+            return { success: false, error: i18nMessage('errorMissingPrompt') };
           }
           try {
             const enhanced = await enhancePrompt(request.prompt);
@@ -142,19 +144,22 @@ chrome.runtime.onMessage.addListener(
           } catch (error) {
             return {
               success: false,
-              error: error instanceof Error ? error.message : 'Unknown error',
+              error:
+                error instanceof Error
+                  ? error.message
+                  : i18nMessage('statusUnknownError'),
             };
           }
         }
 
         case 'enhancePromptStreaming': {
           if (!request.prompt) {
-            return { success: false, error: 'Missing prompt parameter' };
+            return { success: false, error: i18nMessage('errorMissingPrompt') };
           }
           // 从 sender 获取 tab ID
           const tabId = sender.tab?.id || request.tabId;
           if (!tabId) {
-            return { success: false, error: 'Cannot get tab ID' };
+            return { success: false, error: i18nMessage('errorMissingTabId') };
           }
           // 流式处理
           enhancePromptStreaming(
@@ -171,7 +176,10 @@ chrome.runtime.onMessage.addListener(
 
         case 'injectContentScript': {
           if (!request.tabId) {
-            return { success: false, error: 'Missing tabId parameter' };
+            return {
+              success: false,
+              error: i18nMessage('errorMissingRequestTabId'),
+            };
           }
           const injected = await injectContentScript(request.tabId);
           return { success: injected };
@@ -179,7 +187,7 @@ chrome.runtime.onMessage.addListener(
 
         case 'checkPermission': {
           if (!request.origin) {
-            return { success: false, error: 'Missing origin parameter' };
+            return { success: false, error: i18nMessage('errorMissingOrigin') };
           }
           const hasPermission = await checkHostPermission(request.origin);
           return { success: true, hasPermission };
@@ -187,7 +195,7 @@ chrome.runtime.onMessage.addListener(
 
         case 'requestPermission': {
           if (!request.origin) {
-            return { success: false, error: 'Missing origin parameter' };
+            return { success: false, error: i18nMessage('errorMissingOrigin') };
           }
           const granted = await requestHostPermission(request.origin);
           return { success: granted, hasPermission: granted };
@@ -231,7 +239,7 @@ chrome.runtime.onMessage.addListener(
         }
 
         default:
-          return { success: false, error: 'Unknown action type' };
+          return { success: false, error: i18nMessage('errorUnknownAction') };
       }
     };
 

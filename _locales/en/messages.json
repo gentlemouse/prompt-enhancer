@@ -72,8 +72,20 @@
   "popupAnthropicWarning": {
     "message": "Anthropic API requires special access mode when called directly from browsers, which may pose security risks. Use only in trusted network environments."
   },
+  "popupAnthropicRelayLabel": {
+    "message": "Use Lynx relay for Anthropic"
+  },
+  "popupAnthropicRelayBadge": {
+    "message": "Recommended"
+  },
+  "popupAnthropicRelayDesc": {
+    "message": "No special network setup needed, stable native API access"
+  },
   "popupAnthropicAck": {
-    "message": "I understand and accept the risks"
+    "message": "I understand and accept the risks of direct browser access"
+  },
+  "popupApiEndpointPlaceholder": {
+    "message": "https://api.example.com/v1/chat/completions"
   },
   "statusSaved": {
     "message": "Settings saved"
@@ -227,11 +239,23 @@
   "errorMissingTabId": {
     "message": "Cannot get tab ID"
   },
+  "errorMissingRequestTabId": {
+    "message": "Missing tab ID parameter"
+  },
+  "errorMissingOrigin": {
+    "message": "Missing origin parameter"
+  },
+  "errorUnknownAction": {
+    "message": "Unknown action type"
+  },
   "errorConfigModel": {
     "message": "Please configure a model name"
   },
   "errorConfigApiKey": {
     "message": "Please configure an API Key in extension settings"
+  },
+  "popupApiKeyPlaceholder": {
+    "message": "sk-..."
   },
   "trialWelcome": {
     "message": "Try It Free, Start Now"

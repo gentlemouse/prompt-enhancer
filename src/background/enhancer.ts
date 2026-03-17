@@ -8,6 +8,7 @@ import { getProviderAdapter, streamingCall } from './providers';
 import { getStorageConfig } from '@shared/storage';
 import { API_PROVIDERS } from '@shared/constants';
 import { trackEnhanceEvent } from '@shared/analytics';
+import { normalizeAnthropicModel } from '@shared/provider-models';
 import {
   isTrialExpired,
   incrementTrialUsage,
@@ -101,7 +102,11 @@ const getConfigAndModel = async (): Promise<{
     throw new Error(chrome.i18n.getMessage('errorConfigModel'));
   }
 
-  return { config, model, isProxyMode: false };
+  return {
+    config,
+    model: provider === 'anthropic' ? normalizeAnthropicModel(model) : model,
+    isProxyMode: false,
+  };
 };
 
 /**
@@ -116,7 +121,9 @@ export const enhancePrompt = async (
   const provider = config.apiProvider || 'openai';
 
   const analysis = analyzePrompt(originalPrompt);
-  const adapter = getProviderAdapter(provider, config.customEndpoint);
+  const adapter = getProviderAdapter(provider, config.customEndpoint, {
+    anthropicRelayEnabled: config.anthropicRelayEnabled,
+  });
 
   try {
     const result = await adapter.call({
@@ -125,6 +132,7 @@ export const enhancePrompt = async (
       prompt: originalPrompt,
       analysis,
       endpoint: provider === 'custom' ? config.customEndpoint : undefined,
+      anthropicRelayEnabled: config.anthropicRelayEnabled,
     });
 
     trackEnhanceEvent({

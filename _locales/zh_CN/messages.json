@@ -71,8 +71,20 @@
   "popupAnthropicWarning": {
     "message": "Anthropic API 在浏览器中直接调用需要启用特殊访问模式，这可能带来安全风险。建议仅在信任的网络环境下使用。"
   },
+  "popupAnthropicRelayLabel": {
+    "message": "Anthropic 使用灵犀 relay"
+  },
+  "popupAnthropicRelayBadge": {
+    "message": "推荐"
+  },
+  "popupAnthropicRelayDesc": {
+    "message": "无需特殊网络，稳定调用原生 API"
+  },
   "popupAnthropicAck": {
-    "message": "我已了解并接受风险"
+    "message": "我已了解并接受浏览器直连的风险"
+  },
+  "popupApiEndpointPlaceholder": {
+    "message": "https://api.example.com/v1/chat/completions"
   },
   "statusSaved": {
     "message": "设置已保存"
@@ -226,11 +238,23 @@
   "errorMissingTabId": {
     "message": "无法获取 tab ID"
   },
+  "errorMissingRequestTabId": {
+    "message": "缺少 tab ID 参数"
+  },
+  "errorMissingOrigin": {
+    "message": "缺少 origin 参数"
+  },
+  "errorUnknownAction": {
+    "message": "未知操作类型"
+  },
   "errorConfigModel": {
     "message": "请配置模型名称"
   },
   "errorConfigApiKey": {
     "message": "请先在插件设置中配置 API Key"
+  },
+  "popupApiKeyPlaceholder": {
+    "message": "sk-..."
   },
   "trialWelcome": {
     "message": "免费体验，即刻开始"

@@ -35,7 +35,7 @@ WHY INSTALL LYNX?
 • Get better AI answers without learning prompt engineering — Lynx adds structure, clarity, and the right constraints automatically.
 • Works everywhere: ChatGPT, Claude, Gemini, DeepSeek, Kimi, Qwen, and any site with a text input. Install once, use on all of them.
 • No setup required: 10 free enhancements out of the box. Optionally add your own API key (OpenAI, Anthropic, DeepSeek, etc.) for unlimited use.
-• Privacy-first: prompts are processed only when you request enhancement. Free mode uses the Lynx proxy, and BYOK mode sends data directly to your chosen AI provider. API keys are encrypted and kept only on your device.
+• Privacy-first: prompts are processed only when you request enhancement. Free mode uses a protected Lynx proxy session, BYOK mode sends data directly to your chosen AI provider, and Anthropic relay is enabled by default with an opt-out direct mode. API keys are encrypted and kept only on your device.
 
 HOW IT WORKS
 
@@ -54,16 +54,18 @@ FEATURES
 
 • 5 optimization strategies, 8 task types, 3 reasoning modes
 • Session memory (5-turn window) for smarter follow-ups
-• Free trial: 10 enhancements, no API key needed
+• Free trial: 10 enhancements, no API key needed, protected by Lynx proxy session auth
 • BYOK: Bring your own API key for unlimited use (OpenAI, Anthropic, DeepSeek, Gemini, Kimi, MiniMax, Qwen, Zhipu, custom)
+• Anthropic relay on by default, with optional direct browser mode
 • Keyboard shortcut: Cmd/Ctrl+Shift+E to enhance, Ctrl+Z to undo
 • 50+ supported AI platforms
 
 PRIVACY
 
 • Prompt text is processed only when you explicitly trigger enhancement
-• Free mode sends prompt text to the Lynx proxy service; BYOK mode sends it directly to your chosen AI provider or custom endpoint
-• API keys are encrypted and stored locally only, never sent to Lynx servers in BYOK mode
+• Free mode sends prompt text to the Lynx proxy service through a protected short-lived session
+• BYOK mode sends prompt text directly to your chosen AI provider or custom endpoint, except Anthropic relay mode which is enabled by default
+• API keys are encrypted and stored locally only; Anthropic relay forwards the key only for the current request and does not intentionally persist it
 • Local anonymous usage stats can be disabled anytime
 
 Install Lynx once and get better AI replies everywhere — no prompt engineering required.
@@ -72,7 +74,7 @@ Install Lynx once and get better AI replies everywhere — no prompt engineering
 **说明简短版（若平台有字数限制，可选用）：**
 
 ```
-Lynx improves your prompts before you send them to ChatGPT, Claude, Gemini, DeepSeek, and 50+ AI platforms. Press Cmd/Ctrl+Shift+E to enhance any input — no prompt engineering needed. 10 free uses via Lynx proxy, then bring your own API key for unlimited use. Privacy-first: prompt text is processed only to provide the enhancement you request.
+Lynx improves your prompts before you send them to ChatGPT, Claude, Gemini, DeepSeek, and 50+ AI platforms. Press Cmd/Ctrl+Shift+E to enhance any input — no prompt engineering needed. 10 free uses via a protected Lynx proxy session, then bring your own API key for unlimited use. Anthropic relay is enabled by default and can be turned off if you prefer direct browser calls. Privacy-first: prompt text is processed only to provide the enhancement you request.
 ```
 
 ---

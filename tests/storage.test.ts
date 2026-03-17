@@ -87,6 +87,7 @@ describe('storage', () => {
       customEndpoint: 'https://legacy.test/v1/chat',
       customModel: 'legacy-model',
       anthropicWarningAcknowledged: undefined,
+      anthropicRelayEnabled: true,
     });
 
     const storedConfig = localStorageState[STORAGE_KEYS.CONFIG] as {
@@ -114,6 +115,7 @@ describe('storage', () => {
       customEndpoint: '',
       customModel: '',
       anthropicWarningAcknowledged: undefined,
+      anthropicRelayEnabled: true,
     });
   });
 
@@ -147,6 +149,7 @@ describe('storage', () => {
       customEndpoint: 'https://api.example.com/v1/chat/completions',
       customModel: 'custom-model',
       anthropicWarningAcknowledged: undefined,
+      anthropicRelayEnabled: true,
     });
   });
 
@@ -168,6 +171,7 @@ describe('storage', () => {
       customEndpoint: '',
       customModel: '',
       anthropicWarningAcknowledged: undefined,
+      anthropicRelayEnabled: true,
     });
   });
 
@@ -218,7 +222,7 @@ describe('storage', () => {
     localStorageState[STORAGE_KEYS.CONFIG] = {
       apiProvider: 'anthropic',
       encryptedApiKey: 'plain-text-key',
-      model: 'claude-sonnet-4-0',
+      model: 'claude-sonnet-4-6',
       customEndpoint: '',
       customModel: '',
     };
@@ -238,5 +242,46 @@ describe('storage', () => {
     await acknowledgeAnthropicWarning();
 
     expect(localSetMock).not.toHaveBeenCalled();
+  });
+
+  it('persists anthropic relay preference and defaults it to true when absent', async () => {
+    const { saveStorageConfig, getStorageConfig } = await import('@shared/storage');
+
+    await saveStorageConfig({
+      apiProvider: 'anthropic',
+      apiKey: 'sk-ant-test',
+      model: 'claude-sonnet-4-6',
+      customEndpoint: '',
+      customModel: '',
+      anthropicRelayEnabled: false,
+    });
+
+    await expect(getStorageConfig()).resolves.toEqual({
+      apiProvider: 'anthropic',
+      apiKey: 'sk-ant-test',
+      model: 'claude-sonnet-4-6',
+      customEndpoint: '',
+      customModel: '',
+      anthropicWarningAcknowledged: undefined,
+      anthropicRelayEnabled: false,
+    });
+
+    localStorageState[STORAGE_KEYS.CONFIG] = {
+      apiProvider: 'anthropic',
+      encryptedApiKey: 'plain-text-key',
+      model: 'claude-sonnet-4-6',
+      customEndpoint: '',
+      customModel: '',
+    };
+
+    await expect(getStorageConfig()).resolves.toEqual({
+      apiProvider: 'anthropic',
+      apiKey: 'plain-text-key',
+      model: 'claude-sonnet-4-6',
+      customEndpoint: '',
+      customModel: '',
+      anthropicWarningAcknowledged: undefined,
+      anthropicRelayEnabled: true,
+    });
   });
 });

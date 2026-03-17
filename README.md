@@ -153,7 +153,7 @@ npm run build
 
 ### Free Mode (No setup)
 
-Install → visit any AI chat page → press `Cmd+Shift+E` or click the ✦ button. Done. 10 free enhancements.
+Install → visit any AI chat page → press `Cmd+Shift+E` or click the ✦ button. Done. 10 free enhancements via the Lynx protected proxy session flow.
 
 ### BYOK Mode (Unlimited)
 
@@ -161,6 +161,8 @@ Install → visit any AI chat page → press `Cmd+Shift+E` or click the ✦ butt
 2. Select a provider: OpenAI / Anthropic / DeepSeek / Kimi / Qwen / Custom
 3. Enter your API key → Save
 4. Unlimited enhancements, forever
+
+Anthropic relay is enabled by default, so Anthropic requests go through the Lynx Worker unless you explicitly turn relay off in settings.
 
 ### Shortcuts
 
@@ -232,14 +234,14 @@ npm run type-check     # TypeScript check
 - **Vitest** — Unit tests + coverage
 - **ESLint + Prettier + Husky** — Code quality gates
 - **GitHub Actions** — CI/CD pipeline
-- **Cloudflare Workers** — API proxy layer
+- **Cloudflare Workers + Durable Objects** — protected proxy, relay, quota, and gateway coordination
 - **Chrome Extension Manifest V3**
 
 ---
 
 ## Privacy
 
-- **On-demand prompt processing** — In free mode, prompts are sent to the Lynx proxy; in BYOK mode, prompts are sent directly to your chosen AI provider
+- **On-demand prompt processing** — In free mode, prompts are sent through a protected Lynx proxy session; in BYOK mode, prompts are sent directly to your chosen AI provider, except Anthropic relay mode which is enabled by default and can be turned off manually
 - **Encrypted API keys** — Stored in `chrome.storage.local`, never synced to cloud
 - **HTTPS enforced** — Custom endpoints require HTTPS
 - **Opt-out analytics** — Anonymous usage data can be disabled anytime

@@ -14,7 +14,7 @@ import {
   zhipuAdapter,
   createOpenAIAdapter,
 } from './openai';
-import { anthropicAdapter } from './anthropic';
+import { anthropicDirectAdapter, anthropicRelayAdapter } from './anthropic';
 import {
   streamOpenAI,
   streamAnthropic,
@@ -23,11 +23,15 @@ import {
 import { API_PROVIDERS } from '@shared/constants';
 import { getDeviceFingerprint } from '@shared/fingerprint';
 import {
+  fetchWithFreeSession,
+  getFreeSessionHeaders,
+} from '@shared/free-session';
+import {
   normalizeProxyError,
   normalizeProxyNetworkError,
 } from '@shared/quota-errors';
 import { buildSystemPrompt, buildUserMessage } from '../prompt-builder';
-import { withRetry, fetchWithTimeout } from '@shared/utils/retry';
+import { withRetry } from '@shared/utils/retry';
 
 export type { APICallOptions, APIProviderAdapter, StreamCallback };
 
@@ -54,7 +58,7 @@ const proxyAdapter: APIProviderAdapter = {
     try {
       response = await withRetry(
         async () => {
-          const res = await fetchWithTimeout(
+          const res = await fetchWithFreeSession(
             API_PROVIDERS.proxy.endpoint,
             {
               method: 'POST',
@@ -95,7 +99,7 @@ const proxyAdapter: APIProviderAdapter = {
 /** 提供商适配器映射 */
 const adapters: Record<Exclude<APIProvider, 'custom'>, APIProviderAdapter> = {
   openai: openaiAdapter,
-  anthropic: anthropicAdapter,
+  anthropic: anthropicRelayAdapter,
   deepseek: deepseekAdapter,
   gemini: geminiAdapter,
   kimi: kimiAdapter,
@@ -112,10 +116,19 @@ const adapters: Record<Exclude<APIProvider, 'custom'>, APIProviderAdapter> = {
  */
 export const getProviderAdapter = (
   provider: APIProvider,
-  customEndpoint?: string
+  customEndpoint?: string,
+  options?: {
+    anthropicRelayEnabled?: boolean;
+  }
 ): APIProviderAdapter => {
   if (provider === 'custom' && customEndpoint) {
     return createOpenAIAdapter('openai', 'Custom', customEndpoint);
+  }
+
+  if (provider === 'anthropic') {
+    return options?.anthropicRelayEnabled === false
+      ? anthropicDirectAdapter
+      : anthropicRelayAdapter;
   }
 
   return adapters[provider as Exclude<APIProvider, 'custom'>] || openaiAdapter;
@@ -165,6 +178,7 @@ export const streamingCall = async (
     });
   } else if (provider === 'proxy') {
     const fp = await getDeviceFingerprint();
+    const sessionHeaders = await getFreeSessionHeaders();
     await streamOpenAI({
       provider: provider as Exclude<
         APIProvider,
@@ -176,7 +190,11 @@ export const streamingCall = async (
       endpoint,
       onChunk,
       onError,
-      extraHeaders: { 'X-Device-FP': fp },
+      extraHeaders: {
+        Authorization: sessionHeaders.Authorization,
+        'X-Device-FP': fp,
+        'X-Extension-Origin': sessionHeaders['X-Extension-Origin'],
+      },
       errorTransformer: normalizeProxyError,
     });
   } else {

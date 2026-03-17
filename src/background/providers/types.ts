@@ -11,6 +11,7 @@ export interface APICallOptions {
   prompt: string;
   analysis: PromptAnalysis;
   endpoint?: string;
+  anthropicRelayEnabled?: boolean;
 }
 
 /** API 提供商适配器接口 */

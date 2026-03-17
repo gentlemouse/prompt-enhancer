@@ -70,13 +70,70 @@
         </select>
       </div>
 
-      <div class="warning-box" id="anthropicWarning" style="display: none">
-        <div class="warning-icon">⚠️</div>
-        <div class="warning-text" data-i18n="popupAnthropicWarning"></div>
-        <label class="warning-checkbox">
-          <input type="checkbox" id="anthropicAck" />
-          <span data-i18n="popupAnthropicAck"></span>
+      <div
+        class="form-group anthropic-settings"
+        id="anthropicWarning"
+        style="display: none"
+      >
+        <label class="setting-item relay-toggle">
+          <div class="setting-info">
+            <span class="setting-title"
+              ><span data-i18n="popupAnthropicRelayLabel"></span>
+              <span
+                class="badge badge-recommend"
+                data-i18n="popupAnthropicRelayBadge"
+              ></span
+            ></span>
+            <span
+              class="setting-desc"
+              data-i18n="popupAnthropicRelayDesc"
+            ></span>
+          </div>
+          <input
+            type="checkbox"
+            id="anthropicRelayEnabled"
+            checked
+            class="switch-input"
+          />
+          <span class="switch-slider"></span>
         </label>
+
+        <div
+          class="direct-connect-warning"
+          id="anthropicDirectWarning"
+          style="display: none"
+        >
+          <div class="warning-callout">
+            <svg
+              class="warning-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+              ></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <div class="warning-content">
+              <span data-i18n="popupAnthropicWarning"></span>
+            </div>
+          </div>
+          <label class="setting-item ack-checkbox">
+            <input type="checkbox" id="anthropicAck" />
+            <span
+              class="setting-title ack-text"
+              data-i18n="popupAnthropicAck"
+            ></span>
+          </label>
+        </div>
       </div>
 
       <div class="form-group custom-endpoint" id="customEndpointGroup">
@@ -84,7 +141,7 @@
         <input
           type="text"
           id="customEndpoint"
-          placeholder="https://api.example.com/v1/chat/completions"
+          data-i18n-placeholder="popupApiEndpointPlaceholder"
         />
         <div class="hint" id="endpointHint"></div>
       </div>
@@ -107,13 +164,17 @@
 
       <div class="form-group">
         <label for="apiKey" class="label-with-tooltip">
-          API Key
+          <span data-i18n="popupApiKey"></span>
           <span class="tooltip-trigger" tabindex="0">
             ?
             <span class="tooltip" data-i18n="popupApiKeyTooltip"></span>
           </span>
         </label>
-        <input type="password" id="apiKey" placeholder="sk-..." />
+        <input
+          type="password"
+          id="apiKey"
+          data-i18n-placeholder="popupApiKeyPlaceholder"
+        />
         <div class="hint" id="apiKeyHint"></div>
       </div>
 

@@ -96,12 +96,11 @@ describe('API_PROVIDERS', () => {
   });
 
   it('only keeps current Anthropic aliases in the selector', () => {
-    expect(API_PROVIDERS.anthropic.defaultModel).toBe('claude-sonnet-4-0');
+    expect(API_PROVIDERS.anthropic.defaultModel).toBe('claude-sonnet-4-6');
     expect(API_PROVIDERS.anthropic.models).toEqual([
-      'claude-opus-4-1',
-      'claude-opus-4-0',
-      'claude-sonnet-4-0',
-      'claude-3-5-haiku-latest',
+      'claude-opus-4-6',
+      'claude-sonnet-4-6',
+      'claude-haiku-4-5',
     ]);
   });
 });

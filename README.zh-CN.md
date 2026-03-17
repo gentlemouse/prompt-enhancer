@@ -153,7 +153,7 @@ npm run build
 
 ### 免费模式（无需配置）
 
-安装 → 打开任意 AI 聊天页面 → 按 `Cmd+Shift+E` 或点击输入框旁的 ✦ 按钮。10 次免费。
+安装 → 打开任意 AI 聊天页面 → 按 `Cmd+Shift+E` 或点击输入框旁的 ✦ 按钮。通过 Lynx 受保护代理会话获得 10 次免费使用。
 
 ### 自带 Key 模式（无限使用）
 
@@ -161,6 +161,8 @@ npm run build
 2. 选择 API 提供商：OpenAI / Anthropic / DeepSeek / Kimi / 通义千问 / 自定义
 3. 输入 API Key → 保存
 4. 解锁无限次使用
+
+Anthropic 默认启用 Lynx relay，经由 Worker 中转；如果你更偏好浏览器直连，可以在设置里手动关闭 relay。
 
 ### 快捷键
 
@@ -232,14 +234,14 @@ npm run type-check     # TypeScript 类型检查
 - **Vitest** — 单元测试 + 覆盖率
 - **ESLint + Prettier + Husky** — 代码规范 + 提交门禁
 - **GitHub Actions** — CI/CD 自动化
-- **Cloudflare Workers** — API 代理层
+- **Cloudflare Workers + Durable Objects** — 受保护代理、relay、额度与网关协调层
 - **Chrome Extension Manifest V3**
 
 ---
 
 ## 隐私
 
-- **按需处理提示词** — 免费模式下提示词会发送到 Lynx 代理服务，自带 Key 模式下提示词会直接发送到你选择的 AI 提供商
+- **按需处理提示词** — 免费模式下提示词会通过 Lynx 受保护代理会话发送；自带 Key 模式下提示词会直接发送到你选择的 AI 提供商，但 Anthropic 默认启用 relay，可手动关闭
 - **API Key 加密存储** — 保存在本地 `chrome.storage.local`，不同步到云端
 - **强制 HTTPS** — 自定义 API 地址必须使用 HTTPS
 - **可关闭的匿名统计** — 匿名使用数据可随时 opt-out
