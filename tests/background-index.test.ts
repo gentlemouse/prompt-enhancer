@@ -43,6 +43,7 @@ const storageLocalSetMock = vi.fn();
 const i18nMessages: Record<string, string> = {
   contextMenuEnhance: 'Enhance Prompt',
   errorMissingPrompt: 'Missing prompt parameter',
+  errorMissingRequestId: 'Missing request ID parameter',
   errorMissingTabId: 'Cannot get tab ID',
   errorMissingRequestTabId: 'Missing tab ID parameter',
   errorMissingOrigin: 'Missing origin parameter',
@@ -54,12 +55,14 @@ const localStorageState: Record<string, unknown> = {};
 
 const enhancePromptMock = vi.fn();
 const enhancePromptStreamingMock = vi.fn();
+const cancelEnhancePromptStreamingMock = vi.fn();
 const updateTrialBadgeMock = vi.fn();
 const syncQuotaFromServerMock = vi.fn();
 const getTrialDataMock = vi.fn();
 const getStorageConfigMock = vi.fn();
 
 vi.mock('@background/enhancer', () => ({
+  cancelEnhancePromptStreaming: cancelEnhancePromptStreamingMock,
   enhancePrompt: enhancePromptMock,
   enhancePromptStreaming: enhancePromptStreamingMock,
   updateTrialBadge: updateTrialBadgeMock,
@@ -183,6 +186,7 @@ describe('background index', () => {
     });
     enhancePromptMock.mockResolvedValue('enhanced prompt');
     enhancePromptStreamingMock.mockResolvedValue(undefined);
+    cancelEnhancePromptStreamingMock.mockReturnValue(undefined);
     updateTrialBadgeMock.mockResolvedValue(undefined);
     syncQuotaFromServerMock.mockResolvedValue(undefined);
     getTrialDataMock.mockResolvedValue({ maxUses: 10, usedCount: 2 });
@@ -323,6 +327,26 @@ describe('background index', () => {
     await expect(
       sendRuntimeMessage({ action: 'enhancePromptStreaming', prompt: 'retry me' })
     ).resolves.toEqual({ success: false, error: 'Cannot get tab ID' });
+  });
+
+  it('cancels streaming enhancement requests by request id', async () => {
+    await loadBackground();
+
+    await expect(
+      sendRuntimeMessage({
+        action: 'cancelEnhancePromptStreaming',
+        requestId: 'req-2',
+      })
+    ).resolves.toEqual({ success: true });
+
+    expect(cancelEnhancePromptStreamingMock).toHaveBeenCalledWith('req-2');
+
+    await expect(
+      sendRuntimeMessage({ action: 'cancelEnhancePromptStreaming' })
+    ).resolves.toEqual({
+      success: false,
+      error: 'Missing request ID parameter',
+    });
   });
 
   it('creates the context menu and refreshes quota state on install', async () => {

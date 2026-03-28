@@ -15,6 +15,7 @@ const BUTTON_ANCHOR_SIZE = 30;
 
 /** Sparkles SVG 内联代码 (Lucide Sparkles — 与参考图一致) */
 const SPARKLES_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg>`;
+const STOP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
 
 /** 按钮状态 */
 export interface ButtonState {
@@ -24,8 +25,6 @@ export interface ButtonState {
   loader: HTMLElement;
   onboardingEl: HTMLElement | null;
 }
-
-type ElementRect = ReturnType<HTMLElement['getBoundingClientRect']>;
 
 /** 可测试的矩形数据结构 */
 export interface RectLike {
@@ -39,9 +38,24 @@ export interface RectLike {
 
 const ACTION_CONTROL_SELECTOR =
   'button,[role="button"],input[type="submit"],input[type="button"]';
+const CLIPPING_OVERFLOW_PATTERN = /(hidden|clip|auto|scroll|overlay)/;
 
 const MAX_SCOPE_DEPTH = 4;
 const MAX_SCOPE_CONTROLS = 40;
+
+const createRectLike = (
+  left: number,
+  top: number,
+  right: number,
+  bottom: number
+): RectLike => ({
+  left,
+  top,
+  right,
+  bottom,
+  width: Math.max(0, right - left),
+  height: Math.max(0, bottom - top),
+});
 
 /**
  * 判断元素是否可见
@@ -51,6 +65,47 @@ const isElementVisible = (el: HTMLElement): boolean => {
   if (style.display === 'none' || style.visibility === 'hidden') return false;
   const opacity = Number.parseFloat(style.opacity || '1');
   return Number.isNaN(opacity) || opacity > 0;
+};
+
+const isClippingElement = (el: HTMLElement): boolean => {
+  const style = window.getComputedStyle(el);
+  return (
+    CLIPPING_OVERFLOW_PATTERN.test(style.overflowX) ||
+    CLIPPING_OVERFLOW_PATTERN.test(style.overflowY)
+  );
+};
+
+/**
+ * 计算输入框当前真正可见的锚定区域。
+ * 长内容编辑器可能被外层滚动容器裁剪；按钮应锚定到可见区域，而不是完整内容高度。
+ */
+export const calculateVisibleAnchorRect = (
+  inputRect: RectLike,
+  clippingRects: RectLike[],
+  viewportWidth: number,
+  viewportHeight: number
+): RectLike => {
+  let visibleRect = createRectLike(
+    Math.max(0, inputRect.left),
+    Math.max(0, inputRect.top),
+    Math.min(viewportWidth, inputRect.right),
+    Math.min(viewportHeight, inputRect.bottom)
+  );
+
+  for (const clipRect of clippingRects) {
+    if (visibleRect.width <= 0 || visibleRect.height <= 0) {
+      break;
+    }
+
+    visibleRect = createRectLike(
+      Math.max(visibleRect.left, clipRect.left),
+      Math.max(visibleRect.top, clipRect.top),
+      Math.min(visibleRect.right, clipRect.right),
+      Math.min(visibleRect.bottom, clipRect.bottom)
+    );
+  }
+
+  return visibleRect;
 };
 
 /**
@@ -94,7 +149,7 @@ export const calculateRightOverlayInset = (
  */
 const collectNearbyActionControlRects = (
   input: HTMLElement,
-  inputRect: ElementRect
+  inputRect: RectLike
 ): RectLike[] => {
   const scopes: HTMLElement[] = [];
   let current = input.parentElement;
@@ -149,11 +204,41 @@ const collectNearbyActionControlRects = (
   return rects;
 };
 
+const collectClippingAncestorRects = (input: HTMLElement): RectLike[] => {
+  const rects: RectLike[] = [];
+  let current = input.parentElement;
+
+  while (
+    current &&
+    current !== document.body &&
+    current !== document.documentElement
+  ) {
+    if (isClippingElement(current) && isElementVisible(current)) {
+      const rect = current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        rects.push(rect);
+      }
+    }
+    current = current.parentElement;
+  }
+
+  return rects;
+};
+
 /**
  * 判断按钮交互是否被临时禁用。
  */
 const isButtonInteractionDisabled = (button: HTMLElement): boolean => {
   return button.getAttribute('aria-disabled') === 'true';
+};
+
+const setButtonTextAlternative = (
+  button: HTMLElement,
+  label: string,
+  title: string = label
+): void => {
+  button.setAttribute('aria-label', label);
+  button.title = title;
 };
 
 /**
@@ -170,14 +255,13 @@ export const createEnhanceButton = (onClick: () => void): ButtonState => {
   button.className = BUTTON_CLASS;
   button.setAttribute('role', 'button');
   button.setAttribute('tabindex', '0');
-  button.setAttribute('aria-label', t('btnAriaLabel'));
+  setButtonTextAlternative(button, t('btnAriaLabel'));
 
   // 注入内联 SVG 图标
   const iconWrapper = document.createElement('span');
   iconWrapper.className = 'prompt-enhancer-icon';
   iconWrapper.innerHTML = SPARKLES_SVG;
   button.appendChild(iconWrapper);
-  button.title = t('btnAriaLabel');
 
   // 创建加载动画元素
   const loader = document.createElement('span');
@@ -249,17 +333,21 @@ export const setButtonLoading = (
     button.style.pointerEvents = 'auto';
     button.setAttribute('aria-busy', 'true');
     button.setAttribute('aria-disabled', 'true');
-    button.setAttribute('aria-label', t('btnAriaEnhancing'));
+    setButtonTextAlternative(button, t('btnAriaEnhancing'));
   } else {
-    if (iconEl) iconEl.style.display = 'flex';
+    if (iconEl) {
+      iconEl.innerHTML = SPARKLES_SVG;
+      iconEl.style.display = 'flex';
+    }
     loader.style.display = 'none';
     button.classList.remove('loading');
     button.classList.remove('streaming');
     button.classList.remove('generating');
+    button.classList.remove('stoppable');
     button.style.pointerEvents = 'auto';
     button.removeAttribute('aria-busy');
     button.removeAttribute('aria-disabled');
-    button.setAttribute('aria-label', t('btnAriaLabel'));
+    setButtonTextAlternative(button, t('btnAriaLabel'));
   }
 };
 
@@ -275,20 +363,28 @@ export const setButtonStreaming = (
 
   if (streaming) {
     button.classList.remove('collapsed');
-    if (iconEl) iconEl.style.display = 'flex';
+    if (iconEl) {
+      iconEl.innerHTML = STOP_SVG;
+      iconEl.style.display = 'flex';
+    }
     loader.style.display = 'none';
     button.classList.remove('loading');
-    button.classList.add('streaming', 'generating');
+    button.classList.add('streaming', 'generating', 'stoppable');
     button.style.pointerEvents = 'auto';
     button.setAttribute('aria-busy', 'true');
-    button.setAttribute('aria-disabled', 'true');
-    button.setAttribute('aria-label', t('btnAriaGenerating'));
+    button.removeAttribute('aria-disabled');
+    setButtonTextAlternative(button, t('btnAriaStopGenerating'));
   } else {
+    if (iconEl) {
+      iconEl.innerHTML = SPARKLES_SVG;
+      iconEl.style.display = 'flex';
+    }
     button.classList.remove('streaming', 'generating');
+    button.classList.remove('stoppable');
     button.style.pointerEvents = 'auto';
     button.removeAttribute('aria-busy');
     button.removeAttribute('aria-disabled');
-    button.setAttribute('aria-label', t('btnAriaLabel'));
+    setButtonTextAlternative(button, t('btnAriaLabel'));
   }
 };
 
@@ -312,6 +408,12 @@ export const positionButton = (
   const rect = input.getBoundingClientRect();
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
+  const visibleRect = calculateVisibleAnchorRect(
+    rect,
+    collectClippingAncestorRects(input),
+    viewportWidth,
+    viewportHeight
+  );
 
   // 使用固定锚点尺寸，避免收起/悬停等样式过渡引发重新锚定抖动
   const btnWidth = BUTTON_ANCHOR_SIZE;
@@ -326,6 +428,8 @@ export const positionButton = (
     rect.top > viewportHeight ||
     rect.right < 0 ||
     rect.left > viewportWidth ||
+    visibleRect.width < 50 ||
+    visibleRect.height < 10 ||
     // 输入框面积超过视口 50% → 大概率是选错了元素
     rect.width * rect.height > viewportWidth * viewportHeight * 0.5
   ) {
@@ -336,8 +440,14 @@ export const positionButton = (
   const inputStyle = window.getComputedStyle(input);
   const paddingRight = Number.parseFloat(inputStyle.paddingRight || '0') || 0;
   const paddingBottom = Number.parseFloat(inputStyle.paddingBottom || '0') || 0;
-  const actionControlRects = collectNearbyActionControlRects(input, rect);
-  const overlayInset = calculateRightOverlayInset(rect, actionControlRects);
+  const actionControlRects = collectNearbyActionControlRects(
+    input,
+    visibleRect
+  );
+  const overlayInset = calculateRightOverlayInset(
+    visibleRect,
+    actionControlRects
+  );
   const rightInset = Math.max(
     baseMargin,
     Math.ceil(paddingRight) + 4,
@@ -345,7 +455,7 @@ export const positionButton = (
   );
 
   // 水平：默认贴在输入框右侧内边缘，同时避开右侧内置控件
-  let left = Math.round(rect.right - btnWidth - rightInset);
+  let left = Math.round(visibleRect.right - btnWidth - rightInset);
 
   // 垂直：根据输入框高度决定
   let top: number;
@@ -356,10 +466,10 @@ export const positionButton = (
   if (isMultiline) {
     // 多行：右下角，考虑底部 padding
     const bottomInset = Math.max(baseMargin, Math.ceil(paddingBottom / 2));
-    top = Math.round(rect.bottom - btnHeight - bottomInset);
+    top = Math.round(visibleRect.bottom - btnHeight - bottomInset);
   } else {
     // 单行：垂直居中
-    top = Math.round(rect.top + (rect.height - btnHeight) / 2);
+    top = Math.round(visibleRect.top + (visibleRect.height - btnHeight) / 2);
   }
 
   // 确保不超出视口

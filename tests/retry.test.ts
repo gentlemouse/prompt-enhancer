@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { withRetry, fetchWithTimeout } from '@shared/utils/retry';
+import { withRetry, fetchWithTimeout, isAbortError } from '@shared/utils/retry';
 
 describe('withRetry', () => {
   it('首次成功应直接返回', async () => {
@@ -141,6 +141,19 @@ describe('withRetry', () => {
     expect(result).toBe('ok');
     expect(fn).toHaveBeenCalledTimes(2);
   });
+
+  it('AbortError 不应触发重试', async () => {
+    const fn = vi.fn().mockRejectedValue(new DOMException('Aborted', 'AbortError'));
+
+    await expect(
+      withRetry(fn, {
+        maxRetries: 3,
+        initialDelay: 1,
+      })
+    ).rejects.toThrow('Aborted');
+
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('fetchWithTimeout', () => {
@@ -165,6 +178,35 @@ describe('fetchWithTimeout', () => {
 
     const result = await fetchWithTimeout('https://example.com', {}, 5000);
     expect(result).toBe(mockResponse);
+
+    globalThis.fetch = originalFetch;
+  });
+
+  it('应响应外部 AbortSignal 中止请求', async () => {
+    const controller = new AbortController();
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockImplementation(
+      (_url: string, options?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          const signal = options?.signal as AbortSignal | undefined;
+          signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true }
+          );
+        })
+    );
+    globalThis.fetch = fetchMock;
+
+    const request = fetchWithTimeout(
+      'https://example.com',
+      {},
+      5000,
+      controller.signal
+    );
+    controller.abort();
+
+    await expect(request).rejects.toSatisfy(isAbortError);
 
     globalThis.fetch = originalFetch;
   });

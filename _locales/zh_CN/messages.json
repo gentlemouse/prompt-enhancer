@@ -232,8 +232,14 @@
   "btnAriaGenerating": {
     "message": "正在生成..."
   },
+  "btnAriaStopGenerating": {
+    "message": "停止生成"
+  },
   "errorMissingPrompt": {
     "message": "缺少 prompt 参数"
+  },
+  "errorMissingRequestId": {
+    "message": "缺少 requestId 参数"
   },
   "errorMissingTabId": {
     "message": "无法获取 tab ID"

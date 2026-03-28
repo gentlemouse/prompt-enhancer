@@ -16,7 +16,10 @@ import {
 } from '@shared/trial';
 import { TRIAL_EXPIRED_ERROR, getQuotaBlockReason } from '@shared/quota-errors';
 import { isByokConfigured } from '@shared/mode';
+import { isAbortError } from '@shared/utils/retry';
 import type { APIProvider } from '@shared/types';
+
+const activeStreamingRequests = new Map<string, AbortController>();
 
 /**
  * 安全发送消息到 content script
@@ -171,6 +174,9 @@ export const enhancePromptStreaming = async (
   tabId: number,
   requestId: string
 ): Promise<void> => {
+  const controller = new AbortController();
+  activeStreamingRequests.set(requestId, controller);
+
   try {
     const { config, model, isProxyMode } = await getConfigAndModel();
     const provider = config.apiProvider || 'openai';
@@ -183,6 +189,7 @@ export const enhancePromptStreaming = async (
       apiKey: config.apiKey,
       model,
       analysis,
+      signal: controller.signal,
       customEndpoint: config.customEndpoint,
       onChunk: async (chunk, done) => {
         if (done) {
@@ -236,6 +243,10 @@ export const enhancePromptStreaming = async (
       },
     });
   } catch (error) {
+    if (isAbortError(error)) {
+      return;
+    }
+
     void safeSendToTab(tabId, {
       action: 'streamError',
       requestId,
@@ -244,5 +255,19 @@ export const enhancePromptStreaming = async (
           ? error.message
           : chrome.i18n.getMessage('statusUnknownError') || 'Unknown error',
     });
+  } finally {
+    if (activeStreamingRequests.get(requestId) === controller) {
+      activeStreamingRequests.delete(requestId);
+    }
   }
+};
+
+/**
+ * 取消进行中的流式增强请求
+ */
+export const cancelEnhancePromptStreaming = (requestId: string): void => {
+  const controller = activeStreamingRequests.get(requestId);
+  if (!controller) return;
+
+  controller.abort();
 };

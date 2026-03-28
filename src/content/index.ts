@@ -60,6 +60,9 @@ let streamingToastAnchorRect: ToastAnchorRect | null = null;
 /** 流式累积文本 */
 let streamingText = '';
 let streamingOriginalText = '';
+let isCancellingCurrentRequest = false;
+const cancelledRequestIds = new Set<string>();
+const CANCELLED_REQUEST_TTL_MS = 15000;
 
 /**
  * 将可读性差的错误码转换为用户可理解文案
@@ -77,6 +80,21 @@ const toUserFacingErrorMessage = (error: unknown): string => {
 /** 流式无数据兜底超时（避免生成态卡死） */
 let streamingWatchdogTimer: number | null = null;
 const STREAMING_INACTIVITY_TIMEOUT_MS = 45000;
+
+const scheduleCancelledRequestCleanup = (requestId: string): void => {
+  window.setTimeout(() => {
+    cancelledRequestIds.delete(requestId);
+  }, CANCELLED_REQUEST_TTL_MS);
+};
+
+const markRequestCancelled = (requestId: string): void => {
+  cancelledRequestIds.add(requestId);
+  scheduleCancelledRequestCleanup(requestId);
+};
+
+const isCancelledRequest = (requestId: unknown): requestId is string => {
+  return typeof requestId === 'string' && cancelledRequestIds.has(requestId);
+};
 
 /** rAF 定位任务 ID */
 let positionFrameId: number | null = null;
@@ -484,6 +502,7 @@ const handleStreamingEnhance = async (
 
   // 生成请求 ID
   currentRequestId = Date.now().toString();
+  isCancellingCurrentRequest = false;
   streamingInput = input;
   const inputRect = input.getBoundingClientRect();
   streamingToastAnchorRect = {
@@ -546,6 +565,50 @@ const handleStreamingEnhance = async (
 };
 
 /**
+ * 取消当前流式增强请求
+ */
+const cancelStreamingEnhance = async (): Promise<void> => {
+  if (!currentRequestId || isCancellingCurrentRequest) {
+    return;
+  }
+
+  const requestId = currentRequestId;
+  isCancellingCurrentRequest = true;
+  markRequestCancelled(requestId);
+  clearStreamingWatchdog();
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'cancelEnhancePromptStreaming',
+      requestId,
+      tabId: 0,
+    });
+
+    if (!response?.success) {
+      cancelledRequestIds.delete(requestId);
+      isCancellingCurrentRequest = false;
+      showToast('✗ ' + toUserFacingErrorMessage(response?.error));
+      refreshStreamingWatchdog();
+      return;
+    }
+
+    showToast(t('toastStopped'));
+    resetStreamingState();
+  } catch (error) {
+    cancelledRequestIds.delete(requestId);
+    isCancellingCurrentRequest = false;
+    const errorMessage =
+      error instanceof Error ? error.message : t('statusUnknownError');
+    if (errorMessage.includes('Extension context invalidated')) {
+      showToast(t('toastRefreshPage'));
+    } else {
+      showToast('✗ ' + toUserFacingErrorMessage(errorMessage));
+    }
+    refreshStreamingWatchdog();
+  }
+};
+
+/**
  * 重置流式状态
  */
 const resetStreamingState = (): void => {
@@ -558,6 +621,7 @@ const resetStreamingState = (): void => {
   streamingToastAnchorRect = null;
   streamingText = '';
   streamingOriginalText = '';
+  isCancellingCurrentRequest = false;
   collapseButtonForIdle();
   scheduleButtonPosition();
 };
@@ -566,6 +630,11 @@ const resetStreamingState = (): void => {
  * 处理点击按钮
  */
 const handleButtonClick = (): void => {
+  if (currentRequestId) {
+    void cancelStreamingEnhance();
+    return;
+  }
+
   if (activeInput) {
     handleStreamingEnhance(activeInput);
   }
@@ -714,9 +783,8 @@ const init = (): void => {
       // Escape 取消流式输出
       if (e.key === 'Escape' && currentRequestId) {
         e.preventDefault();
-        // 取消流式，但保留已生成的内容
-        showToast(t('toastStopped'));
-        resetStreamingState();
+        e.stopPropagation();
+        void cancelStreamingEnhance();
         return;
       }
 
@@ -743,6 +811,11 @@ const init = (): void => {
 
   // 监听来自 background 的流式消息
   chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
+    if (isCancelledRequest(req.requestId)) {
+      sendResponse({ success: true });
+      return;
+    }
+
     // 流式数据块 - 静默写入输入框（不创建 undo 记录）
     if (
       req.action === 'streamChunk' &&

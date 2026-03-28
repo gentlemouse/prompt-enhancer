@@ -21,8 +21,34 @@ export interface RetryOptions {
   onRetry?: (error: Error, attempt: number, delay: number) => void;
 }
 
+type AbortSignalLike = globalThis.AbortSignal;
+
+/**
+ * 判断错误是否由 AbortController 主动中断引起
+ */
+export const isAbortError = (error: unknown): boolean => {
+  if (!error) return false;
+
+  if (error instanceof globalThis.DOMException) {
+    return error.name === 'AbortError';
+  }
+
+  if (error instanceof Error) {
+    return (
+      error.name === 'AbortError' ||
+      error.message.toLowerCase().includes('aborted')
+    );
+  }
+
+  return false;
+};
+
 /** 默认的可重试错误判断 */
 const defaultShouldRetry = (error: Error, _attempt: number): boolean => {
+  if (isAbortError(error)) {
+    return false;
+  }
+
   const message = error.message.toLowerCase();
   // 网络错误、超时、服务器错误应该重试
   const retryableErrors = [
@@ -127,9 +153,20 @@ export async function withRetry<T>(
 export async function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
-  timeout: number = 30000
+  timeout: number = 30000,
+  signal?: AbortSignalLike
 ): Promise<Response> {
   const controller = new AbortController();
+  const abortOnSignal = (): void => {
+    controller.abort();
+  };
+
+  if (signal?.aborted) {
+    controller.abort();
+  } else if (signal) {
+    signal.addEventListener('abort', abortOnSignal, { once: true });
+  }
+
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
@@ -140,5 +177,6 @@ export async function fetchWithTimeout(
     return response;
   } finally {
     clearTimeout(timeoutId);
+    signal?.removeEventListener('abort', abortOnSignal);
   }
 }

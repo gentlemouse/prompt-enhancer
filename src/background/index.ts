@@ -4,6 +4,7 @@
  */
 
 import {
+  cancelEnhancePromptStreaming,
   enhancePrompt,
   enhancePromptStreaming,
   updateTrialBadge,
@@ -167,6 +168,18 @@ chrome.runtime.onMessage.addListener(
             tabId,
             request.requestId || Date.now().toString()
           );
+          return { success: true };
+        }
+
+        case 'cancelEnhancePromptStreaming': {
+          if (!request.requestId) {
+            return {
+              success: false,
+              error: i18nMessage('errorMissingRequestId'),
+            };
+          }
+
+          cancelEnhancePromptStreaming(request.requestId);
           return { success: true };
         }
 

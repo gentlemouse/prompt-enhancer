@@ -147,4 +147,34 @@ describe('free session', () => {
       token: 'session-token-4',
     });
   });
+
+  it('falls back to legacy proxy mode when the session endpoint is not deployed', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'Not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+    const response = await fetchWithFreeSession('https://example.com/v1/enhance', {
+      method: 'POST',
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const requestInit = fetchMock.mock.calls[1]?.[1] as RequestInit;
+    const headers = new Headers(requestInit.headers);
+    expect(headers.get('Authorization')).toBeNull();
+    expect(headers.get('X-Device-FP')).toBe('pe_cached_device_fp');
+    expect(localStorageState[STORAGE_KEYS.FREE_SESSION]).toMatchObject({
+      legacyBypass: true,
+    });
+  });
 });

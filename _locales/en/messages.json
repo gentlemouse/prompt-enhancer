@@ -233,8 +233,14 @@
   "btnAriaGenerating": {
     "message": "Generating..."
   },
+  "btnAriaStopGenerating": {
+    "message": "Stop generation"
+  },
   "errorMissingPrompt": {
     "message": "Missing prompt parameter"
+  },
+  "errorMissingRequestId": {
+    "message": "Missing request ID parameter"
   },
   "errorMissingTabId": {
     "message": "Cannot get tab ID"

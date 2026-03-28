@@ -270,7 +270,7 @@ export const getStyles = (): string => `
 /* ─── 生成中：内边缘光束环绕 (Border Beam Effect) ─── */
 .prompt-enhancer-btn.generating {
   opacity: 1;
-  pointer-events: none;
+  pointer-events: auto;
   position: relative;
   overflow: hidden;
   clip-path: none;
@@ -317,6 +317,10 @@ export const getStyles = (): string => `
   animation: pe-icon-float 2.4s ease-in-out infinite;
   opacity: 1;
   transform: scale(1);
+}
+
+.prompt-enhancer-btn.stoppable .prompt-enhancer-icon {
+  animation: none;
 }
 
 @keyframes pe-icon-float {

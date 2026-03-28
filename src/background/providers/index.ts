@@ -35,6 +35,8 @@ import { withRetry } from '@shared/utils/retry';
 
 export type { APICallOptions, APIProviderAdapter, StreamCallback };
 
+type AbortSignalLike = globalThis.AbortSignal;
+
 /** OpenAI 格式响应 */
 interface ProxyResponse {
   choices: Array<{ message: { content: string } }>;
@@ -141,6 +143,7 @@ export interface StreamingCallOptions {
   model: string;
   analysis: PromptAnalysis;
   customEndpoint?: string;
+  signal?: AbortSignalLike;
   onChunk: StreamCallback;
   onError: (error: Error) => void;
 }
@@ -158,6 +161,7 @@ export const streamingCall = async (
     model,
     analysis,
     customEndpoint,
+    signal,
     onChunk,
     onError,
   } = options;
@@ -173,6 +177,7 @@ export const streamingCall = async (
       model,
       analysis,
       endpoint,
+      signal,
       onChunk,
       onError,
     });
@@ -188,6 +193,7 @@ export const streamingCall = async (
       model,
       analysis,
       endpoint,
+      signal,
       onChunk,
       onError,
       extraHeaders: {
@@ -207,6 +213,7 @@ export const streamingCall = async (
       model,
       analysis,
       endpoint,
+      signal,
       onChunk,
       onError,
     });

@@ -5,7 +5,7 @@
 
 import type { PromptAnalysis } from '@shared/types';
 import { buildSystemPrompt, buildUserMessage } from '../prompt-builder';
-import { fetchWithTimeout } from '@shared/utils/retry';
+import { fetchWithTimeout, isAbortError } from '@shared/utils/retry';
 import {
   buildOpenAICompatibleBody,
   extractOpenAICompatibleContent,
@@ -13,6 +13,8 @@ import {
   MINIMAX_GLOBAL_ENDPOINT,
   type OpenAICompatibleProvider,
 } from './openai';
+
+type AbortSignalLike = globalThis.AbortSignal;
 
 /** 流式回调函数类型 */
 export type StreamCallback = (
@@ -26,6 +28,7 @@ export interface StreamingOptions {
   model: string;
   analysis: PromptAnalysis;
   endpoint: string;
+  signal?: AbortSignalLike;
   provider?: OpenAICompatibleProvider;
   onChunk: StreamCallback;
   onError: (error: Error) => void | Promise<void>;
@@ -102,6 +105,7 @@ export const streamOpenAI = async (
     model,
     analysis,
     endpoint,
+    signal,
     provider,
     onChunk,
     onError,
@@ -150,7 +154,8 @@ export const streamOpenAI = async (
           },
           body: JSON.stringify(requestBody),
         },
-        60000
+        60000,
+        signal
       );
 
       if (!res.ok) {
@@ -237,6 +242,9 @@ export const streamOpenAI = async (
       await notifyError(onError, new Error('API 未返回任何内容'));
     }
   } catch (error) {
+    if (isAbortError(error)) {
+      return;
+    }
     await notifyError(
       onError,
       error instanceof Error ? error : new Error(String(error))
@@ -250,7 +258,8 @@ export const streamOpenAI = async (
 export const streamAnthropic = async (
   options: StreamingOptions
 ): Promise<void> => {
-  const { apiKey, model, analysis, endpoint, onChunk, onError } = options;
+  const { apiKey, model, analysis, endpoint, signal, onChunk, onError } =
+    options;
   const systemPrompt = buildSystemPrompt(analysis);
   const userMessage = buildUserMessage(analysis.originalPrompt, analysis);
 
@@ -274,7 +283,8 @@ export const streamAnthropic = async (
           stream: true,
         }),
       },
-      60000
+      60000,
+      signal
     );
 
     if (!response.ok) {
@@ -317,6 +327,9 @@ export const streamAnthropic = async (
 
     await onChunk('', true);
   } catch (error) {
+    if (isAbortError(error)) {
+      return;
+    }
     await notifyError(
       onError,
       error instanceof Error ? error : new Error(String(error))

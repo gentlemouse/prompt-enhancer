@@ -133,6 +133,7 @@ export interface APIResponse {
 export type MessageAction =
   | 'enhancePrompt'
   | 'enhancePromptStreaming'
+  | 'cancelEnhancePromptStreaming'
   | 'getProviders'
   | 'injectContentScript'
   | 'checkPermission'

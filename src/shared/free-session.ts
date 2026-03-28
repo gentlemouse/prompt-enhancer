@@ -3,12 +3,16 @@ import { getDeviceFingerprint } from './fingerprint';
 import { fetchWithTimeout } from './utils/retry';
 
 interface FreeSessionRecord {
-  token: string;
+  token?: string;
   expiresAt: number;
   origin: string;
+  legacyBypass?: boolean;
 }
 
+type AbortSignalLike = globalThis.AbortSignal;
+
 const FREE_SESSION_EXPIRY_SKEW_MS = 10_000;
+const LEGACY_SESSION_CACHE_MS = 5 * 60_000;
 
 const getExtensionOrigin = (): string => {
   const runtimeId = chrome?.runtime?.id;
@@ -26,7 +30,11 @@ const getCachedFreeSession = async (): Promise<FreeSessionRecord | null> => {
     | FreeSessionRecord
     | undefined;
 
-  if (!record?.token || !record.expiresAt) {
+  if (!record?.expiresAt || !record.origin) {
+    return null;
+  }
+
+  if (!record.legacyBypass && !record.token) {
     return null;
   }
 
@@ -57,6 +65,19 @@ const isSessionFresh = (record: FreeSessionRecord, origin: string): boolean =>
   record.origin === origin &&
   record.expiresAt - FREE_SESSION_EXPIRY_SKEW_MS > Date.now();
 
+const isMissingSessionEndpoint = (status: number, body: string): boolean => {
+  if (status !== 404) return false;
+
+  try {
+    const parsed = JSON.parse(body) as { error?: string; message?: string };
+    return parsed.error === 'Not found' || parsed.message === 'Not found';
+  } catch {
+    return (
+      body.trim() === '{"error":"Not found"}' || body.trim() === 'Not found'
+    );
+  }
+};
+
 const requestFreeSession = async (): Promise<FreeSessionRecord> => {
   const origin = getExtensionOrigin();
   const fp = await getDeviceFingerprint();
@@ -76,6 +97,16 @@ const requestFreeSession = async (): Promise<FreeSessionRecord> => {
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (isMissingSessionEndpoint(response.status, errorText)) {
+      const legacyRecord: FreeSessionRecord = {
+        legacyBypass: true,
+        expiresAt: Date.now() + LEGACY_SESSION_CACHE_MS,
+        origin,
+      };
+      await setCachedFreeSession(legacyRecord);
+      return legacyRecord;
+    }
+
     throw new Error(errorText || `Session request failed: ${response.status}`);
   }
 
@@ -118,6 +149,13 @@ export const getFreeSessionHeaders = async (
   const session = await getFreeSession(forceRefresh);
   const fp = await getDeviceFingerprint();
 
+  if (session.legacyBypass) {
+    return {
+      'X-Device-FP': fp,
+      'X-Extension-Origin': getExtensionOrigin(),
+    };
+  }
+
   return {
     Authorization: `Bearer ${session.token}`,
     'X-Device-FP': fp,
@@ -128,7 +166,8 @@ export const getFreeSessionHeaders = async (
 export const fetchWithFreeSession = async (
   url: string,
   init: RequestInit = {},
-  timeout: number = 30_000
+  timeout: number = 30_000,
+  signal?: AbortSignalLike
 ): Promise<Response> => {
   const attemptRequest = async (forceRefresh: boolean): Promise<Response> => {
     const sessionHeaders = await getFreeSessionHeaders(forceRefresh);
@@ -144,7 +183,8 @@ export const fetchWithFreeSession = async (
         ...init,
         headers,
       },
-      timeout
+      timeout,
+      signal
     );
   };
 
