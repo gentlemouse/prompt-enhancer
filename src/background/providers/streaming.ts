@@ -77,6 +77,45 @@ const parseSSELine = (line: string): string | null => {
 };
 
 /**
+ * 读取 SSE 流并逐块回调，返回是否收到任何内容
+ */
+const drainSSEReader = async (
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  onChunk: StreamCallback
+): Promise<boolean> => {
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let hasContent = false;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const content = parseSSELine(line.trim());
+      if (content) {
+        hasContent = true;
+        await onChunk(content, false);
+      }
+    }
+  }
+
+  if (buffer.trim()) {
+    const content = parseSSELine(buffer.trim());
+    if (content) {
+      hasContent = true;
+      await onChunk(content, false);
+    }
+  }
+
+  return hasContent;
+};
+
+/**
  * 尝试从非流式 JSON 响应中提取内容
  * 代理等后端可能忽略 stream 参数，返回标准 OpenAI JSON
  */
@@ -207,34 +246,7 @@ export const streamOpenAI = async (
       throw new Error('无法获取响应流');
     }
 
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let hasContent = false;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const content = parseSSELine(line.trim());
-        if (content) {
-          hasContent = true;
-          await onChunk(content, false);
-        }
-      }
-    }
-
-    if (buffer.trim()) {
-      const content = parseSSELine(buffer.trim());
-      if (content) {
-        hasContent = true;
-        await onChunk(content, false);
-      }
-    }
+    const hasContent = await drainSSEReader(reader, onChunk);
 
     if (hasContent) {
       await onChunk('', true);
@@ -299,33 +311,13 @@ export const streamAnthropic = async (
       throw new Error('无法获取响应流');
     }
 
-    const decoder = new TextDecoder();
-    let buffer = '';
+    const hasContent = await drainSSEReader(reader, onChunk);
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('data: ')) {
-          try {
-            const json = JSON.parse(trimmed.slice(6));
-            if (json.type === 'content_block_delta' && json.delta?.text) {
-              await onChunk(json.delta.text, false);
-            }
-          } catch {
-            // 忽略解析错误
-          }
-        }
-      }
+    if (hasContent) {
+      await onChunk('', true);
+    } else {
+      await notifyError(onError, new Error('API 未返回任何内容'));
     }
-
-    await onChunk('', true);
   } catch (error) {
     if (isAbortError(error)) {
       return;

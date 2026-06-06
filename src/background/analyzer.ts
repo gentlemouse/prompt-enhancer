@@ -142,7 +142,6 @@ export const analyzePrompt = (prompt: string): PromptAnalysis => {
   const chineseCharCount = (prompt.match(/[\u4e00-\u9fa5]/g) || []).length;
   const englishWordCount = (prompt.match(/\b[a-z]{2,}(?:'[a-z]+)?\b/gi) || [])
     .length;
-  const firstLanguageToken = prompt.match(/[\u4e00-\u9fa5]+|[a-z]+/i)?.[0];
 
   let language: 'zh' | 'en';
   if (chineseCharCount === 0) {
@@ -154,6 +153,7 @@ export const analyzePrompt = (prompt: string): PromptAnalysis => {
   } else if (englishWordCount > chineseCharCount * 3) {
     language = 'en';
   } else {
+    const firstLanguageToken = prompt.match(/[\u4e00-\u9fa5]+|[a-z]+/i)?.[0];
     language =
       firstLanguageToken && /[\u4e00-\u9fa5]/.test(firstLanguageToken)
         ? 'zh'
@@ -167,7 +167,7 @@ export const analyzePrompt = (prompt: string): PromptAnalysis => {
   for (const [type, keywords] of Object.entries(TASK_INDICATORS)) {
     let score = 0;
     for (const keyword of keywords) {
-      if (text.includes(keyword.toLowerCase())) {
+      if (text.includes(keyword)) {
         score += keyword.length > 3 ? 2 : 1;
       }
     }
@@ -183,16 +183,16 @@ export const analyzePrompt = (prompt: string): PromptAnalysis => {
   let needsReflection = false;
 
   for (const signal of COMPLEXITY_SIGNALS.HIGH) {
-    if (text.includes(signal.toLowerCase())) complexityScore += 2;
+    if (text.includes(signal)) complexityScore += 2;
   }
   for (const signal of COMPLEXITY_SIGNALS.CHAIN_OF_THOUGHT) {
-    if (text.includes(signal.toLowerCase())) {
+    if (text.includes(signal)) {
       needsChainOfThought = true;
       complexityScore += 1;
     }
   }
   for (const signal of COMPLEXITY_SIGNALS.REFLECTION) {
-    if (text.includes(signal.toLowerCase())) {
+    if (text.includes(signal)) {
       needsReflection = true;
       complexityScore += 1;
     }
