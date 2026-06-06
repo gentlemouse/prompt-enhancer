@@ -40,9 +40,7 @@ const safeSendToTab = async (
  * 更新扩展图标上的试用额度 Badge
  * 当前已禁用 — 试用信息仅在 Popup 设置界面展示
  */
-export const updateTrialBadge = async (): Promise<void> => {
-  chrome.action.setBadgeText({ text: '' });
-};
+export const updateTrialBadge = async (): Promise<void> => {};
 
 /**
  * 代理模式收到服务端额度耗尽后，立即回写本地额度状态。

@@ -85,28 +85,8 @@ const TEXT_INPUT_KEYWORDS = [
   '搜索',
 ];
 
-/** search 输入框可视为聊天输入时的关键词（刻意不包含 search） */
-const CHAT_SEARCH_HINT_KEYWORDS = [
-  'message',
-  'prompt',
-  'chat',
-  'ask',
-  'query',
-  'input',
-  'type',
-  'send',
-  'write',
-  'compose',
-  'reply',
-  'comment',
-  '消息',
-  '输入',
-  '提问',
-  '对话',
-  '发送',
-  '回复',
-  '评论',
-];
+/** search 输入框可视为聊天输入时的关键词（刻意不包含 search / 搜索） */
+const CHAT_SEARCH_HINT_KEYWORDS = TEXT_INPUT_KEYWORDS.filter(k => k !== '搜索');
 
 /** 明显偏“全站搜索”语义的关键词 */
 const GLOBAL_SEARCH_HINT_KEYWORDS = ['search', '搜索', 'find', '查找'];

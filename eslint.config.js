@@ -57,6 +57,7 @@ export default [
         // Streaming & Shadow DOM
         TextDecoder: 'readonly',
         TextEncoder: 'readonly',
+        ReadableStreamDefaultReader: 'readonly',
         ShadowRoot: 'readonly',
         HTMLElementTagNameMap: 'readonly',
         getComputedStyle: 'readonly',
