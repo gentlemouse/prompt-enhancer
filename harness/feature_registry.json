@@ -1,0 +1,118 @@
+{
+  "project": "Lynx / Smart Prompt Enhancer",
+  "last_updated": "2026-03-31",
+  "owner": "gentlemouse",
+  "features": [
+    {
+      "id": "ADOPT-001",
+      "title": "完成首轮模板骨架接入",
+      "source": "harness/contracts/2026-03-31-adoption-baseline.md",
+      "priority": "P0",
+      "status": "done",
+      "autonomy": "yellow",
+      "touched_paths": [
+        "AGENTS.md",
+        "docs/04_architecture.md",
+        "docs/05_release_checklist.md",
+        "docs/06_harness.md",
+        "harness/",
+        "scripts/"
+      ],
+      "acceptance": [
+        "最小 harness 骨架已接入真实仓库",
+        "所有新增文档与脚本都映射到真实仓库事实",
+        "不覆盖已有 README、docs、CI，不修改高风险业务逻辑"
+      ],
+      "verify_commands": [
+        "bash scripts/smoke.sh",
+        "bash scripts/verify.sh"
+      ],
+      "notes": "本项代表最小 harness 骨架已接入并完成基础验证，但 adoption readiness 当前仍为 partial；外部网络/凭证验证未闭环，rollback SOP 待补，evaluator 报告虽已补齐但 ready gate 尚未闭合。"
+    },
+    {
+      "id": "VERIFY-001",
+      "title": "建立统一 verify 入口",
+      "source": "docs/06_harness.md#7-当前仓库的-verify-约定",
+      "priority": "P0",
+      "status": "done",
+      "autonomy": "green",
+      "touched_paths": [
+        "scripts/smoke.sh",
+        "scripts/verify.sh"
+      ],
+      "acceptance": [
+        "脚本使用真实存在的命令映射",
+        "对外部网络或凭证依赖的验证诚实标记 skipped"
+      ],
+      "verify_commands": [
+        "bash scripts/smoke.sh",
+        "bash scripts/verify.sh"
+      ],
+      "notes": "verify 入口已建立，但是否把可选外部联调纳入默认发布 gate，仍需人工确认。"
+    },
+    {
+      "id": "EVAL-001",
+      "title": "完成 adoption baseline 独立验收",
+      "source": "harness/evaluations/2026-03-31-adoption-baseline-evaluation.md",
+      "priority": "P1",
+      "status": "done",
+      "autonomy": "green",
+      "touched_paths": [
+        "harness/contracts/2026-03-31-adoption-baseline.md",
+        "harness/evaluations/2026-03-31-adoption-baseline-evaluation.md",
+        "harness/progress.md",
+        "harness/feature_registry.json"
+      ],
+      "acceptance": [
+        "独立 evaluation 已记录验收结论与证据",
+        "contract 已回写 report path 与 follow-up"
+      ],
+      "verify_commands": [
+        "bash scripts/smoke.sh",
+        "bash scripts/verify.sh"
+      ],
+      "notes": "本项表示独立 evaluation 已形成可审计记录；它支持当前 adoption status 为 partial，不等于 harness 或发布流程已经完全闭环。"
+    },
+    {
+      "id": "DOCS-001",
+      "title": "补齐最小 durable context",
+      "source": "docs/04_architecture.md",
+      "priority": "P0",
+      "status": "done",
+      "autonomy": "green",
+      "touched_paths": [
+        "AGENTS.md",
+        "docs/04_architecture.md",
+        "docs/05_release_checklist.md",
+        "docs/06_harness.md"
+      ],
+      "acceptance": [
+        "架构、发布和 harness 文档已反映真实项目事实",
+        "高风险区域、CI 和真实命令映射已明确"
+      ],
+      "verify_commands": [
+        "bash scripts/smoke.sh"
+      ],
+      "notes": "本项只补最小骨架，不替代现有产品、隐私和专项文档。"
+    },
+    {
+      "id": "RISK-001",
+      "title": "识别并登记高风险模块",
+      "source": "docs/04_architecture.md#6-高风险区域",
+      "priority": "P1",
+      "status": "done",
+      "autonomy": "yellow",
+      "touched_paths": [
+        "docs/04_architecture.md",
+        "AGENTS.md"
+      ],
+      "acceptance": [
+        "manifest、background、storage/crypto、trial/free-session、analytics、Worker 已列入高风险区域"
+      ],
+      "verify_commands": [
+        "人工阅读检查"
+      ],
+      "notes": "细粒度风险分层仍可继续补充。"
+    }
+  ]
+}
