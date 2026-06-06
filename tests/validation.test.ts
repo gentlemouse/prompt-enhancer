@@ -26,6 +26,11 @@ describe('validateEndpoint', () => {
       const result = validateEndpoint('https://my-api.example.com/v1/completions');
       expect(result.valid).toBe(true);
     });
+
+    it('前后空白不应影响有效 endpoint', () => {
+      const result = validateEndpoint('  https://api.example.com/v1/chat  ');
+      expect(result.valid).toBe(true);
+    });
   });
 
   describe('空值和格式错误', () => {
@@ -34,6 +39,12 @@ describe('validateEndpoint', () => {
       expect(result.valid).toBe(false);
       expect(result.error).toBeDefined();
       // 测试环境 t() 返回 i18n key；运行时为翻译文案
+      expect(result.error === 'validationEmptyEndpoint' || result.error?.includes('请输入')).toBe(true);
+    });
+
+    it('仅空白字符串应按空 endpoint 处理', () => {
+      const result = validateEndpoint('   ');
+      expect(result.valid).toBe(false);
       expect(result.error === 'validationEmptyEndpoint' || result.error?.includes('请输入')).toBe(true);
     });
 
@@ -152,6 +163,11 @@ describe('validateApiKey', () => {
       expect(result.valid).toBe(true);
     });
 
+    it('前后空白不应影响 OpenAI key 格式检查', () => {
+      const result = validateApiKey('  sk-1234567890abcdef  ', 'openai');
+      expect(result.valid).toBe(true);
+    });
+
     it('不以 sk- 开头应失败', () => {
       const result = validateApiKey('pk-1234567890abcdef', 'openai');
       expect(result.valid).toBe(false);
@@ -163,6 +179,11 @@ describe('validateApiKey', () => {
   describe('Anthropic 检查', () => {
     it('以 sk-ant- 开头应通过', () => {
       const result = validateApiKey('sk-ant-1234567890abcdef', 'anthropic');
+      expect(result.valid).toBe(true);
+    });
+
+    it('前后空白不应影响 Anthropic key 格式检查', () => {
+      const result = validateApiKey('  sk-ant-1234567890abcdef  ', 'anthropic');
       expect(result.valid).toBe(true);
     });
 

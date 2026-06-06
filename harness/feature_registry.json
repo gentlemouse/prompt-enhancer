@@ -1,8 +1,35 @@
 {
   "project": "Lynx / Smart Prompt Enhancer",
-  "last_updated": "2026-03-31",
+  "last_updated": "2026-06-06",
   "owner": "gentlemouse",
   "features": [
+    {
+      "id": "VALIDATION-001",
+      "title": "Trim endpoint and API key validation inputs",
+      "source": "harness/contracts/2026-06-06-trim-validation-inputs.md",
+      "priority": "P2",
+      "status": "ready_for_evaluation",
+      "autonomy": "green",
+      "touched_paths": [
+        "src/shared/utils/validation.ts",
+        "tests/validation.test.ts",
+        "harness/contracts/2026-06-06-trim-validation-inputs.md",
+        "harness/progress.md",
+        "harness/feature_registry.json"
+      ],
+      "acceptance": [
+        "Whitespace-padded HTTPS endpoints validate successfully",
+        "Whitespace-only endpoints return the empty endpoint validation error",
+        "Whitespace-padded OpenAI and Anthropic API keys validate successfully",
+        "Existing endpoint and provider validation rules remain covered by tests"
+      ],
+      "verify_commands": [
+        "npm run test -- tests/validation.test.ts",
+        "bash scripts/smoke.sh",
+        "bash scripts/verify.sh"
+      ],
+      "notes": "Small shared validation hardening only; no storage, provider call, proxy, quota, trial, analytics, or permission changes."
+    },
     {
       "id": "ADOPT-001",
       "title": "完成首轮模板骨架接入",

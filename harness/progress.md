@@ -31,6 +31,20 @@
 
 ## Latest change log
 
+### Entry 005 - validation input trim hardening
+
+- Goal: 让共享验证工具在处理复制粘贴的 endpoint / API key 时自动忽略前后空白
+- Completed:
+  - 新增 contract `harness/contracts/2026-06-06-trim-validation-inputs.md`
+  - `validateEndpoint` 在解析 URL 前 trim 输入
+  - `validateApiKey` 在长度和 provider 前缀检查前 trim 输入
+  - 补充 endpoint、OpenAI key、Anthropic key 的空白输入回归测试
+- Open questions:
+  - 是否需要在 UI 层展示“已自动去除前后空白”的提示
+- Risk notes:
+  - 本轮不修改存储、provider 调用、proxy、trial、analytics 或 extension permissions
+  - 行为变化仅限前后空白归一化；空白字符串现在返回 empty-field 错误
+
 ### Entry 001 - adoption audit + 最小骨架接入
 
 - Goal: 在不修改高风险业务逻辑的前提下，把模板中的最小 harness 骨架实例化到真实仓库
