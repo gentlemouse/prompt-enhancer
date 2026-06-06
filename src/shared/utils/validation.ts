@@ -22,14 +22,16 @@ export interface ValidationResult {
  * @returns 验证结果
  */
 export const validateEndpoint = (endpoint: string): ValidationResult => {
-  if (!endpoint) {
+  const normalizedEndpoint = endpoint.trim();
+
+  if (!normalizedEndpoint) {
     return { valid: false, error: t('validationEmptyEndpoint') };
   }
 
   // 尝试解析 URL
   let url: URL;
   try {
-    url = new URL(endpoint);
+    url = new URL(normalizedEndpoint);
   } catch {
     return { valid: false, error: t('validationInvalidUrl') };
   }
@@ -86,19 +88,21 @@ export const validateApiKey = (
   apiKey: string,
   provider: string
 ): ValidationResult => {
-  if (!apiKey) {
+  const normalizedApiKey = apiKey.trim();
+
+  if (!normalizedApiKey) {
     return { valid: false, error: t('validationEmptyKey') };
   }
 
   // 基本长度检查
-  if (apiKey.length < 10) {
+  if (normalizedApiKey.length < 10) {
     return { valid: false, error: t('validationKeyTooShort') };
   }
 
   // 提供商特定的格式检查
   switch (provider) {
     case 'openai':
-      if (!apiKey.startsWith('sk-')) {
+      if (!normalizedApiKey.startsWith('sk-')) {
         return {
           valid: false,
           error: t('validationOpenAIKeyFormat'),
@@ -106,7 +110,7 @@ export const validateApiKey = (
       }
       break;
     case 'anthropic':
-      if (!apiKey.startsWith('sk-ant-')) {
+      if (!normalizedApiKey.startsWith('sk-ant-')) {
         return {
           valid: false,
           error: t('validationAnthropicKeyFormat'),
