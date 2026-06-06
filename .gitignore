@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+prompt-enhancer-v*/
 
 # IDE
 .vscode/

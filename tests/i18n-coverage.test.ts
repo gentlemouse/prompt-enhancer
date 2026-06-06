@@ -17,7 +17,12 @@ const walkFiles = (dirPath: string): string[] => {
   const result: string[] = [];
 
   for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
-    if (['node_modules', 'dist', '.git'].includes(entry.name)) continue;
+    if (
+      ['node_modules', 'dist', '.git'].includes(entry.name) ||
+      /^prompt-enhancer-v[\d.]+$/.test(entry.name)
+    ) {
+      continue;
+    }
 
     const fullPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
